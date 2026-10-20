@@ -1,0 +1,18 @@
+# môi trường & cache Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+
+# output chạy thử
+out/
+*.db
+out/*.html
+
+# Tệp tạm hệ thống và Office lock
+~$*
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>LEO-COORD — Quản lý Tần số, Quỹ đạo Chòm sao LEO & Kho Tham luận Chiến lược</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css?v=2.5">
+</head>
+<body class="dark-theme">
+    <!-- Top Navigation Header -->
+    <header class="app-header">
+        <div class="header-left">
+            <div class="logo-box">
+                <div class="logo-icon">🛰️</div>
+                <div class="logo-title">
+                    <span class="brand-sub">CỤC TẦN SỐ VÔ TUYẾN ĐIỆN — ỦY BAN VŨ TRỤ VIỆT NAM</span>
+                    <h1>LEO-COORD <span>MISSION CONTROL</span></h1>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Tab Navigation -->
+        <nav class="main-tabs" role="tablist">
+            <button class="tab-btn active" id="tab-btn-1" onclick="switchTab(1)" role="tab" aria-selected="true">
+                <span class="tab-icon">🌐</span>
+                <span class="tab-label desktop-only">BẢN ĐỒ SỐ 3D & PHÂN TÍCH</span>
+                <span class="tab-label mobile-only">BẢN ĐỒ 3D</span>
+                <span class="badge-dot pulse"></span>
+            </button>
+            <button class="tab-btn" id="tab-btn-2" onclick="switchTab(2)" role="tab" aria-selected="false">
+                <span class="tab-icon">📑</span>
+                <span class="tab-label desktop-only">KHO THAM LUẬN & TÀI LIỆU</span>
+                <span class="tab-label mobile-only">THAM LUẬN</span>
+                <span class="badge-count" id="doc-count-badge">12</span>
+            </button>
+            <button class="tab-btn" id="tab-btn-3" onclick="switchTab(3)" role="tab" aria-selected="false">
+                <span class="tab-icon">ℹ️</span>
+                <span class="tab-label desktop-only">GIỚI THIỆU & ĐỊNH HƯỚNG</span>
+                <span class="tab-label mobile-only">GIỚI THIỆU</span>
+                <span class="badge-info">TỔNG QUAN</span>
+            </button>
+        </nav>
+
+        <div class="header-right">
+            <div class="sys-status">
+                <span class="indicator-green"></span>
+                <span>ITU RR ART 21/22 & RES 35</span>
+            </div>
+            <div class="clock" id="live-clock">--:--:-- UTC+7</div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="app-container">
+
+        <!-- ================= TAB 1: BẢN ĐỒ SỐ 3D & CHỨC NĂNG KỸ THUẬT ================= -->
+        <section id="tab-content-1" class="tab-pane active">
+            <div class="tab1-grid">
+                
+                <!-- Left: 3D Digital Globe Visualizer -->
+                <div class="globe-panel">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <span class="icon">🌍</span>
+                            <span>QUẢ ĐỊA CẦU SỐ 3D — GIÁM SÁT CHÒM SAO LEO & VÙNG PHỦ VIỆT NAM</span>
+                        </div>
+                        <div class="globe-toolbar">
+                            <button class="btn-tool" onclick="globe.focusVietnam()" title="Định vị Việt Nam">🎯 Tiêu điểm VN</button>
+                            <button class="btn-tool" onclick="globe.focusGso()" title="Quan sát quỹ đạo địa tĩnh">🛰️ Vinasat GSO</button>
+                            <button class="btn-tool" id="btn-play-pause" onclick="togglePlayPause()" title="Tạm dừng/Tiếp tục">⏸️ Dừng</button>
+                            <div class="speed-selector">
+                                <span>Tốc độ:</span>
+                                <button class="btn-speed active" onclick="setSpeed(1)">1x</button>
+                                <button class="btn-speed" onclick="setSpeed(5)">5x</button>
+                                <button class="btn-speed" onclick="setSpeed(10)">10x</button>
+                                <button class="btn-speed" onclick="setSpeed(30)">30x</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Canvas Container -->
+                    <div class="canvas-wrapper">
+                        <canvas id="globe-canvas"></canvas>
+                        
+                        <!-- Floating Controls Overlay -->
+                        <div class="globe-overlay-toggles">
+                            <label class="toggle-chip">
+                                <input type="checkbox" id="chk-gso" checked onchange="globe.showGso = this.checked">
+                                <span>Vinasat & Cung GSO ±6°</span>
+                            </label>
+                            <label class="toggle-chip">
+                                <input type="checkbox" id="chk-slant" checked onchange="globe.showSlantRange = this.checked">
+                                <span>Thước đo Cự ly Slant</span>
+                            </label>
+                            <label class="toggle-chip">
+                                <input type="checkbox" id="chk-orbits" checked onchange="globe.showOrbits = this.checked">
+                                <span>Mặt phẳng quỹ đạo</span>
+                            </label>
+                            <label class="toggle-chip">
+                                <input type="checkbox" id="chk-footprints" checked onchange="globe.showFootprints = this.checked">
+                                <span>Búp sóng phủ (Footprints)</span>
+                            </label>
+                            <label class="toggle-chip">
+                                <input type="checkbox" id="chk-beams" checked onchange="globe.showBeams = this.checked">
+                                <span>Tia chiếu vệ tinh</span>
+                            </label>
+                            <label class="toggle-chip">
+                                <input type="checkbox" id="chk-labels" checked onchange="globe.showLabels = this.checked">
+                                <span>Nhãn trạm & Vệ tinh</span>
+                            </label>
+                        </div>
+
+                        <!-- Selected Satellite Card -->
+                        <div class="sat-detail-card" id="sat-info-card">
+                            <div class="card-title">CHI TIẾT VỆ TINH LỰA CHỌN</div>
+                            <div class="card-row"><span>Mã vệ tinh:</span> <strong id="info-sat-id">SAT-012</strong></div>
+                            <div class="card-row"><span>Mặt phẳng:</span> <strong id="info-sat-plane">Pl 2 (inc 53°)</strong></div>
+                            <div class="card-row"><span>Tọa độ Sub-sat:</span> <strong id="info-sat-coords">16.4°N, 107.8°E</strong></div>
+                            <div class="card-row"><span>Độ cao quỹ đạo:</span> <strong id="info-sat-alt">550 km</strong></div>
+                            <div class="card-status"><span class="badge-tag">Đang phủ trạm Đà Nẵng</span></div>
+                        </div>
+
+                        <!-- Legend Bottom Left -->
+                        <div class="globe-legend">
+                            <div class="legend-item"><span class="legend-color" style="background:#38bdf8"></span> Trạm Hà Nội</div>
+                            <div class="legend-item"><span class="legend-color" style="background:#34d399"></span> Trạm Đà Nẵng</div>
+                            <div class="legend-item"><span class="legend-color" style="background:#fbbf24"></span> Trạm TP.HCM</div>
+                            <div class="legend-item"><span class="legend-color" style="background:#f43f5e"></span> Vinasat-1/2 (GSO)</div>
+                            <div class="legend-item"><span class="legend-color" style="background:rgba(244,63,94,0.6); border:1px dashed #f43f5e;"></span> Cung phối hợp ±6°</div>
+                        </div>
+                    </div>
+
+                    <!-- Timeline Scrubber Bar -->
+                    <div class="globe-timeline-bar">
+                        <div class="timeline-controls">
+                            <button class="btn-time-nav" onclick="stepTime(-3600)" title="Lùi 1 giờ">⏪ -1h</button>
+                            <button class="btn-time-play" id="btn-timeline-play" onclick="togglePlayPause()">⏸️</button>
+                            <button class="btn-time-nav" onclick="stepTime(3600)" title="Tiến 1 giờ">⏩ +1h</button>
+                            <button class="btn-time-reset" onclick="resetTime()" title="Về 00:00">🔄 00:00</button>
+                        </div>
+                        <div class="timeline-slider-box">
+                            <input type="range" id="timeline-slider" min="0" max="86400" value="0" step="30" oninput="onTimelineSliderChange(this.value)">
+                            <div class="timeline-ticks">
+                                <span>00:00</span>
+                                <span>04:00</span>
+                                <span>08:00</span>
+                                <span>12:00</span>
+                                <span>16:00</span>
+                                <span>20:00</span>
+                                <span>24:00</span>
+                            </div>
+                        </div>
+                        <div class="timeline-display">
+                            <span class="label">GIỜ MÔ PHỎNG:</span>
+                            <span class="value" id="timeline-clock">00:00:00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Configuration & Assessment Dashboard -->
+                <div class="controls-panel">
+                    
+                    <!-- Constellation Config Card -->
+                    <div class="config-card">
+                        <div class="card-header">
+                            <div class="title">THIẾT LẬP THAM SỐ CHÒM SAO WALKER LEO</div>
+                            <button class="btn-text-action" onclick="loadDefaultConstellation()">Nạp Mẫu Demo</button>
+                        </div>
+                        <div class="config-form-grid">
+                            <div class="form-group">
+                                <label>Tên chòm sao</label>
+                                <input type="text" id="cfg-name" value="DEMO_LEO_KU">
+                            </div>
+                            <div class="form-group">
+                                <label>Độ cao quỹ đạo (km)</label>
+                                <input type="number" id="cfg-alt" value="550" min="200" max="2000">
+                            </div>
+                            <div class="form-group">
+                                <label>Góc nghiêng quỹ đạo (°)</label>
+                                <input type="number" id="cfg-inc" value="53.0" step="0.5">
+                            </div>
+                            <div class="form-group">
+                                <label>Tổng số vệ tinh</label>
+                                <input type="number" id="cfg-sats" value="120" min="1" max="10000">
+                            </div>
+                            <div class="form-group">
+                                <label>Số mặt phẳng quỹ đạo</label>
+                                <input type="number" id="cfg-planes" value="6" min="1" max="100">
+                            </div>
+                            <div class="form-group">
+                                <label>Tần số Downlink (GHz)</label>
+                                <input type="number" id="cfg-freq" value="11.7" step="0.1">
+                            </div>
+                            <div class="form-group">
+                                <label>Mật độ EIRP (dBW/MHz)</label>
+                                <input type="number" id="cfg-eirp" value="10.0" step="0.5">
+                            </div>
+                            <div class="form-group">
+                                <label>Kinh độ GSO đối chiếu (°E)</label>
+                                <input type="number" id="cfg-gso" value="105.5" step="0.5" title="Vị trí Vinasat-1/2">
+                            </div>
+                        </div>
+
+                        <div class="action-btn-group">
+                            <button class="btn-primary" id="btn-run-assess" onclick="runAssessment()">
+                                <span class="btn-icon">⚡</span>
+                                <span>CHẠY PHÂN TÍCH & ĐÁNH GIÁ KỸ THUẬT</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Assessment Results Matrix -->
+                    <div class="results-container" id="results-box">
+                        <div class="results-header">
+                            <div class="title">KẾT QUẢ ĐÁNH GIÁ SÀNG LỌC KỸ THUẬT (ITU RR)</div>
+                            <span class="timestamp" id="res-timestamp">Chưa chạy</span>
+                        </div>
+
+                        <!-- 4 Summary Stat Cards -->
+                        <div class="stats-row">
+                            <div class="stat-card">
+                                <div class="stat-label">PHỦ SÓNG TOÀN VN</div>
+                                <div class="stat-value highlight" id="stat-cov">95.9%</div>
+                                <div class="stat-sub">Độ cao min 10°</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">PFD (RR ART. 21)</div>
+                                <div class="stat-value" id="stat-pfd">
+                                    <span class="badge-fail">KHÔNG ĐẠT</span>
+                                </div>
+                                <div class="stat-sub" id="stat-pfd-margin">Margin: -0.2 dB</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">EPFD (RR ART. 22)</div>
+                                <div class="stat-value" id="stat-epfd">
+                                    <span class="badge-fail">KHÔNG ĐẠT</span>
+                                </div>
+                                <div class="stat-sub" id="stat-epfd-anchor">Vượt ngưỡng 22.1A</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">NGUY CƠ XÍ PHẦN</div>
+                                <div class="stat-value" id="stat-warehouse">
+                                    <span class="badge-warn">TRUNG BÌNH</span>
+                                </div>
+                                <div class="stat-sub" id="stat-res35-status">ITU Res 35</div>
+                            </div>
+                        </div>
+
+                        <!-- Detailed Technical Cards Accordion -->
+                        <div class="details-grid">
+                            
+                            <!-- Box 1: Vùng phủ sóng chi tiết 3 trạm -->
+                            <div class="detail-box">
+                                <div class="box-title">🛰️ Phân bố Phủ sóng tại 3 Trạm Mặt đất</div>
+                                <div class="station-table-wrapper">
+                                    <table class="station-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Trạm</th>
+                                                <th>Tỷ lệ phủ</th>
+                                                <th>Vệ tinh nhìn thấy TB</th>
+                                                <th>Trống lâu nhất</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="station-tbody">
+                                            <tr><td>Hà Nội</td><td>100.0%</td><td>1.9 vệ tinh</td><td>0.0 phút</td></tr>
+                                            <tr><td>Đà Nẵng</td><td>100.0%</td><td>1.8 vệ tinh</td><td>0.0 phút</td></tr>
+                                            <tr><td>TP. Hồ Chí Minh</td><td>89.8%</td><td>1.7 vệ tinh</td><td>19.0 phút</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Box 2: Phối hợp tần số NGSO vs GSO -->
+                            <div class="detail-box">
+                                <div class="box-title">📡 Phối hợp Tần số NGSO vs GSO (RR Art. 9)</div>
+                                <div class="coord-info-list" id="coord-info-content">
+                                    <div class="info-item">
+                                        <span>Góc phân tách nhỏ nhất:</span>
+                                        <strong id="coord-min-sep">2.0°</strong>
+                                    </div>
+                                    <div class="info-item">
+                                        <span>Cung phối hợp (Coordination Arc):</span>
+                                        <strong>±6.0°</strong>
+                                    </div>
+                                    <div class="info-item">
+                                        <span>Khuyến nghị Phối hợp:</span>
+                                        <span class="badge-tag-red" id="coord-req-tag">CẦN PHỐI HỢP VỚI GSO VN</span>
+                                    </div>
+                                    <p class="note-desc" id="coord-note">
+                                        Vệ tinh NGSO cắt qua cung phối hợp của vệ tinh địa tĩnh Việt Nam tại kinh độ 105.5°E, nguy cơ gây can nhiễu cần tiến hành đàm phán song phương.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Box 3: Mốc triển khai Res 35 (WRC-19) -->
+                            <div class="detail-box full-width">
+                                <div class="box-title">⏱️ Tiến độ Triển khai theo Nghị quyết ITU Res 35 (WRC-19)</div>
+                                <div class="milestones-steps" id="milestones-track">
+                                    <div class="step-card success">
+                                        <div class="step-badge">Mốc 1: 10%</div>
+                                        <div class="step-due">Hạn: 2026-03-01</div>
+                                        <div class="step-target">Yêu cầu: 12 vệ tinh</div>
+                                        <div class="step-result text-green">ĐÃ ĐẠT (15 vệ tinh)</div>
+                                    </div>
+                                    <div class="step-card warning">
+                                        <div class="step-badge">Mốc 2: 50%</div>
+                                        <div class="step-due">Hạn: 2029-03-01</div>
+                                        <div class="step-target">Yêu cầu: 60 vệ tinh</div>
+                                        <div class="step-result text-amber">TRỄ HẠN / NGUY CƠ</div>
+                                    </div>
+                                    <div class="step-card pending">
+                                        <div class="step-badge">Mốc 3: 100%</div>
+                                        <div class="step-due">Hạn: 2031-03-01</div>
+                                        <div class="step-target">Yêu cầu: 120 vệ tinh</div>
+                                        <div class="step-result text-muted">CHƯA ĐẾN HẠN</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Report Action -->
+                        <div class="report-action-bar">
+                            <a href="/static/../out/bao_cao.html" target="_blank" class="btn-secondary" id="btn-view-report">
+                                <span>📄 Xem Báo Cáo Thẩm Định HTML Đầy Đủ</span>
+                            </a>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ================= TAB 2: KHO THAM LUẬN & TÀI LIỆU ================= -->
+        <section id="tab-content-2" class="tab-pane">
+            <div class="tab2-container">
+                
+                <!-- Tab 2 Header & Action Bar -->
+                <div class="docs-action-header">
+                    <div class="docs-header-left">
+                        <h2>KHO TÀI LIỆU & THAM LUẬN CHIẾN LƯỢC QUỸ ĐẠO LEO</h2>
+                        <p class="docs-subtext">Lưu trữ, tra cứu và chia sẻ các văn bản chính sách, bài tham luận khoa học, bảng tính kỹ thuật (Word, Excel, PDF, PowerPoint).</p>
+                    </div>
+                    <div class="docs-header-right">
+                        <button class="btn-primary" onclick="openUploadModal()">
+                            <span class="btn-icon">📤</span>
+                            <span>TẢI LÊN THAM LUẬN / TÀI LIỆU MỚI</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Search & Filters Toolbar -->
+                <div class="docs-toolbar">
+                    <div class="search-box">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="doc-search-input" placeholder="Tìm kiếm theo tiêu đề, tác giả, cơ quan, nội dung tham luận..." oninput="filterDocuments()">
+                    </div>
+
+                    <div class="filter-group">
+                        <span class="filter-label">Định dạng:</span>
+                        <div class="filter-pill-track">
+                            <button class="filter-pill active" onclick="setDocFilterType('all', this)">Tất cả</button>
+                            <button class="filter-pill" onclick="setDocFilterType('pdf', this)">
+                                <span class="ext-badge pdf">PDF</span>
+                            </button>
+                            <button class="filter-pill" onclick="setDocFilterType('word', this)">
+                                <span class="ext-badge doc">Word</span>
+                            </button>
+                            <button class="filter-pill" onclick="setDocFilterType('excel', this)">
+                                <span class="ext-badge xls">Excel</span>
+                            </button>
+                            <button class="filter-pill" onclick="setDocFilterType('ppt', this)">
+                                <span class="ext-badge ppt">PowerPoint</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <span class="filter-label">Chủ đề:</span>
+                        <select id="doc-category-select" class="custom-select" onchange="filterDocuments()">
+                            <option value="all">Tất cả chủ đề</option>
+                            <option value="Chiến lược & Chính sách">Chiến lược & Chính sách</option>
+                            <option value="Kỹ thuật & Tính toán">Kỹ thuật & Tính toán</option>
+                            <option value="Quy định Quốc tế (ITU)">Quy định Quốc tế (ITU)</option>
+                            <option value="Thuyết trình & Hội thảo">Thuyết trình & Hội thảo</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Statistics Bar -->
+                <div class="doc-stats-bar">
+                    <div class="stat-pill"><span class="num" id="stat-total-docs">4</span> tài liệu trong kho</div>
+                    <div class="stat-pill"><span class="dot pdf-dot"></span> <span id="stat-pdf-count">1</span> PDF</div>
+                    <div class="stat-pill"><span class="dot word-dot"></span> <span id="stat-word-count">1</span> Word (.docx)</div>
+                    <div class="stat-pill"><span class="dot xls-dot"></span> <span id="stat-excel-count">1</span> Excel (.xlsx)</div>
+                    <div class="stat-pill"><span class="dot ppt-dot"></span> <span id="stat-ppt-count">1</span> PowerPoint (.pptx)</div>
+                </div>
+
+                <!-- Document Grid -->
+                <div class="docs-grid" id="documents-grid">
+                    <!-- Cards will be populated dynamically -->
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ================= TAB 3: GIỚI THIỆU DỰ ÁN & ĐỊNH HƯỚNG PHÁT TRIỂN ================= -->
+        <section id="tab-content-3" class="tab-pane">
+            <div class="about-container">
+                
+                <!-- 1. HERO BANNER -->
+                <div class="about-hero-card">
+                    <div class="hero-badge">
+                        <span class="badge-dot pulse"></span>
+                        <span>SỨ MỆNH QUỐC GIA & BẢO VỆ PHỔ TẦN SỐ VŨ TRỤ</span>
+                    </div>
+                    <h1 class="hero-title">LEO-COORD MISSION CONTROL SYSTEM</h1>
+                    <p class="hero-subtitle">
+                        Nền tảng Giám sát, Đánh giá Kỹ thuật Tương thích Điện từ (EMC) & Điều phối Tần số - Quỹ đạo Chòm sao Vệ tinh Quỹ đạo Thấp (LEO Constellations). Khẳng định chủ quyền không gian và bảo vệ hạ tầng thông tin vô tuyến quốc gia trong kỷ nguyên Mega-Constellations.
+                    </p>
+                    <div class="hero-kpi-bar">
+                        <div class="hero-kpi-item">
+                            <span class="kpi-icon">🛡️</span>
+                            <div>
+                                <span class="kpi-val">Bảo vệ Vinasat</span>
+                                <span class="kpi-desc">Cung GSO ±6° & EPFD ITU-R Art 22</span>
+                            </div>
+                        </div>
+                        <div class="hero-kpi-item">
+                            <span class="kpi-icon">🌐</span>
+                            <div>
+                                <span class="kpi-val">Chủ Quyền Phổ Tần</span>
+                                <span class="kpi-desc">Kiểm soát Ku/Ka & D2D 3GPP NTN</span>
+                            </div>
+                        </div>
+                        <div class="hero-kpi-item">
+                            <span class="kpi-icon">🚀</span>
+                            <div>
+                                <span class="kpi-val">Quy Tắc Milestone</span>
+                                <span class="kpi-desc">WRC-19 Resolution 35 Compliance</span>
+                            </div>
+                        </div>
+                        <div class="hero-kpi-item">
+                            <span class="kpi-icon">🇻🇳</span>
+                            <div>
+                                <span class="kpi-val">100% Vùng Phủ</span>
+                                <span class="kpi-desc">Đất liền, Vùng trời & Vùng biển đảo</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. MỤC ĐÍCH & Ý NGHĨA CHIẾN LƯỢC -->
+                <div class="about-section">
+                    <div class="section-title-wrap">
+                        <span class="section-badge">MỤC ĐÍCH & Ý NGHĨA CHIẾN LƯỢC</span>
+                        <h2 class="section-heading">TẠI SAO VIỆT NAM CẦN HỆ THỐNG LEO-COORD?</h2>
+                        <p class="section-desc">
+                            Trước sự bùng nổ của các chùm vệ tinh phi địa tĩnh với hàng chục ngàn vệ tinh bao trùm toàn cầu, việc xây dựng một công cụ độc lập để giám sát kỹ thuật và điều phối tần số là nhiệm vụ cấp thiết để bảo vệ chủ quyền quốc gia.
+                        </p>
+                    </div>
+
+                    <div class="about-cards-grid">
+                        <div class="apple-glass-card">
+                            <div class="card-icon-box cyan-gradient">🌐</div>
+                            <h3>1. Khẳng Định Chủ Quyền Không Gian & Phổ Tần Số Vô Tuyến</h3>
+                            <p>
+                                Các siêu chòm sao (Starlink, OneWeb, Kuiper, Qianfan...) đăng ký hàng nghìn vệ tinh lên ITU, bao phủ lãnh thổ và đề xuất cung cấp dịch vụ thương mại tại Việt Nam. Hệ thống mang lại công cụ độc lập cho cơ quan quản lý (Cục Tần số Vô tuyến điện, Bộ KH&CN, Bộ TT&TT, Bộ Quốc phòng) thẩm định điều kiện kỹ thuật, kiểm tra vùng phủ và xác lập điều kiện cấp phép, không phụ thuộc vào dữ liệu tự công bố một chiều của các tập đoàn quốc tế.
+                            </p>
+                            <div class="card-tags">
+                                <span class="card-tag">Chủ quyền số</span>
+                                <span class="card-tag">Thẩm định cấp phép</span>
+                                <span class="card-tag">An ninh thông tin</span>
+                            </div>
+                        </div>
+
+                        <div class="apple-glass-card">
+                            <div class="card-icon-box purple-gradient">🛰️</div>
+                            <h3>2. Bảo Vệ Tuyệt Đối Mạng Vệ Tinh Địa Tĩnh VINASAT (GSO)</h3>
+                            <p>
+                                VINASAT-1 (132°E) và VINASAT-2 (131.8°E) là hạ tầng viễn thông an ninh quốc gia tối mật. Khi các vệ tinh LEO bay qua đường ngắm giữa trạm mặt đất và Vinasat (hiện tượng In-line Event), công suất phát xạ của LEO có thể làm "mù" hoặc nghẽn trầm trọng bộ phát đáp của Vinasat. LEO-Coord mô phỏng hình học chính xác cung bảo vệ ±6° GSO và bắt buộc chòm sao LEO thực thi quy chế tắt sóng (Beam Blanking).
+                            </p>
+                            <div class="card-tags">
+                                <span class="card-tag">Vinasat-1 & 2</span>
+                                <span class="card-tag">Cung bảo vệ ±6°</span>
+                                <span class="card-tag">In-line Event</span>
+                            </div>
+                        </div>
+
+                        <div class="apple-glass-card">
+                            <div class="card-icon-box green-gradient">📶</div>
+                            <h3>3. Mở Đường Cho Công Nghệ Vệ Tinh Trực Tiếp Thiết Bị (D2D / 3GPP NTN)</h3>
+                            <p>
+                                Xu thế tích hợp mạng vệ tinh vào hạ tầng viễn thông di động mặt đất (Non-Terrestrial Networks - 3GPP Release 17/18) cho phép điện thoại 4G/5G thông thường kết nối thẳng với vệ tinh. Dự án tính toán mức độ can nhiễu đồng tần với mạng di động mặt đất hiện hữu, bảo vệ dải tần của các nhà mạng Việt Nam, đồng thời mở rộng vùng phủ internet và cứu nạn cứu hộ ra 100% vùng biển đảo và ngư dân.
+                            </p>
+                            <div class="card-tags">
+                                <span class="card-tag">3GPP Rel-17/18</span>
+                                <span class="card-tag">Direct-to-Device</span>
+                                <span class="card-tag">Cứu hộ biển đảo</span>
+                            </div>
+                        </div>
+
+                        <div class="apple-glass-card">
+                            <div class="card-icon-box amber-gradient">⚖️</div>
+                            <h3>4. Tuân Thủ & Vận Dụng Thể Lệ Vô Tuyến Quốc Tế (ITU Radio Regulations)</h3>
+                            <p>
+                                Tự động hóa đánh giá tuân thủ các quy tắc nền tảng của ITU: Mật độ thông lượng công suất mặt đất (PFD theo Điều 21), Mật độ thông lượng công suất tương đương bảo vệ GSO (EPFD theo Điều 22) và Quy tắc tiến độ phóng vệ tinh (Milestone-based approach theo Nghị quyết 35 - WRC-19). Cung cấp cơ sở lý luận và số liệu kỹ thuật đanh thép cho Việt Nam trong các vòng đàm phán song phương và đa phương.
+                            </p>
+                            <div class="card-tags">
+                                <span class="card-tag">ITU RR Art 21/22</span>
+                                <span class="card-tag">WRC-19 Res 35</span>
+                                <span class="card-tag">Đàm phán quốc tế</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. PHƯƠNG HƯỚNG PHÁT TRIỂN TIẾP THEO KHI CÓ SỐ LIỆU CHÒM SAO THẬT -->
+                <div class="about-section">
+                    <div class="section-title-wrap">
+                        <span class="section-badge badge-roadmap">LỘ TRÌNH KỸ THUẬT</span>
+                        <h2 class="section-heading">PHƯƠNG HƯỚNG PHÁT TRIỂN KHI CÓ SỐ LIỆU CHÒM SAO THỰC TẾ</h2>
+                        <p class="section-desc">
+                            Chuyển dịch từ mô hình mô phỏng hình học giải tích sang Hệ thống Điều hành Giám sát Không gian & Tần số Vệ tinh Thời gian thực (Real-time Space Situational Awareness & Spectrum Operations).
+                        </p>
+                    </div>
+
+                    <div class="roadmap-track">
+                        <!-- Step 1 -->
+                        <div class="roadmap-item">
+                            <div class="rm-num">01</div>
+                            <div class="rm-content">
+                                <div class="rm-header">
+                                    <h4>Tích Hợp Dữ Liệu Quỹ Đạo Thực Tế TLE / Ephemeris Thời Gian Thực</h4>
+                                    <span class="rm-status-badge live">Space-Track / CelesTrak API</span>
+                                </div>
+                                <p>
+                                    <strong>Hiện tại:</strong> Hệ thống tính toán trên mô hình giải tích Keplerian với số lượng vệ tinh, số mặt phẳng và góc nghiêng giả định.<br>
+                                    <strong>Khi có số liệu thật:</strong> Kết nối API tự động kéo dữ liệu <em>Two-Line Elements (TLE)</em> và <em>Orbit Mean-Elements Message (OMM)</em> chuẩn CCSDS của từng vệ tinh cụ thể (Starlink, OneWeb, AST SpaceMobile, hoặc chòm sao vệ tinh tương lai của Việt Nam).<br>
+                                    <strong>Nâng cấp toán học:</strong> Triển khai bộ thư viện lan truyền quỹ đạo giải tích phức hợp <strong>SGP4/SDP4</strong> tích hợp bổ chính độ dẹt Trái Đất (J2, J3, J4 zonal harmonics), lực cản khí quyển tầng cao (NRLMSISE-00) và áp suất bức xạ mặt trời, cho độ chính xác định vị dưới 100 mét.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Step 2 -->
+                        <div class="roadmap-item">
+                            <div class="rm-num">02</div>
+                            <div class="rm-content">
+                                <div class="rm-header">
+                                    <h4>Động Cơ Mô Phỏng Can Nhiễu Động Đa Điểm Chuẩn ITU-R (Dynamic EPFD & C/I)</h4>
+                                    <span class="rm-status-badge ai">Monte-Carlo Simulation</span>
+                                </div>
+                                <p>
+                                    <strong>Hiện tại:</strong> Tính toán hình học khoảng cách nghiêng Slant Range và góc lệch Off-axis tức thời.<br>
+                                    <strong>Khi có số liệu thật:</strong> Chạy mô phỏng động theo chuỗi thời gian (Dynamic Time-Series & Monte-Carlo) với bước thời gian siêu mịn 0.1s.<br>
+                                    <strong>Búp sóng thực tế:</strong> Nhúng mô hình giản đồ búp sóng ăng-ten thực tế theo khuyến nghị <strong>ITU-R S.1428</strong> (ăng-ten mảng pha đa búp sóng LEO) và <strong>ITU-R S.672 / S.580</strong> (ăng-ten trạm mặt đất GSO).<br>
+                                    <strong>Đặc thù nhiệt đới:</strong> Tích hợp mô hình suy hao do mưa nhiệt đới gió mùa tại Việt Nam theo khuyến nghị <strong>ITU-R P.618 / P.838</strong> ($R_{0.01} \approx 90\text{--}120\text{ mm/h}$) trên các băng tần Ku/Ka.<br>
+                                    <strong>Can nhiễu tổng hợp (Aggregate Interference):</strong> Đánh giá tổng công suất can nhiễu từ hàng trăm vệ tinh phát đồng thời vào trạm thu mặt đất.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Step 3 -->
+                        <div class="roadmap-item">
+                            <div class="rm-num">03</div>
+                            <div class="rm-content">
+                                <div class="rm-header">
+                                    <h4>Số Hóa Hạ Tầng Trạm Cổng (Gateways) & Mô Hình Địa Hình 3D Thực Tế</h4>
+                                    <span class="rm-status-badge data">3D DEM 30m GIS</span>
+                                </div>
+                                <p>
+                                    <strong>Hiện tại:</strong> Đặt trạm thu giả lập tại trung tâm Hà Nội.<br>
+                                    <strong>Khi có số liệu thật:</strong> Số hóa toàn bộ mạng trạm Gateway thực tế dự kiến đặt tại Việt Nam (Quế Dương - Hà Nội, Bình Dương, Đà Nẵng, các trạm của Viettel, VNPT, MobiFone).<br>
+                                    <strong>Bảo vệ dịch vụ mặt đất:</strong> Tích hợp mô hình số độ cao địa hình (DEM 30m) để tính toán góc che chắn tự nhiên, xác định góc ngẩng tối thiểu ($\ge 25^\circ$), ngăn ngừa can nhiễu giữa chòm sao LEO và các tuyến vi ba số mặt đất (Fixed Links 18/23 GHz) hiện hữu của các nhà mạng viễn thông.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Step 4 -->
+                        <div class="roadmap-item">
+                            <div class="rm-num">04</div>
+                            <div class="rm-content">
+                                <div class="rm-header">
+                                    <h4>AI & Trí Tuệ Nhân Tạo Điều Phối Phổ Tần Nhận Thức (Cognitive Spectrum Coordination)</h4>
+                                    <span class="rm-status-badge ai">AI / Machine Learning</span>
+                                </div>
+                                <p>
+                                    <strong>Dự báo can nhiễu sớm:</strong> Huấn luyện mạng nơ-ron học sâu (Deep Learning) dự báo trước các "Cửa sổ Can nhiễu" (Interference Windows) trước 24h đến 72h dựa trên lịch bay quỹ đạo và mật độ lưu lượng truyền dẫn.<br>
+                                    <strong>Tự động hóa can thiệp:</strong> Tự động đề xuất kịch bản điều khiển búp sóng né (Autonomous Beam Blanking / Null Steering), chuyển trạm mặt đất (Gateway Handover) hoặc phân bổ kênh tần số động (Dynamic Spectrum Access) để bảo đảm thông lượng dữ liệu tối ưu mà không gây can nhiễu có hại.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Step 5 -->
+                        <div class="roadmap-item">
+                            <div class="rm-num">05</div>
+                            <div class="rm-content">
+                                <div class="rm-header">
+                                    <h4>Trợ Lý Số Đăng Ký Tần Số Quốc Tế ITU-BR (Filing & Clearance Assistant)</h4>
+                                    <span class="rm-status-badge legal">ITU BR & SNS Database</span>
+                                </div>
+                                <p>
+                                    <strong>Tự động hóa hồ sơ:</strong> Xuất biểu mẫu dữ liệu kỹ thuật theo đúng cấu trúc chuẩn Phụ lục 4 Thể lệ Vô tuyến điện (ITU-R Appendix 4: A.4.b.4, A.4.b.5).<br>
+                                    <strong>Đối soát cơ sở dữ liệu quốc tế:</strong> Tự động quét và đối chiếu với cơ sở dữ liệu SNS (Space Network Systems) của Cục Thông tin Vô tuyến ITU, phát hiện sớm các nguy cơ tranh chấp tần số với các nước lân cận trước khi gửi hồ sơ chính thức, giúp Việt Nam giữ thế chủ động và bảo vệ vị thế pháp lý.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. KIẾN TRÚC KỸ THUẬT HỆ THỐNG -->
+                <div class="about-section">
+                    <div class="section-title-wrap">
+                        <span class="section-badge">KIẾN TRÚC HỆ THỐNG</span>
+                        <h2 class="section-heading">4 TẦNG CÔNG NGHỆ CỐT LÕI CỦA LEO-COORD</h2>
+                    </div>
+
+                    <div class="arch-layers-grid">
+                        <div class="arch-layer-card">
+                            <div class="arch-layer-header">
+                                <span class="layer-pill">LỚP 1</span>
+                                <h4>Giao Diện Trực Quan 3D WebGL Digital Twin</h4>
+                            </div>
+                            <p>Three.js r128, OrbitControls tùy biến cho cử chỉ chạm đa điểm, Apple Sonoma Glassmorphism UI, Responsive tương thích 100% Mobile (iPhone/Android) & Desktop.</p>
+                        </div>
+
+                        <div class="arch-layer-card">
+                            <div class="arch-layer-header">
+                                <span class="layer-pill">LỚP 2</span>
+                                <h4>Backend & Dịch Vụ Phân Tích Hiệu Năng Cao</h4>
+                            </div>
+                            <p>FastAPI, Python 3.10+, kiến trúc Asynchronous phi tập trung, quản lý kho tham luận tri thức, phân tích định dạng Office đa tệp tin (Word, Excel, PowerPoint, PDF).</p>
+                        </div>
+
+                        <div class="arch-layer-card">
+                            <div class="arch-layer-header">
+                                <span class="layer-pill">LỚP 3</span>
+                                <h4>Động Cơ Toán Quỹ Đạo & Vật Lý Vô Tuyến Không Gian</h4>
+                            </div>
+                            <p>Giải thuật Keplerian, SGP4/SDP4 Vector Math, Hình học tọa độ cầu WGS-84, tính toán Free-Space Path Loss, góc ngẩng trạm mặt đất, cự ly xiên Slant Range.</p>
+                        </div>
+
+                        <div class="arch-layer-card">
+                            <div class="arch-layer-header">
+                                <span class="layer-pill">LỚP 4</span>
+                                <h4>Khung Quy Chuẩn ITU Radio Regulations</h4>
+                            </div>
+                            <p>Tích hợp sẵn các thuật toán đối soát: ITU RR Điều 21 (PFD), Điều 22 (EPFD), Nghị quyết 35 (WRC-19 Milestones), 3GPP Release 17/18 NTN D2D standards.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. QUICK ACTION CALL -->
+                <div class="about-action-bar">
+                    <div class="action-text">
+                        <h3>SẴN SÀNG TRẢI NGHIỆM VÀ ĐÓNG GÓP Ý KIẾN CHUYÊN MÔN?</h3>
+                        <p>Khám phá bản đồ số 3D hoặc tra cứu các bài tham luận kỹ thuật về chính sách chòm sao LEO tại Việt Nam.</p>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn-primary" onclick="switchTab(1)">
+                            <span>🌐 Bản Đồ Số 3D & Mô Phỏng</span>
+                        </button>
+                        <button class="btn-secondary" onclick="switchTab(2)">
+                            <span>📑 Kho Tham Luận & Góp Ý</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Upload Document Modal -->
+    <div class="modal-overlay" id="upload-modal" onclick="closeModalOnBackdrop(event)">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <span class="modal-icon">📤</span>
+                    <span>Tải Lên Tham Luận & Tài Liệu Chuyên Đề</span>
+                </div>
+                <button class="modal-close" onclick="closeUploadModal()">&times;</button>
+            </div>
+
+            <form id="upload-form" onsubmit="handleFormUpload(event)">
+                <div class="modal-body">
+                    
+                    <!-- Drag & Drop Zone -->
+                    <div class="drop-zone" id="drop-zone">
+                        <div class="drop-icon">📁</div>
+                        <div class="drop-text">
+                            <strong>Kéo & thả tệp tin vào đây</strong> hoặc 
+                            <label class="btn-browse-file">
+                                <span>chọn tệp từ máy tính</span>
+                                <input type="file" id="file-input" name="file" accept=".doc,.docx,.xls,.xlsx,.pdf,.ppt,.pptx" required onchange="handleFileSelect(this)">
+                            </label>
+                        </div>
+                        <div class="drop-hint">Chấp nhận: Microsoft Word (.docx, .doc), Excel (.xlsx, .xls), PDF (.pdf), PowerPoint (.pptx, .ppt) — Tối đa 50MB</div>
+                        <div class="selected-file-preview" id="file-preview-box" style="display:none;">
+                            <span class="file-icon" id="preview-icon">📄</span>
+                            <span class="file-name" id="preview-name"></span>
+                            <span class="file-size" id="preview-size"></span>
+                            <button type="button" class="btn-remove-file" onclick="clearSelectedFile()">&times;</button>
+                        </div>
+                    </div>
+
+                    <!-- Metadata Fields -->
+                    <div class="form-row">
+                        <div class="form-group flex-2">
+                            <label>Tiêu đề tham luận / tài liệu <span class="required">*</span></label>
+                            <input type="text" id="doc-title" name="title" placeholder="VD: Nghiên cứu Phối hợp Tần số Chòm sao LEO Băng tần Ku/Ka..." required>
+                        </div>
+                        <div class="form-group flex-1">
+                            <label>Chủ đề chuyên môn</label>
+                            <select id="doc-category" name="category" class="custom-select">
+                                <option value="Chiến lược & Chính sách">Chiến lược & Chính sách</option>
+                                <option value="Kỹ thuật & Tính toán">Kỹ thuật & Tính toán</option>
+                                <option value="Quy định Quốc tế (ITU)">Quy định Quốc tế (ITU)</option>
+                                <option value="Thuyết trình & Hội thảo">Thuyết trình & Hội thảo</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group flex-1">
+                            <label>Tác giả / Cơ quan chủ trì <span class="required">*</span></label>
+                            <input type="text" id="doc-author" name="author" placeholder="VD: Cục Tần số Vô tuyến điện / ThS. Nguyễn Văn A..." required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Tóm tắt nội dung chính</label>
+                        <textarea id="doc-summary" name="summary" rows="3" placeholder="Tóm tắt ngắn gọn các nội dung trọng tâm của tham luận, kết quả tính toán hoặc khuyến nghị kỹ thuật..."></textarea>
+                    </div>
+
+                    <div class="upload-progress-wrapper" id="upload-progress-box" style="display:none;">
+                        <div class="progress-bar-fill" id="upload-bar"></div>
+                        <span class="progress-text" id="upload-status-text">Đang tải lên...</span>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeUploadModal()">Hủy bỏ</button>
+                    <button type="submit" class="btn-primary" id="btn-submit-upload">
+                        <span>Hoàn tất & Đăng ký Tài liệu</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= MODAL: XEM TOÀN VĂN & GÓP Ý THAM LUẬN ================= -->
+    <div class="modal-overlay" id="reader-modal" onclick="closeReaderModalOnBackdrop(event)">
+        <div class="modal-box reader-modal-container">
+            <div class="modal-header apple-sheet-header">
+                <div class="apple-traffic-lights">
+                    <span class="tl-dot red" onclick="closeReaderModal()" title="Đóng"></span>
+                    <span class="tl-dot yellow" title="Thu nhỏ"></span>
+                    <span class="tl-dot green" title="Toàn màn hình"></span>
+                </div>
+                <div class="modal-title">
+                    <span class="icon">📖</span>
+                    <span id="reader-modal-title">Nội dung Tham luận & Góp ý Chuyên gia</span>
+                </div>
+                <button class="modal-close" onclick="closeReaderModal()">&times;</button>
+            </div>
+            
+            <div class="reader-split-body">
+                <!-- Cột trái: Đọc nội dung tham luận -->
+                <div class="reader-content-pane">
+                    <div class="reader-meta-bar">
+                        <span class="meta-item" id="reader-meta-author">👤 Tác giả: ...</span>
+                        <span class="meta-item" id="reader-meta-category">🏷️ Chủ đề: ...</span>
+                        <a id="reader-download-link" href="#" class="btn-tool" target="_blank" style="margin-left: auto;">⬇️ Tải Tệp Gốc</a>
+                    </div>
+                    <div class="reader-summary-box" id="reader-summary-box">
+                        <strong>Tóm tắt nội dung:</strong>
+                        <p id="reader-summary-text"></p>
+                    </div>
+                    <div class="reader-text-viewer" id="reader-text-viewer">
+                        <div class="loading-spinner">Đang nạp toàn văn tài liệu...</div>
+                    </div>
+                </div>
+
+                <!-- Cột phải: Thảo luận & Góp ý -->
+                <div class="reader-feedback-pane">
+                    <div class="feedback-pane-header">
+                        <h4>💬 Ý Kiến Đóng Góp & Phản Biện (<span id="feedback-count">0</span>)</h4>
+                        <span class="text-muted" style="font-size: 0.75rem;">Đóng góp xây dựng quy chế chòm sao LEO Việt Nam</span>
+                    </div>
+
+                    <!-- Danh sách các ý kiến đã có -->
+                    <div class="feedback-thread-list" id="feedback-thread-list">
+                        <!-- Rendered by JS -->
+                    </div>
+
+                    <!-- Form gửi ý kiến mới -->
+                    <form class="feedback-form" id="feedback-form" onsubmit="submitFeedback(event)">
+                        <input type="hidden" id="feedback-doc-id" value="">
+                        <div class="form-row">
+                            <div class="form-group flex-1">
+                                <label>Họ tên chuyên gia <span class="required">*</span></label>
+                                <input type="text" id="fb-author" placeholder="Họ tên của bạn..." required>
+                            </div>
+                            <div class="form-group flex-1">
+                                <label>Đơn vị / Viện / Tổ chức</label>
+                                <input type="text" id="fb-org" placeholder="Cơ quan công tác...">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Loại ý kiến</label>
+                            <select id="fb-rating" class="custom-select">
+                                <option value="💡 Đồng thuận & Hoàn thiện">💡 Đồng thuận & Hoàn thiện</option>
+                                <option value="📌 Khuyến nghị Bổ sung">📌 Khuyến nghị Bổ sung</option>
+                                <option value="⚠️ Phản biện Kỹ thuật">⚠️ Phản biện Kỹ thuật</option>
+                                <option value="⚖️ Góp ý Chính sách & Luật pháp">⚖️ Góp ý Chính sách & Luật pháp</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Nội dung ý kiến đóng góp <span class="required">*</span></label>
+                            <textarea id="fb-comment" rows="3" placeholder="Nhập ý kiến chuyên môn đóng góp cho bài tham luận này..." required></textarea>
+                        </div>
+                        <button type="submit" class="btn-primary" id="btn-submit-feedback" style="width: 100%; justify-content: center;">
+                            <span>Gửi Ý Kiến Góp Ý</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/js/three.min.js"></script>
+    <script src="/static/js/OrbitControls.js"></script>
+    <script src="/static/js/globe3d.js"></script>
+    <script src="/static/js/app.js?v=2.5"></script>
+</body>
+</html>

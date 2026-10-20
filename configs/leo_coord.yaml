@@ -1,0 +1,78 @@
+# Khung tham số kỹ thuật — leo_coord
+# Quy ước: mọi ngưỡng đều versioned tại đây, KHÔNG hard-code trong source.
+# Trạng thái: DỰ THẢO. Các bảng ITU/FCC sẽ được đối chiếu với văn bản chính thức
+# sau khi hoàn tất nghiên cứu quốc tế (xem docs/bao_cao_nghien_cuu.md).
+version: "0.1.0"
+updated: "2026-10-19"
+verification_status: "index-sourced-2026-10-19"
+
+vietnam:
+  bbox: {lat_min: 8.2, lat_max: 23.4, lon_min: 102.0, lon_max: 110.0}
+  reference_points:
+    hanoi: {lat: 21.0285, lon: 105.8542}
+    danang: {lat: 16.0544, lon: 108.2022}
+    hcmc: {lat: 10.8231, lon: 106.6297}
+
+analysis:
+  min_elevation_deg: 10.0
+  grid_step_deg: 0.5
+  time_step_s: 60
+  sim_days: 1
+
+# Mốc triển khai chòm sao NGSO — ITU Resolution 35 (WRC-19), sửa đổi tại WRC-23.
+# Số liệu index-sourced — cần đối chiếu văn bản ITU gốc trước khi dùng chính thức.
+milestones:
+  source: "ITU Resolution 35 (WRC-19), sua doi WRC-23 — index-sourced"
+  bringing_into_use: "1 ve tinh tren 1 mat phang quy dao trong thoi han 7 nam (RR No. 11.48)"
+  applies_to: "NGSO FSS/MSS/BSS tai 10.7-13.25, 13.75-14.5, 17.3-20.2, 27.5-30, 37.5-42.5, 47.2-51.4 GHz"
+  base: "sau khi ket thuc thoi han 7 nam dua vao su dung"
+  marks:
+    - {percent: 10, years_after: 2}
+    - {percent: 50, years_after: 5}
+    - {percent: 100, years_after: 7}
+
+coordination:
+  # Cung phối hợp Appendix 5 Table 5-1 (độ). Số liệu index-sourced — chờ đối chiếu văn bản ITU gốc.
+  arcs:
+    - {band: "3.4-4.2 GHz (C, FSS)", arc_deg: 7, status: "index-sourced"}
+    - {band: "10.7-14.5 GHz (Ku, FSS/BSS)", arc_deg: 6, status: "index-sourced"}
+    - {band: "17.3-30 GHz (Ka+, FSS)", arc_deg: 8, status: "index-sourced"}
+  delta_T_over_T_trigger_percent: 6.0  # RR Appendix 8; FCC ap dung cho NGSO-NGSO tai 47 CFR 25.261
+  # Ngưỡng PFD kích hoạt phối hợp 9.7A/9.7B (theo S.1714-1). index-sourced — cần đối chiếu văn bản gốc.
+  pfd_triggers_9_7:
+    - {band: "10.7-12.75 GHz", value: -174.5, unit: "dB(W/m2)/40kHz", status: "index-sourced",
+       note: "nguon con de cap muc -202 (don vi/chuan chua ro) — can xac minh"}
+    - {band: "17.8-18.6 GHz", value: -157.0, unit: "dB(W/m2)/40kHz", status: "index-sourced-verify"}
+    - {band: "19.7-20.2 GHz", value: -185.0, unit: "dB(W/m2)/40kHz", status: "index-sourced-verify"}
+
+pfd:
+  # RR Article 21, Table 21-4. Số liệu index-sourced — CHƯA đối chiếu văn bản ITU gốc.
+  table_source: "RR Article 21, Table 21-4 — index-sourced"
+  bands:
+    - freq_ghz: "10.7-11.7"
+      unit: "dB(W/m2)/4kHz"
+      delta_le_5: -150.0
+      slope: 0.5
+      delta_ge_25: -140.0
+      equivalent_per_mhz: {delta_le_5: -126.0, delta_ge_25: -116.0}
+      ngso_reduction_X: "he NGSO >=51 ve tinh: giam X dB; X=(5/119)(n-50) voi n<=288; X=(1/69)(n+402) voi n>288"
+      status: "index-sourced"
+    - freq_ghz: "17.7-19.3"
+      unit: "dB(W/m2)/MHz"
+      delta_le_5: -115.0
+      slope: 0.5
+      delta_ge_25: -105.0
+      status: "index-sourced"
+
+epfd:
+  # RR Article 22 + Resolution 76 (WRC-19). Số liệu index-sourced — CHƯA đối chiếu văn bản ITU gốc.
+  table_source: "RR Article 22, Resolution 76 Table 1A — index-sourced"
+  single_entry:
+    note: "Table 22-1A, 10.7-12.75 GHz: diem khong bao gio duoc vuot qua la -160 dBW/m2/40kHz. Duong cong mask day du CHUA xac minh duoc."
+    never_exceed_dbw_m2_40khz: -160.0
+  aggregate_res76_table1A:
+    # Tong EPFD cua TAT CA he NGSO, 10.7-12.75 GHz; [phan tram thoi gian, gioi han dBW/m2/40kHz]
+    antenna_60cm: [[0, -170.0], [90, -168.6], [99, -165.3], [99.97, -160.4], [99.99, -160.0], [100, -160.0]]
+    antenna_1_2m: [[0, -176.5], [99.5, -173.0], [99.84, -164.0], [99.945, -161.5], [100, -161.0]]
+    antenna_3m: [[0, -185.3], [99.97, -184.0], [99.99, -180.8], [100, -180.0]]
+    antenna_10m: [[0, -191.5], [99.97, -190.0], [99.99, -189.8], [100, -189.0]]

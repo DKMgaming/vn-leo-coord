@@ -1,0 +1,18 @@
+[project]
+name = "leo-coord"
+version = "0.1.0"
+description = "Cong cu ho tro quan ly tan so & quy dao chom sao ve tinh LEO/NGSO"
+requires-python = ">=3.10"
+dependencies = ["numpy", "pyyaml", "sgp4", "fastapi", "uvicorn", "python-multipart"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+leo-coord = "leo_coord.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+include = ["leo_coord*"]

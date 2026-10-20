@@ -1,0 +1,17 @@
+# =====================================================================
+# DỮ LIỆU HƯ CẤU — chỉ dùng cho demo và kiểm thử phần mềm.
+# Không phải dữ liệu thật của bất kỳ hệ thống vệ tinh nào.
+# =====================================================================
+fictional: true
+name: "DEMO_LEO_KU"
+description: "Chòm sao Walker hư cấu (băng Ku) phục vụ demo leo_coord"
+alt_km: 550.0
+inc_deg: 53.0
+n_sats: 120
+n_planes: 6
+phasing: 1
+kind: "delta"
+# Thông số vô tuyến HƯ CẤU (minh họa tính toán PFD/EPFD)
+downlink:
+  band_ghz: "10.7-12.7"
+  eirp_dbw_per_mhz: 40.0
