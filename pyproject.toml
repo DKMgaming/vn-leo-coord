@@ -3,7 +3,7 @@ name = "leo-coord"
 version = "0.1.0"
 description = "Cong cu ho tro quan ly tan so & quy dao chom sao ve tinh LEO/NGSO"
 requires-python = ">=3.10"
-dependencies = ["numpy", "pyyaml", "sgp4", "fastapi", "uvicorn", "python-multipart"]
+dependencies = ["numpy", "pyyaml", "sgp4", "fastapi", "uvicorn", "python-multipart", "python-docx", "openpyxl"]
 
 [project.optional-dependencies]
 dev = ["pytest"]

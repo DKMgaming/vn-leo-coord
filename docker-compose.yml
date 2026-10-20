@@ -1,0 +1,20 @@
+services:
+  leo-coord:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vn-leo-coord
+    restart: unless-stopped
+    ports:
+      - "8088:8088"
+    volumes:
+      # Ánh xạ thư mục tài liệu để dữ liệu upload và ý kiến góp ý không bị mất khi restart
+      - ./web/uploads:/app/web/uploads
+    environment:
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
