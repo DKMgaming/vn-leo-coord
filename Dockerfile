@@ -3,7 +3,7 @@ FROM python:3.11-slim
 # Thiết lập biến môi trường tối ưu cho Python
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PORT=8088
+    PORT=8098
 
 # Thư mục làm việc
 WORKDIR /app
@@ -27,11 +27,11 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir . python-docx openpyxl
 
 # Mở cổng dịch vụ
-EXPOSE 8088
+EXPOSE 8098
 
 # Kiểm tra trạng thái hoạt động của Web App
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:8088/ || exit 1
+    CMD curl -f http://localhost:8098/ || exit 1
 
 # Khởi chạy ứng dụng
 CMD ["python", "run_web.py"]

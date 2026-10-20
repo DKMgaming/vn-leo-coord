@@ -30,7 +30,7 @@ def get_local_ip() -> str:
         return "127.0.0.1"
 
 
-def find_available_port(start_port: int = 8088) -> int:
+def find_available_port(start_port: int = 8098) -> int:
     port = start_port
     while port < start_port + 50:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -41,7 +41,9 @@ def find_available_port(start_port: int = 8088) -> int:
 
 
 if __name__ == "__main__":
-    requested_port = 8088
+    import os
+    env_port = os.getenv("PORT")
+    requested_port = int(env_port) if env_port and env_port.isdigit() else 8098
     if len(sys.argv) > 1 and sys.argv[1].isdigit():
         requested_port = int(sys.argv[1])
     
