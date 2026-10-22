@@ -488,6 +488,16 @@ class LeoGlobe3D {
             p.mesh.scale.set(pulse, pulse, 1);
         });
 
+        // Hiệu ứng nhịp phát sáng cho vệ tinh thực tế N2YO
+        if (this.realSatBeaconRing) {
+            const satPulse = (Math.sin(Date.now() * 0.006) + 1) * 0.35 + 0.8;
+            this.realSatBeaconRing.scale.set(satPulse, satPulse, 1);
+        }
+        if (this.realSatMarker) {
+            this.realSatMarker.rotation.y += 0.03;
+            this.realSatMarker.rotation.x += 0.015;
+        }
+
         // Bật/tắt các lớp theo cài đặt UI
         this.orbitLineGroup.visible = this.showOrbits;
         this.gsoGroup.visible = this.showGso;
@@ -532,19 +542,23 @@ class LeoGlobe3D {
     }
 
     animateCameraTo(targetPosition, targetLookAt) {
+        const lookTarget = targetLookAt || new THREE.Vector3(0, 0, 0);
         if (!this.controls) {
             this.camera.position.copy(targetPosition);
-            this.camera.lookAt(targetLookAt);
+            this.camera.lookAt(lookTarget);
             return;
         }
 
         const startPos = this.camera.position.clone();
+        const startTarget = this.controls.target.clone();
         let progress = 0;
 
         const step = () => {
             progress += 0.05;
-            this.camera.position.lerpVectors(startPos, targetPosition, progress);
-            this.controls.target.lerp(targetLookAt, 0.05);
+            const t = Math.min(progress, 1.0);
+            this.camera.position.lerpVectors(startPos, targetPosition, t);
+            this.controls.target.lerpVectors(startTarget, lookTarget, t);
+            this.controls.update();
             if (progress < 1.0) {
                 requestAnimationFrame(step);
             }
@@ -562,6 +576,83 @@ class LeoGlobe3D {
 
     setSimTime(seconds) {
         this.simTime = Math.max(0, Math.min(86400, seconds));
+    }
+
+    focusRealSatellite(lat, lon, altKm, name) {
+        if (!this.realSatGroup) {
+            this.realSatGroup = new THREE.Group();
+            this.scene.add(this.realSatGroup);
+        }
+        this.realSatGroup.clear();
+
+        const latNum = parseFloat(lat);
+        const lonNum = parseFloat(lon);
+        const altNum = parseFloat(altKm) || 550;
+
+        // Tính bán kính trực quan (LEO ~115-130, GSO ~180-220)
+        const isGso = altNum > 30000;
+        const visualR = isGso ? 190 : this.earthRadius + Math.min(35, Math.max(8, (altNum / 1500) * 20));
+        const satPos = this.latLonToVector3(latNum, lonNum, visualR);
+        const subPos = this.latLonToVector3(latNum, lonNum, this.earthRadius);
+
+        // Marker vệ tinh (Octahedron phát sáng vàng neon)
+        const markerGeo = new THREE.OctahedronGeometry(4.0, 0);
+        const markerMat = new THREE.MeshBasicMaterial({ color: 0xffea00 });
+        const markerMesh = new THREE.Mesh(markerGeo, markerMat);
+        markerMesh.position.copy(satPos);
+        this.realSatGroup.add(markerMesh);
+        this.realSatMarker = markerMesh;
+
+        // Vòng tròn halo bao quanh vệ tinh
+        const ringGeo = new THREE.RingGeometry(5.0, 6.8, 32);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0xffea00, side: THREE.DoubleSide });
+        const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+        ringMesh.position.copy(satPos);
+        ringMesh.lookAt(new THREE.Vector3(0, 0, 0));
+        this.realSatGroup.add(ringMesh);
+        this.realSatBeaconRing = ringMesh;
+
+        // Tia chiếu thẳng xuống mặt đất (Sub-satellite beam line)
+        const beamPts = [satPos, subPos];
+        const beamGeo = new THREE.BufferGeometry().setFromPoints(beamPts);
+        const beamMat = new THREE.LineDashedMaterial({ color: 0xffea00, dashSize: 3, gapSize: 1.5 });
+        const beamLine = new THREE.Line(beamGeo, beamMat);
+        beamLine.computeLineDistances();
+        this.realSatGroup.add(beamLine);
+
+        // Vòng tròn footprint nhỏ tại vị trí mặt đất (sub-satellite point)
+        const subRingGeo = new THREE.RingGeometry(2.0, 3.8, 24);
+        const subRingMat = new THREE.MeshBasicMaterial({ color: 0xffea00, side: THREE.DoubleSide });
+        const subRingMesh = new THREE.Mesh(subRingGeo, subRingMat);
+        subRingMesh.position.copy(subPos.clone().multiplyScalar(1.002));
+        subRingMesh.lookAt(new THREE.Vector3(0, 0, 0));
+        this.realSatGroup.add(subRingMesh);
+
+        // Tia nối từ vệ tinh tới trạm Đà Nẵng (Đại diện trạm VN)
+        const daNangPos = this.latLonToVector3(16.0544, 108.2022, this.earthRadius);
+        const slantPts = [satPos, daNangPos];
+        const slantGeo = new THREE.BufferGeometry().setFromPoints(slantPts);
+        const slantMat = new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.85 });
+        this.realSatGroup.add(new THREE.Line(slantGeo, slantMat));
+
+        // Animate camera tới vệ tinh (nhìn thẳng vào tâm Trái Đất qua vệ tinh)
+        const camDist = isGso ? visualR + 120 : visualR + 65;
+        const camPos = satPos.clone().normalize().multiplyScalar(camDist);
+        this.animateCameraTo(camPos, new THREE.Vector3(0, 0, 0));
+
+        // Cập nhật card chi tiết vệ tinh
+        const card = document.getElementById("sat-info-card");
+        if (card) {
+            card.style.display = "block";
+            const idEl = document.getElementById("info-sat-id");
+            if (idEl) idEl.textContent = `🎯 [LIVE] ${name || "REAL-SAT"}`;
+            const planeEl = document.getElementById("info-sat-plane");
+            if (planeEl) planeEl.textContent = isGso ? "Quỹ đạo Địa tĩnh (GSO)" : "Quỹ đạo Thấp LEO (Live N2YO)";
+            const coordsEl = document.getElementById("info-sat-coords");
+            if (coordsEl) coordsEl.textContent = `${latNum >= 0 ? latNum.toFixed(2) + '°N' : (-latNum).toFixed(2) + '°S'}, ${lonNum >= 0 ? lonNum.toFixed(2) + '°E' : (-lonNum).toFixed(2) + '°W'}`;
+            const altEl = document.getElementById("info-sat-alt");
+            if (altEl) altEl.textContent = `${Math.round(altNum).toLocaleString()} km`;
+        }
     }
 
     async fetchOrbitData() {

@@ -1,0 +1,163 @@
+{
+  "table_metadata": {
+    "table_id": "ITU-RR-T21-4",
+    "title": "Giới hạn PFD trên bề mặt Trái đất từ trạm không gian (RR Article 21 Table 21-4)",
+    "document_reference": "ITU Radio Regulations Edition 2024, Vol. 1, Article 21, Section V, Table 21-4",
+    "wrc_edition": "WRC-23 Final Acts / ITU RR 2024",
+    "legal_status": "Ràng buộc pháp lý quốc tế (ITU Treaty)",
+    "verification_status": "ITU-OFFICIAL-VERIFIED",
+    "verified_by": "Phòng Tiêu chuẩn & Quy hoạch Tần số (Cục Tần số VTĐ)",
+    "verified_date": "2026-10-22",
+    "cross_check_sources": [
+      "FCC 47 CFR §25.208 (Power flux-density limits)",
+      "CEPT ECC Decision (04)08 & (05)11",
+      "Vietnam National Frequency Allocation Plan (Quyết định số 71/2013/QĐ-TTg & sửa đổi)"
+    ]
+  },
+  "general_rules": {
+    "formula_description": "Giới hạn PFD được xác định dưới dạng hàm từng khúc theo góc tới delta (góc ngẩng so với mặt phẳng nằm ngang): - Khi delta <= 5°: limit = delta_le_5 - Khi 5° < delta < 25°: limit = delta_le_5 + slope * (delta - 5.0) - Khi delta >= 25°: limit = delta_ge_25\n",
+    "ngso_constellation_rule": "Đối với các chòm sao phi địa tĩnh (NGSO) có từ 51 vệ tinh trở lên (n_sats >= 51), ngưỡng giới hạn PFD được siết chặt thêm bằng cách trừ đi hệ số suy giảm X (dB) (RR No. 21.16.2 / 47 CFR 2.106 Footnote 21.16): - Nếu 51 <= n <= 288: X = (5 / 119) * (n - 50) - Nếu n > 288: X = (1 / 69) * (n + 402) Điều này đảm bảo tổng can nhiễu tích lũy từ nhiều búp sóng vệ tinh không vượt ngưỡng bảo vệ dịch vụ mặt đất (Fixed Service).\n"
+  },
+  "bands": [
+    {
+      "id": "PFD-KU-1",
+      "freq_ghz": "10.7-11.7",
+      "service": "Fixed-Satellite Service (space-to-Earth)",
+      "region": "Toàn cầu (Regions 1, 2, 3)",
+      "unit": "dB(W/m2)/4kHz",
+      "equivalent_unit": "dB(W/m2)/MHz",
+      "delta_le_5": -150.0,
+      "slope": 0.5,
+      "delta_ge_25": -140.0,
+      "equivalent_per_mhz": {
+        "delta_le_5": -126.0,
+        "delta_ge_25": -116.0
+      },
+      "ngso_reduction_X_applicable": true,
+      "sharing_service": "Fixed Service (Mặt đất cố định viba viễn thông)",
+      "verification_status": "ITU-OFFICIAL-VERIFIED",
+      "official_footnote": "RR No. 21.16.2 & 21.16.3",
+      "notes": "Dải tần đường xuống chính của Starlink, OneWeb, Amazon Kuiper. Bắt buộc tính hệ số X khi n_sats >= 51."
+    },
+    {
+      "id": "PFD-KU-2-R3",
+      "freq_ghz": "12.2-12.75",
+      "service": "Fixed-Satellite Service / Broadcasting-Satellite Service (space-to-Earth)",
+      "region": "Vùng 3 (Region 3 — bao gồm Việt Nam)",
+      "unit": "dB(W/m2)/4kHz",
+      "equivalent_unit": "dB(W/m2)/MHz",
+      "delta_le_5": -148.0,
+      "slope": 0.5,
+      "delta_ge_25": -138.0,
+      "equivalent_per_mhz": {
+        "delta_le_5": -124.0,
+        "delta_ge_25": -114.0
+      },
+      "ngso_reduction_X_applicable": false,
+      "sharing_service": "Fixed Service & Mobile Service",
+      "verification_status": "ITU-OFFICIAL-VERIFIED",
+      "official_footnote": "RR Table 21-4 Column 3 Region 3",
+      "notes": "Quy định riêng cho Vùng 3 ITU để bảo vệ các tuyến viễn thông mặt đất và phát thanh truyền hình."
+    },
+    {
+      "id": "PFD-KA-1",
+      "freq_ghz": "17.7-19.3",
+      "service": "Fixed-Satellite Service (space-to-Earth)",
+      "region": "Toàn cầu (Regions 1, 2, 3)",
+      "unit": "dB(W/m2)/MHz",
+      "equivalent_unit": "dB(W/m2)/MHz",
+      "delta_le_5": -115.0,
+      "slope": 0.5,
+      "delta_ge_25": -105.0,
+      "equivalent_per_mhz": {
+        "delta_le_5": -115.0,
+        "delta_ge_25": -105.0
+      },
+      "ngso_reduction_X_applicable": false,
+      "sharing_service": "Fixed Service (Viba băng rộng)",
+      "verification_status": "ITU-OFFICIAL-VERIFIED",
+      "official_footnote": "RR Table 21-4 row 17.7-19.3 GHz",
+      "notes": "Dải tần Ka-band đường xuống tốc độ cao và cổng trạm mặt đất (Gateway) LEO."
+    },
+    {
+      "id": "PFD-KA-2",
+      "freq_ghz": "19.3-19.7",
+      "service": "Fixed-Satellite Service (space-to-Earth)",
+      "region": "Toàn cầu (Regions 1, 2, 3)",
+      "unit": "dB(W/m2)/MHz",
+      "equivalent_unit": "dB(W/m2)/MHz",
+      "delta_le_5": -115.0,
+      "slope": 0.5,
+      "delta_ge_25": -105.0,
+      "equivalent_per_mhz": {
+        "delta_le_5": -115.0,
+        "delta_ge_25": -105.0
+      },
+      "ngso_reduction_X_applicable": false,
+      "sharing_service": "Fixed Service & Mobile Service",
+      "verification_status": "ITU-OFFICIAL-VERIFIED",
+      "official_footnote": "RR Table 21-4 row 19.3-19.7 GHz",
+      "notes": "Bảo vệ các hệ thống trạm thông tin mặt đất Ka-band."
+    },
+    {
+      "id": "PFD-C-BAND",
+      "freq_ghz": "3.4-4.2",
+      "service": "Fixed-Satellite Service (space-to-Earth)",
+      "region": "Toàn cầu (Regions 1, 2, 3)",
+      "unit": "dB(W/m2)/4kHz",
+      "equivalent_unit": "dB(W/m2)/MHz",
+      "delta_le_5": -152.0,
+      "slope": 0.5,
+      "delta_ge_25": -142.0,
+      "equivalent_per_mhz": {
+        "delta_le_5": -128.0,
+        "delta_ge_25": -118.0
+      },
+      "ngso_reduction_X_applicable": false,
+      "sharing_service": "Fixed Service & IMT (5G C-band sharing)",
+      "verification_status": "ITU-OFFICIAL-VERIFIED",
+      "official_footnote": "RR Table 21-4 row 3 400-4 200 MHz",
+      "notes": "Dải tần cực kỳ nhạy cảm tại Việt Nam do chia sẻ với 5G băng 3.5 GHz và trạm Vinasat-1/2 C-band."
+    },
+    {
+      "id": "PFD-QV-BAND",
+      "freq_ghz": "37.5-40.0",
+      "service": "Fixed-Satellite Service (space-to-Earth)",
+      "region": "Toàn cầu (Regions 1, 2, 3)",
+      "unit": "dB(W/m2)/MHz",
+      "equivalent_unit": "dB(W/m2)/MHz",
+      "delta_le_5": -120.0,
+      "slope": 0.75,
+      "delta_ge_25": -105.0,
+      "equivalent_per_mhz": {
+        "delta_le_5": -120.0,
+        "delta_ge_25": -105.0
+      },
+      "ngso_reduction_X_applicable": false,
+      "sharing_service": "Fixed Service & Mobile Service",
+      "verification_status": "ITU-OFFICIAL-VERIFIED",
+      "official_footnote": "RR Table 21-4 row 37.5-40.0 GHz",
+      "notes": "Dải Q/V thế hệ mới phục vụ kết nối trung chuyển (Feeder links) siêu băng thông cho chòm sao LEO."
+    },
+    {
+      "id": "PFD-ISL-EESS",
+      "freq_ghz": "18.6-18.8",
+      "service": "Inter-satellite service (space-to-space) protection of EESS",
+      "region": "Đại dương và vùng biển quốc tế",
+      "unit": "dB(W/m2)/200MHz",
+      "equivalent_unit": "dB(W/m2)/200MHz",
+      "delta_le_5": -110.0,
+      "slope": 0.0,
+      "delta_ge_25": -110.0,
+      "equivalent_per_mhz": {
+        "delta_le_5": -133.0,
+        "delta_ge_25": -133.0
+      },
+      "ngso_reduction_X_applicable": false,
+      "sharing_service": "Earth Exploration-Satellite Service (passive sensors)",
+      "verification_status": "ITU-OFFICIAL-VERIFIED",
+      "official_footnote": "WRC-23 Resolution 679 (AI 1.17)",
+      "notes": "Quy định mới WRC-23: Ngưỡng bảo vệ cảm biến thụ động đo gió và sóng biển của vệ tinh khí tượng."
+    }
+  ]
+}

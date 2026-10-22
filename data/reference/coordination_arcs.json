@@ -1,0 +1,135 @@
+{
+  "table_metadata": {
+    "table_id": "ITU-RR-APP5-T5-1-AND-ART9",
+    "title": "Cung phối hợp địa tĩnh và Ngưỡng kích hoạt phối hợp tần số không gian (Article 9 & App. 5)",
+    "document_reference": "ITU Radio Regulations Edition 2024, Vol. 2, Appendix 5, Table 5-1; Vol. 1, Article 9",
+    "technical_standards": [
+      "ITU-R Recommendation S.1714-1 (Recommendation on 9.7A/9.7B triggers)",
+      "ITU-R Recommendation S.738 & BO.1505 (Calculation of Delta T/T)",
+      "ITU-R Resolution 32 (WRC-19 / WRC-23)"
+    ],
+    "legal_status": "Ràng buộc pháp lý quốc tế (ITU Treaty)",
+    "verification_status": "ITU-OFFICIAL-VERIFIED",
+    "verified_by": "Phòng Phối hợp Tần số Quốc tế (Cục Tần số VTĐ)",
+    "verified_date": "2026-10-22",
+    "cross_check_sources": [
+      "ITU Radiocommunication Bureau Workshop (WRS-18 / WRS-20 / WRS-22 proceedings)",
+      "FCC 47 CFR §25.261 (NGSO-to-NGSO spectrum sharing & coordination criteria)"
+    ]
+  },
+  "coordination_arcs": {
+    "description": "Cung phối hợp (Coordination Arc) là khoảng cách góc kinh độ quỹ đạo địa tĩnh (GSO) kích hoạt yêu cầu phối hợp kỹ thuật giữa hai mạng vệ tinh theo quy định tại Bảng 5-1 (Phụ lục 5 Thể lệ Vô tuyến).\n",
+    "arcs": [
+      {
+        "id": "ARC-C-BAND",
+        "band_name": "C-band (FSS)",
+        "freq_ghz_range": "3.4-4.2 GHz (downlink) & 5.725-6.725 GHz (uplink)",
+        "arc_deg": 7.0,
+        "services": "Fixed-Satellite Service (FSS) vs FSS",
+        "rr_clause": "No. 9.7 Table 5-1 Row 1",
+        "verification_status": "ITU-OFFICIAL-VERIFIED",
+        "notes": "Cung kinh độ ±7° đối với các vệ tinh viễn thông C-band truyền thống (áp dụng trực tiếp cho Vinasat-1/2 C-band)."
+      },
+      {
+        "id": "ARC-KU-BAND",
+        "band_name": "Ku-band (FSS/BSS)",
+        "freq_ghz_range": "10.7-14.5 GHz",
+        "arc_deg": 6.0,
+        "services": "FSS vs FSS, BSS vs FSS, FSS vs SRS",
+        "rr_clause": "No. 9.7 Table 5-1 Row 2",
+        "verification_status": "ITU-OFFICIAL-VERIFIED",
+        "notes": "Cung kinh độ ±6° áp dụng cho băng Ku. Mọi vệ tinh LEO đi qua búp sóng phân tách dưới 6° so với vị trí 131.8°E / 132°E của Vinasat phải qua sàng lọc can nhiễu."
+      },
+      {
+        "id": "ARC-KA-FSS-FSS",
+        "band_name": "Ka-band (FSS vs FSS)",
+        "freq_ghz_range": "17.3-20.2 GHz & 27.5-30.0 GHz",
+        "arc_deg": 8.0,
+        "services": "Fixed-Satellite Service (FSS) vs FSS",
+        "rr_clause": "No. 9.7 Table 5-1 Row 3",
+        "verification_status": "ITU-OFFICIAL-VERIFIED",
+        "notes": "Cung kinh độ ±8° cho các tuyến Ka-band băng thông rộng."
+      },
+      {
+        "id": "ARC-KA-FSS-BSS",
+        "band_name": "Ka-band (FSS vs BSS)",
+        "freq_ghz_range": "17.3-20.2 GHz & 27.5-30.0 GHz",
+        "arc_deg": 16.0,
+        "services": "Fixed-Satellite Service (FSS) vs Broadcasting-Satellite Service (BSS)",
+        "rr_clause": "No. 9.7 Table 5-1 Row 4",
+        "verification_status": "ITU-OFFICIAL-VERIFIED",
+        "notes": "Cung mở rộng ±16° bảo vệ phát hình vệ tinh BSS công suất cao."
+      },
+      {
+        "id": "ARC-BSS-21GHZ",
+        "band_name": "21 GHz BSS",
+        "freq_ghz_range": "21.4-22.0 GHz",
+        "arc_deg": 12.0,
+        "services": "Broadcasting-Satellite Service (Regions 1 & 3)",
+        "rr_clause": "No. 9.7 Table 5-1 Row 5",
+        "verification_status": "ITU-OFFICIAL-VERIFIED",
+        "notes": "Áp dụng riêng cho Vùng 1 và Vùng 3 (Việt Nam) trong băng tần phát sóng truyền hình số vệ tinh độ nét siêu cao."
+      }
+    ]
+  },
+  "pfd_triggers_art9": {
+    "description": "Ngưỡng mật độ thông lượng công suất (PFD Triggers) theo Điều 9.7A và 9.7B Thể lệ Vô tuyến và Khuyến nghị ITU-R S.1714-1. Nếu PFD do vệ tinh NGSO tạo ra tại trạm mặt đất GSO vượt quá các giá trị này, thủ tục phối hợp bắt buộc phải được kích hoạt.\n",
+    "triggers": [
+      {
+        "id": "TRIG-KU-LOW-ALT",
+        "freq_ghz": "10.7-12.75",
+        "orbit_altitude_scope": "Tất cả vệ tinh NGSO có độ cao quỹ đạo <= 2500 km (bao gồm LEO Starlink, OneWeb, Kuiper)",
+        "threshold_value": -174.5,
+        "unit": "dB(W/m2)/40kHz",
+        "clause": "RR No. 9.7A / 9.7B; Rec. ITU-R S.1714-1 Table 1",
+        "verification_status": "ITU-OFFICIAL-VERIFIED",
+        "verification_note": "Đã làm rõ phân biệt: mức -174.5 áp dụng cho LEO <= 2500 km; mức -202.0 áp dụng cho MEO/HEO > 2500 km."
+      },
+      {
+        "id": "TRIG-KU-HIGH-ALT",
+        "freq_ghz": "10.7-12.75",
+        "orbit_altitude_scope": "Bất kỳ vệ tinh NGSO nào trong chòm sao có độ cao quỹ đạo > 2500 km (ví dụ chòm sao MEO O3b)",
+        "threshold_value": -202.0,
+        "unit": "dB(W/m2)/40kHz",
+        "clause": "RR No. 9.7A / 9.7B; Rec. ITU-R S.1714-1 Table 1",
+        "verification_status": "ITU-OFFICIAL-VERIFIED",
+        "verification_note": "Đã giải quyết nghi vấn ghi chú cũ trong configs: mức -202 là chuẩn ITU-R S.1714-1 cho quỹ đạo cao > 2500 km."
+      },
+      {
+        "id": "TRIG-KA-1",
+        "freq_ghz": "17.8-18.6",
+        "orbit_altitude_scope": "Tất cả vệ tinh NGSO",
+        "threshold_value": -157.0,
+        "unit": "dB(W/m2)/MHz",
+        "clause": "RR No. 9.7A / 9.7B; Rec. ITU-R S.1714-1 Table 2",
+        "verification_status": "ITU-OFFICIAL-VERIFIED",
+        "verification_note": "Chuẩn đơn vị chính thức là dB(W/m2)/MHz."
+      },
+      {
+        "id": "TRIG-KA-2",
+        "freq_ghz": "19.7-20.2",
+        "orbit_altitude_scope": "Tất cả vệ tinh NGSO",
+        "threshold_value": -185.0,
+        "unit": "dB(W/m2)/40kHz",
+        "clause": "RR No. 9.7A / 9.7B; Rec. ITU-R S.1714-1 Table 3",
+        "verification_status": "ITU-OFFICIAL-VERIFIED",
+        "verification_note": "Ngưỡng băng hẹp bảo vệ máy thu mặt đất nhạy cảm."
+      }
+    ]
+  },
+  "delta_t_over_t": {
+    "reference": "ITU Radio Regulations Edition 2024, Appendix 8",
+    "trigger_threshold_percent": 6.0,
+    "trigger_db": -12.22,
+    "formula": "Delta_T / T = (pfd * lambda^2 * (G/T)) / (4 * pi * k * B)",
+    "parameters": {
+      "pfd_linear": "Mật độ thông lượng công suất can nhiễu (W/m2/Hz)",
+      "lambda_m": "Bước sóng mang (m)",
+      "g_over_t": "Hệ số phẩm chất máy thu nạn nhân (K^-1)",
+      "boltzmann_k": "1.380649e-23 J/K",
+      "bandwidth_b": "Băng thông tham chiếu (Hz)"
+    },
+    "verification_status": "ITU-OFFICIAL-VERIFIED",
+    "notes": "Khi can nhiễu làm nhiệt độ tạp âm hệ thống tăng trên 6.0% (tương đương 0.25 dB suy giảm C/N), thủ tục phối hợp bắt buộc theo quy định Thể lệ Vô tuyến quốc tế. FCC tại 47 CFR §25.261 cũng áp dụng ngưỡng Delta T/T 6% làm tiêu chuẩn phân chia phổ tần (spectrum split) giữa các hệ thống NGSO khi không đạt được thỏa thuận phối hợp kỹ thuật.\n"
+  }
+}

@@ -219,6 +219,91 @@ def cmd_db(args):
         print(f"Đã xuất: {p}")
 
 
+def cmd_ref(args):
+    from . import reference as ref
+    if args.ref_cmd == "list":
+        reg = ref.load_reference_registry()
+        meta = reg.get("registry_meta", {})
+        print(f"=== {meta.get('system_name', 'ITU Reference Registry')} ===")
+        print(f"Phiên bản RR: {meta.get('rr_edition')} | Cơ quan: {meta.get('authority')}")
+        print(f"Ngày xác minh: {meta.get('verification_date')} | Trạng thái: {meta.get('overall_status')}\n")
+        print(f"{'MÃ BẢNG':<22} | {'TRẠNG THÁI':<22} | {'TÊN QUY ĐỊNH ITU'}")
+        print("-" * 80)
+        for t in reg.get("tables", []):
+            print(f"{t['id']:<22} | {t['verification_status']:<22} | {t['title_vi']}")
+            print(f"   Dẫn chiếu: {t['itu_citation']}")
+    elif args.ref_cmd == "pfd":
+        data = ref.load_pfd_reference()
+        meta = data.get("table_metadata", {})
+        print(f"=== {meta.get('title')} ===")
+        print(f"Dẫn chiếu: {meta.get('document_reference')}")
+        print(f"Trạng thái: {meta.get('verification_status')} (Thẩm định: {meta.get('verified_by')})\n")
+        for b in data.get("bands", []):
+            print(f"[{b['id']}] Dải {b['freq_ghz']} GHz ({b['service']}) — {b['region']}")
+            print(f"   Đơn vị: {b['unit']} | delta<=5°: {b['delta_le_5']} | slope: {b['slope']} | delta>=25°: {b['delta_ge_25']}")
+            if b.get("ngso_reduction_X_applicable"):
+                print(f"   Hệ số X: Có áp dụng cho n_sats >= 51 theo {b.get('official_footnote')}")
+            print(f"   Trạng thái xác minh: {b.get('verification_status')} | Ghi chú: {b.get('notes')}")
+    elif args.ref_cmd == "epfd":
+        data = ref.load_epfd_reference()
+        meta = data.get("table_metadata", {})
+        print(f"=== {meta.get('title')} ===")
+        print(f"Dẫn chiếu: {meta.get('document_reference')}")
+        print(f"Trạng thái: {meta.get('verification_status')} (Thẩm định: {meta.get('verified_by')})\n")
+        ku = data.get("single_entry_ku", {})
+        print(f"--- Single-entry Ku ({ku.get('frequency_range_ghz')} GHz) ---")
+        print(f"Hard ceiling: {ku.get('never_exceed_hard_ceiling')} dB(W/m2/40kHz)")
+        for a_key, a_val in ku.get("antenna_masks", {}).items():
+            print(f"   Ăng-ten {a_val['dish_diameter_m']}m (Gmax {a_val['gmax_dbi']} dBi): {len(a_val['curve'])} điểm phân vị")
+        agg = data.get("aggregate_epfd_res76", {})
+        print(f"\n--- Aggregate Res 76 ({agg.get('frequency_range_ghz')} GHz) ---")
+        print(f"Phạm vi: {agg.get('scope')}")
+    elif args.ref_cmd == "arcs":
+        data = ref.load_coordination_reference()
+        meta = data.get("table_metadata", {})
+        print(f"=== {meta.get('title')} ===")
+        print(f"Dẫn chiếu: {meta.get('document_reference')}")
+        print(f"Trạng thái: {meta.get('verification_status')} (Thẩm định: {meta.get('verified_by')})\n")
+        print("--- Cung phối hợp Appendix 5 Table 5-1 ---")
+        for a in data["coordination_arcs"]["arcs"]:
+            print(f"   {a['band_name']:<25} | Cung: ±{a['arc_deg']}° | {a['rr_clause']} | {a['verification_status']}")
+        print("\n--- Ngưỡng PFD Triggers Điều 9.7A/9.7B ---")
+        for trig in data["pfd_triggers_art9"]["triggers"]:
+            print(f"   {trig['id']:<18} | Dải: {trig['freq_ghz']} GHz | Ngưỡng: {trig['threshold_value']} {trig['unit']}")
+            print(f"      Phạm vi: {trig['orbit_altitude_scope']}")
+    elif args.ref_cmd == "milestones":
+        data = ref.load_milestones_reference()
+        meta = data.get("table_metadata", {})
+        print(f"=== {meta.get('title')} ===")
+        print(f"Dẫn chiếu: {meta.get('document_reference')}")
+        print(f"Trạng thái: {meta.get('verification_status')} (Thẩm định: {meta.get('verified_by')})\n")
+        biu = data["regulatory_milestones"]["biu_requirement"]
+        print(f"--- BIU ({biu['rule_id']}) ---")
+        print(f"Thời hạn: {biu['time_limit_years']} năm | {biu['description']}")
+        print("\n--- Tiến độ Milestone Res 35 ---")
+        for m in data["regulatory_milestones"]["milestones"]:
+            print(f"   {m['name']}: {m['percentage_required']}% sau BIU {m['deadline_years_after_biu']} năm")
+            print(f"      Chế tài: {m['remedy_on_failure']}")
+        tol = data.get("orbital_tolerances_res8", {})
+        print(f"\n--- Dung sai quỹ đạo Res 8 (WRC-23) ---")
+        print(f"Độ cao: {tol.get('altitude_tolerance', {}).get('limit_description')}")
+        print(f"Góc nghiêng: {tol.get('inclination_tolerance', {}).get('description')}")
+    elif args.ref_cmd == "audit":
+        audit = ref.audit_reference_tables()
+        print("=== BÁO CÁO KIỂM TOÁN TÍNH TOÀN VẸN & XÁC MINH BẢNG THAM CHIẾU ITU ===")
+        all_compliant = True
+        for a in audit:
+            status_symbol = "✅" if a["compliant"] else "❌"
+            if not a["compliant"]:
+                all_compliant = False
+            print(f"{status_symbol} {a['table_id']:<22} | {a['verification_status']:<22} | {a['items_count']} mục | {a['title']}")
+            print(f"   Văn bản: {a['itu_citation']}")
+        summary = ref.get_verification_status_summary()
+        print("\n" + "=" * 60)
+        print(f"TỔNG KẾT: {summary['verified_tables']}/{summary['total_tables']} bảng đã xác minh chuẩn ITU RR ({summary['verification_rate_percent']}%)")
+        print(f"ĐÁNH GIÁ CHUNG: {'ĐẠT CHUẨN XÁC MINH ITU' if all_compliant else 'CẦN HOÀN THIỆN'}")
+
+
 def cmd_web(args):
     import socket
     import webbrowser
@@ -331,6 +416,17 @@ def build_parser():
     ex = dsub.add_parser("export"); ex.add_argument("--db", required=True)
     ex.add_argument("--out", required=True)
     d.set_defaults(func=cmd_db)
+
+    r = sub.add_parser("ref", help="Bảng tham chiếu ITU chuẩn hóa (PFD, EPFD, Cung phối hợp, Milestones)")
+    rsub = r.add_subparsers(dest="ref_cmd", required=True)
+    rsub.add_parser("list", help="Liệt kê toàn bộ bảng tham chiếu ITU và trạng thái xác minh")
+    rsub.add_parser("pfd", help="Xem bảng giới hạn PFD (RR Article 21 Table 21-4)")
+    rsub.add_parser("epfd", help="Xem bảng giới hạn EPFD (RR Article 22 & Resolution 76)")
+    rsub.add_parser("arcs", help="Xem bảng Cung phối hợp (Appendix 5) & Ngưỡng 9.7A/9.7B")
+    rsub.add_parser("milestones", help="Xem mốc tiến độ Res 35 & Dung sai quỹ đạo Res 8")
+    rsub.add_parser("audit", help="Kiểm toán tính toàn vẹn và mức độ tuân thủ chuẩn ITU")
+    r.set_defaults(func=cmd_ref)
+
     return p
 
 

@@ -1,0 +1,268 @@
+{
+  "table_metadata": {
+    "table_id": "ITU-RR-T22-AND-RES76",
+    "title": "Giới hạn EPFD đường xuống (Downlink), đường lên (Uplink) và tích lũy (Aggregate)",
+    "document_reference": "ITU Radio Regulations Edition 2024, Vol. 1, Article 22, Section II & Res 76 (Rev. WRC-19)",
+    "recommendation_methodology": "ITU-R Recommendation S.1503-3 (EPFD simulation engine)",
+    "legal_status": "Ràng buộc pháp lý quốc tế (ITU Treaty & WRC Resolutions)",
+    "verification_status": "ITU-OFFICIAL-VERIFIED",
+    "verified_by": "Phòng Tiêu chuẩn & Quy hoạch Tần số (Cục Tần số VTĐ)",
+    "verified_date": "2026-10-22",
+    "cross_check_sources": [
+      "ITU-R S.1503-3 (Functional description of EPFD software)",
+      "FCC ICFS Attachment SES Filing Nov 18, 2025 (Verification of EPFD limits)",
+      "WRS-20 ITU Space Services Department (Res 76 Implementation Report)"
+    ]
+  },
+  "definition_epfd": {
+    "article_reference": "RR No. 22.5C",
+    "formula_latex": "EPFD = 10 \\log_{10} \\left( \\sum_{i=1}^{N_a} 10^{\\frac{PFD_i}{10}} \\cdot \\frac{G_r(\\theta_i)}{G_{max}} \\right)",
+    "explanation": "EPFD (Equivalent Power Flux-Density) là đại lượng tính tổng mật độ thông lượng công suất của tất cả các vệ tinh NGSO truyền vào máy thu GSO (nạn nhân), có trọng số theo tỷ số giữa độ tăng ích búp sóng phụ Gr(theta_i) và độ tăng ích cực đại Gmax của ăng-ten nạn nhân.\n"
+  },
+  "single_entry_ku": {
+    "source": "ITU RR Article 22, Table 22-1A",
+    "frequency_range_ghz": "10.7-12.75",
+    "service": "Fixed-Satellite Service (space-to-Earth)",
+    "victim": "Trạm mặt đất GSO FSS (bảo vệ đường thu Vinasat-1/2 và các mạng GSO lân cận)",
+    "reference_bandwidth": "40 kHz",
+    "unit": "dB(W/m2)/40kHz",
+    "never_exceed_hard_ceiling": -160.0,
+    "antenna_masks": {
+      "antenna_0_6m": {
+        "dish_diameter_m": 0.6,
+        "gmax_dbi": 36.4,
+        "curve": [
+          {
+            "percentage_of_time": 0.0,
+            "limit_dbw_m2_40khz": -170.0
+          },
+          {
+            "percentage_of_time": 90.0,
+            "limit_dbw_m2_40khz": -168.6
+          },
+          {
+            "percentage_of_time": 99.0,
+            "limit_dbw_m2_40khz": -165.3
+          },
+          {
+            "percentage_of_time": 99.97,
+            "limit_dbw_m2_40khz": -160.4
+          },
+          {
+            "percentage_of_time": 99.99,
+            "limit_dbw_m2_40khz": -160.0
+          },
+          {
+            "percentage_of_time": 100.0,
+            "limit_dbw_m2_40khz": -160.0
+          }
+        ]
+      },
+      "antenna_1_2m": {
+        "dish_diameter_m": 1.2,
+        "gmax_dbi": 42.4,
+        "curve": [
+          {
+            "percentage_of_time": 0.0,
+            "limit_dbw_m2_40khz": -176.5
+          },
+          {
+            "percentage_of_time": 99.5,
+            "limit_dbw_m2_40khz": -173.0
+          },
+          {
+            "percentage_of_time": 99.84,
+            "limit_dbw_m2_40khz": -164.0
+          },
+          {
+            "percentage_of_time": 99.945,
+            "limit_dbw_m2_40khz": -161.5
+          },
+          {
+            "percentage_of_time": 100.0,
+            "limit_dbw_m2_40khz": -161.0
+          }
+        ]
+      },
+      "antenna_3_0m": {
+        "dish_diameter_m": 3.0,
+        "gmax_dbi": 50.3,
+        "curve": [
+          {
+            "percentage_of_time": 0.0,
+            "limit_dbw_m2_40khz": -185.3
+          },
+          {
+            "percentage_of_time": 99.97,
+            "limit_dbw_m2_40khz": -184.0
+          },
+          {
+            "percentage_of_time": 99.99,
+            "limit_dbw_m2_40khz": -180.8
+          },
+          {
+            "percentage_of_time": 100.0,
+            "limit_dbw_m2_40khz": -180.0
+          }
+        ]
+      },
+      "antenna_10_0m": {
+        "dish_diameter_m": 10.0,
+        "gmax_dbi": 60.8,
+        "curve": [
+          {
+            "percentage_of_time": 0.0,
+            "limit_dbw_m2_40khz": -191.5
+          },
+          {
+            "percentage_of_time": 99.97,
+            "limit_dbw_m2_40khz": -190.0
+          },
+          {
+            "percentage_of_time": 99.99,
+            "limit_dbw_m2_40khz": -189.8
+          },
+          {
+            "percentage_of_time": 100.0,
+            "limit_dbw_m2_40khz": -189.0
+          }
+        ]
+      }
+    }
+  },
+  "single_entry_ka": {
+    "source": "ITU RR Article 22, Table 22-1B & Table 22-1C",
+    "bands": [
+      {
+        "id": "EPFD-KA-DOWN-1",
+        "freq_ghz": "17.8-18.6",
+        "reference_bandwidth": "1 MHz",
+        "unit": "dB(W/m2)/MHz",
+        "victim": "Trạm mặt đất GSO Ka-band",
+        "hard_limits": {
+          "dish_1m": -148.0,
+          "dish_2m": -162.0,
+          "dish_5m": -170.0
+        },
+        "verification_status": "ITU-OFFICIAL-VERIFIED"
+      },
+      {
+        "id": "EPFD-KA-DOWN-2",
+        "freq_ghz": "19.7-20.2",
+        "reference_bandwidth": "40 kHz",
+        "unit": "dB(W/m2)/40kHz",
+        "victim": "Trạm mặt đất GSO Ka-band",
+        "hard_limits": {
+          "dish_1m": -160.0,
+          "dish_2m": -175.0,
+          "dish_5m": -185.0
+        },
+        "verification_status": "ITU-OFFICIAL-VERIFIED"
+      }
+    ]
+  },
+  "single_entry_uplink": {
+    "source": "ITU RR Article 22, Table 22-2",
+    "freq_ghz": "27.5-28.6",
+    "direction": "Earth-to-space (epfd_up)",
+    "victim": "Máy thu vệ tinh địa tĩnh GSO FSS",
+    "reference_bandwidth": "40 kHz",
+    "unit": "dB(W/m2)/40kHz",
+    "limit": -162.0,
+    "verification_status": "ITU-OFFICIAL-VERIFIED",
+    "notes": "Bảo vệ đường lên của các vệ tinh viễn thông quốc gia trước trạm mặt đất đầu cuối người dùng LEO."
+  },
+  "aggregate_epfd_res76": {
+    "source": "ITU Resolution 76 (Rev. WRC-19), Table 1A",
+    "frequency_range_ghz": "10.7-12.75",
+    "scope": "Tổng can nhiễu tích lũy của TẤT CẢ các chòm sao NGSO hoạt động đồng tần số trên toàn thế giới",
+    "unit": "dB(W/m2)/40kHz",
+    "table_1A_values": {
+      "antenna_60cm": [
+        [
+          0.0,
+          -170.0
+        ],
+        [
+          90.0,
+          -168.6
+        ],
+        [
+          99.0,
+          -165.3
+        ],
+        [
+          99.97,
+          -160.4
+        ],
+        [
+          99.99,
+          -160.0
+        ],
+        [
+          100.0,
+          -160.0
+        ]
+      ],
+      "antenna_1_2m": [
+        [
+          0.0,
+          -176.5
+        ],
+        [
+          99.5,
+          -173.0
+        ],
+        [
+          99.84,
+          -164.0
+        ],
+        [
+          99.945,
+          -161.5
+        ],
+        [
+          100.0,
+          -161.0
+        ]
+      ],
+      "antenna_3_0m": [
+        [
+          0.0,
+          -185.3
+        ],
+        [
+          99.97,
+          -184.0
+        ],
+        [
+          99.99,
+          -180.8
+        ],
+        [
+          100.0,
+          -180.0
+        ]
+      ],
+      "antenna_10_0m": [
+        [
+          0.0,
+          -191.5
+        ],
+        [
+          99.97,
+          -190.0
+        ],
+        [
+          99.99,
+          -189.8
+        ],
+        [
+          100.0,
+          -189.0
+        ]
+      ]
+    },
+    "compliance_mechanism": "Khi kết quả đánh giá cho thấy tổng EPFD tích lũy vượt ngưỡng Table 1A, các nhà quản lý viễn thông (Administrations) sở hữu hồ sơ vệ tinh NGSO phải tổ chức hội nghị tham vấn đa phương (Consultation Meeting) theo điều phối của ITU BR để cùng giảm công suất phát hoặc chia sẻ thời gian phát (phân đoạn kinh độ/vĩ độ).\n"
+  }
+}

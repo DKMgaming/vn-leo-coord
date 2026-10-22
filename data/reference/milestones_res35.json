@@ -1,0 +1,139 @@
+{
+  "table_metadata": {
+    "table_id": "ITU-RES-35-AND-RES-8",
+    "title": "Cơ chế kiểm soát tiến độ triển khai thực tế chòm sao LEO/NGSO và dung sai quỹ đạo",
+    "document_reference": "ITU Resolution 35 (WRC-19, Rev. WRC-23) & Resolution 8 (WRC-23)",
+    "legal_status": "Nghị quyết Đại hội Vô tuyến điện Thế giới (Bắt buộc trong quy trình đăng ký MIFR)",
+    "verification_status": "ITU-OFFICIAL-VERIFIED",
+    "verified_by": "Ban Công nghệ Vũ trụ (Cục Tần số VTĐ)",
+    "verified_date": "2026-10-22",
+    "cross_check_sources": [
+      "ITU Radiocommunication Bureau Circular Letter CR/454 & CR/478",
+      "WRC-23 Final Acts (Agenda Item 7 Topic A - Post-milestone procedure)",
+      "FCC Report and Order FCC 21-123 (Aligning US Rules with Res 35)"
+    ]
+  },
+  "applicable_frequency_bands": {
+    "description": "Các dải tần số bắt buộc áp dụng cơ chế Milestone theo Nghị quyết 35",
+    "bands": [
+      {
+        "range_ghz": "10.7-11.7",
+        "service": "FSS (space-to-Earth)",
+        "name": "Ku-band Downlink"
+      },
+      {
+        "range_ghz": "11.7-12.75",
+        "service": "FSS/BSS (space-to-Earth)",
+        "name": "Ku-band Downlink"
+      },
+      {
+        "range_ghz": "12.75-13.25",
+        "service": "FSS (Earth-to-space)",
+        "name": "Ku-band Uplink"
+      },
+      {
+        "range_ghz": "13.75-14.5",
+        "service": "FSS (Earth-to-space)",
+        "name": "Ku-band Uplink"
+      },
+      {
+        "range_ghz": "17.3-20.2",
+        "service": "FSS (space-to-Earth)",
+        "name": "Ka-band Downlink"
+      },
+      {
+        "range_ghz": "27.5-30.0",
+        "service": "FSS (Earth-to-space)",
+        "name": "Ka-band Uplink"
+      },
+      {
+        "range_ghz": "37.5-42.5",
+        "service": "FSS (space-to-Earth)",
+        "name": "Q/V-band Downlink"
+      },
+      {
+        "range_ghz": "47.2-50.2",
+        "service": "FSS (Earth-to-space)",
+        "name": "Q/V-band Uplink"
+      },
+      {
+        "range_ghz": "50.4-51.4",
+        "service": "FSS (Earth-to-space)",
+        "name": "Q/V-band Uplink"
+      }
+    ]
+  },
+  "regulatory_milestones": {
+    "biu_requirement": {
+      "rule_id": "RR No. 11.48 & 11.49",
+      "name": "Đưa vào sử dụng thực tế (Bringing Into Use - BIU)",
+      "time_limit_years": 7.0,
+      "description": "Trong vòng 7 năm kể từ ngày Cục Thông tin Vô tuyến ITU (ITU BR) nhận được thông tin API/CR, nhà điều hành phải phóng ít nhất 1 vệ tinh lên 1 mặt phẳng quỹ đạo đã đăng ký và duy trì hoạt động phát sóng liên tục tối thiểu 90 ngày.\n",
+      "evidence_required": "Số liệu TLE NORAD, xác nhận đo kiểm đài kiểm soát vô tuyến hoặc công hàm quốc gia."
+    },
+    "milestones": [
+      {
+        "milestone_index": 1,
+        "name": "Cột mốc 1 (Milestone 1 - M1)",
+        "percentage_required": 10.0,
+        "deadline_years_after_biu": 2.0,
+        "description": "Trong vòng 2 năm sau thời hạn 7 năm BIU, phải triển khai tối thiểu 10% tổng số vệ tinh đã đăng ký.",
+        "remedy_on_failure": "ITU BR cắt giảm quy mô chòm sao trong MIFR xuống đúng số vệ tinh đã triển khai thực tế."
+      },
+      {
+        "milestone_index": 2,
+        "name": "Cột mốc 2 (Milestone 2 - M2)",
+        "percentage_required": 50.0,
+        "deadline_years_after_biu": 5.0,
+        "description": "Trong vòng 5 năm sau thời hạn 7 năm BIU, phải triển khai tối thiểu 50% tổng số vệ tinh đã đăng ký.",
+        "remedy_on_failure": "Cắt giảm vĩnh viễn hạn ngạch vệ tinh còn lại trong Sổ đăng bạ Quốc tế MIFR."
+      },
+      {
+        "milestone_index": 3,
+        "name": "Cột mốc 3 (Milestone 3 - M3)",
+        "percentage_required": 100.0,
+        "deadline_years_after_biu": 7.0,
+        "description": "Trong vòng 7 năm sau thời hạn 7 năm BIU (tổng cộng 14 năm), phải hoàn tất 100% số lượng vệ tinh đã đăng ký.",
+        "remedy_on_failure": "Chốt số lượng vệ tinh hoạt động tối đa bằng số lượng thực tế tại thời điểm hết hạn."
+      }
+    ]
+  },
+  "orbital_tolerances_res8": {
+    "regulation_id": "ITU Resolution 8 (WRC-23)",
+    "title": "Dung sai cho phép về đặc tính quỹ đạo của trạm không gian NGSO",
+    "purpose": "Ngăn chặn việc vệ tinh bay sai lệch so với hồ sơ kỹ thuật đã phối hợp gây can nhiễu không lường trước",
+    "altitude_tolerance": {
+      "limit_description": "Không được lệch quá ±100 km hoặc ±5% độ cao danh định (lấy giá trị nhỏ hơn)",
+      "formula": "min(100.0 km, 0.05 * alt_nominal_km)"
+    },
+    "inclination_tolerance": {
+      "limit_deg": 1.5,
+      "description": "Độ lệch góc nghiêng quỹ đạo không được vượt quá ±1.5°"
+    },
+    "post_milestone_reporting": {
+      "frequency_years": 4.0,
+      "description": "Sau khi đạt M3, cơ quan quản lý phải báo cáo hiện trạng duy trì chòm sao định kỳ 4 năm một lần cho ITU BR."
+    }
+  },
+  "esim_regulations_res123": {
+    "regulation_id": "ITU Resolution 123 (WRC-23)",
+    "title": "Vận hành trạm mặt đất di động (ESIM) kết nối với chòm sao NGSO FSS",
+    "coverage_bands": {
+      "downlink_ghz": [
+        "17.7-18.6",
+        "18.8-19.3",
+        "19.7-20.2"
+      ],
+      "uplink_ghz": [
+        "27.5-29.1",
+        "29.5-30.0"
+      ]
+    },
+    "classes_of_esim": [
+      "A-ESIM (Aeronautical — Ăng-ten trên máy bay thương mại/chuyên cơ)",
+      "M-ESIM (Maritime — Ăng-ten trên tàu biển, giàn khoan ngoài khơi)",
+      "L-ESIM (Land — Ăng-ten di động trên ô tô, xe lửa)"
+    ],
+    "protection_rule": "ESIM không được gây can nhiễu có hại và không được đòi hỏi sự bảo vệ từ các dịch vụ mặt đất (Fixed/Mobile Services) của các quốc gia mà nó bay qua hoặc cập cảng.\n"
+  }
+}

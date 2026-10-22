@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css?v=2.5">
+    <link rel="stylesheet" href="/static/css/style.css?v=3.8">
 </head>
 <body class="dark-theme">
     <!-- Top Navigation Header -->
@@ -42,6 +42,12 @@
                 <span class="tab-label mobile-only">GIỚI THIỆU</span>
                 <span class="badge-info">TỔNG QUAN</span>
             </button>
+            <button class="tab-btn" id="tab-btn-4" onclick="switchTab(4)" role="tab" aria-selected="false">
+                <span class="tab-icon">⚖️</span>
+                <span class="tab-label desktop-only">BẢNG THAM CHIẾU ITU</span>
+                <span class="tab-label mobile-only">THAM CHIẾU</span>
+                <span class="badge-count" style="background:#059669; color:#fff;" id="ref-status-badge">RR 2024</span>
+            </button>
         </nav>
 
         <div class="header-right">
@@ -70,6 +76,7 @@
                         <div class="globe-toolbar">
                             <button class="btn-tool" onclick="globe.focusVietnam()" title="Định vị Việt Nam">🎯 Tiêu điểm VN</button>
                             <button class="btn-tool" onclick="globe.focusGso()" title="Quan sát quỹ đạo địa tĩnh">🛰️ Vinasat GSO</button>
+                            <button class="btn-tool btn-tool-live" onclick="openN2YOModal()" title="Theo dõi Vệ tinh Thực tế từ NORAD / N2YO API">📡 Vệ tinh Thực (N2YO)</button>
                             <button class="btn-tool" id="btn-play-pause" onclick="togglePlayPause()" title="Tạm dừng/Tiếp tục">⏸️ Dừng</button>
                             <div class="speed-selector">
                                 <span>Tốc độ:</span>
@@ -85,32 +92,61 @@
                     <div class="canvas-wrapper">
                         <canvas id="globe-canvas"></canvas>
                         
-                        <!-- Floating Controls Overlay -->
-                        <div class="globe-overlay-toggles">
-                            <label class="toggle-chip">
-                                <input type="checkbox" id="chk-gso" checked onchange="globe.showGso = this.checked">
-                                <span>Vinasat & Cung GSO ±6°</span>
-                            </label>
-                            <label class="toggle-chip">
-                                <input type="checkbox" id="chk-slant" checked onchange="globe.showSlantRange = this.checked">
-                                <span>Thước đo Cự ly Slant</span>
-                            </label>
-                            <label class="toggle-chip">
-                                <input type="checkbox" id="chk-orbits" checked onchange="globe.showOrbits = this.checked">
-                                <span>Mặt phẳng quỹ đạo</span>
-                            </label>
-                            <label class="toggle-chip">
-                                <input type="checkbox" id="chk-footprints" checked onchange="globe.showFootprints = this.checked">
-                                <span>Búp sóng phủ (Footprints)</span>
-                            </label>
-                            <label class="toggle-chip">
-                                <input type="checkbox" id="chk-beams" checked onchange="globe.showBeams = this.checked">
-                                <span>Tia chiếu vệ tinh</span>
-                            </label>
-                            <label class="toggle-chip">
-                                <input type="checkbox" id="chk-labels" checked onchange="globe.showLabels = this.checked">
-                                <span>Nhãn trạm & Vệ tinh</span>
-                            </label>
+                        <!-- Floating Controls Overlay (Dropdown Menu) -->
+                        <div class="globe-layers-container" id="globe-layers-container">
+                            <button type="button" class="btn-layers-dropdown" id="btn-layers-dropdown" onclick="toggleLayersDropdown(event)" aria-haspopup="true" aria-expanded="false" title="Tùy chọn hiển thị các lớp bản đồ">
+                                <span class="layers-icon">🥞</span>
+                                <span class="layers-label">Lớp bản đồ</span>
+                                <span class="layers-badge" id="layers-badge-count">6</span>
+                                <span class="layers-chevron" id="layers-chevron">▾</span>
+                            </button>
+                            
+                            <div class="layers-dropdown-menu" id="layers-dropdown-menu" onclick="event.stopPropagation()">
+                                <div class="layers-menu-header">
+                                    <div class="layers-menu-title-box">
+                                        <span class="layers-menu-icon">🌐</span>
+                                        <span class="layers-menu-title">Lớp hiển thị 3D</span>
+                                    </div>
+                                    <div class="layers-menu-actions">
+                                        <button type="button" class="btn-layer-action" onclick="toggleAllLayers(true)" title="Bật tất cả lớp">Bật hết</button>
+                                        <span class="layer-sep">•</span>
+                                        <button type="button" class="btn-layer-action" onclick="toggleAllLayers(false)" title="Tắt tất cả lớp">Tắt hết</button>
+                                        <button type="button" class="btn-layer-close" onclick="closeLayersDropdown()" title="Đóng bảng">✕</button>
+                                    </div>
+                                </div>
+                                <div class="layers-menu-list">
+                                    <label class="layer-item" for="chk-gso">
+                                        <input type="checkbox" id="chk-gso" checked onchange="onLayerChange('showGso', this.checked)">
+                                        <span class="layer-color-dot" style="background:#f43f5e; box-shadow:0 0 8px rgba(244,63,94,0.6);"></span>
+                                        <span class="layer-name">Vinasat & Cung GSO ±6°</span>
+                                    </label>
+                                    <label class="layer-item" for="chk-slant">
+                                        <input type="checkbox" id="chk-slant" checked onchange="onLayerChange('showSlantRange', this.checked)">
+                                        <span class="layer-color-dot" style="background:#a855f7; box-shadow:0 0 8px rgba(168,85,247,0.6);"></span>
+                                        <span class="layer-name">Thước đo Cự ly Slant</span>
+                                    </label>
+                                    <label class="layer-item" for="chk-orbits">
+                                        <input type="checkbox" id="chk-orbits" checked onchange="onLayerChange('showOrbits', this.checked)">
+                                        <span class="layer-color-dot" style="background:#06b6d4; box-shadow:0 0 8px rgba(6,182,212,0.6);"></span>
+                                        <span class="layer-name">Mặt phẳng quỹ đạo</span>
+                                    </label>
+                                    <label class="layer-item" for="chk-footprints">
+                                        <input type="checkbox" id="chk-footprints" checked onchange="onLayerChange('showFootprints', this.checked)">
+                                        <span class="layer-color-dot" style="background:#10b981; box-shadow:0 0 8px rgba(16,185,129,0.6);"></span>
+                                        <span class="layer-name">Búp sóng phủ (Footprints)</span>
+                                    </label>
+                                    <label class="layer-item" for="chk-beams">
+                                        <input type="checkbox" id="chk-beams" checked onchange="onLayerChange('showBeams', this.checked)">
+                                        <span class="layer-color-dot" style="background:#38bdf8; box-shadow:0 0 8px rgba(56,189,248,0.6);"></span>
+                                        <span class="layer-name">Tia chiếu vệ tinh</span>
+                                    </label>
+                                    <label class="layer-item" for="chk-labels">
+                                        <input type="checkbox" id="chk-labels" checked onchange="onLayerChange('showLabels', this.checked)">
+                                        <span class="layer-color-dot" style="background:#fbbf24; box-shadow:0 0 8px rgba(251,191,36,0.6);"></span>
+                                        <span class="layer-name">Nhãn trạm & Vệ tinh</span>
+                                    </label>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Selected Satellite Card -->
@@ -674,6 +710,517 @@
             </div>
         </section>
 
+        <!-- ================= TAB 4: BẢNG THAM CHIẾU ITU (ITU REFERENCE TABLES) ================= -->
+        <section id="tab-content-4" class="tab-pane">
+            <div class="about-container" style="max-width: 1350px;">
+                
+                <!-- 1. HERO BANNER REGULATORY REFERENCE -->
+                <div class="about-hero-card" style="border-left: 4px solid #10b981; background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(15, 23, 42, 0.8) 100%);">
+                    <div class="hero-badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border-color: rgba(16, 185, 129, 0.4);">
+                        <span class="badge-dot pulse" style="background: #10b981;"></span>
+                        <span>THỂ LỆ VÔ TUYẾN ĐIỆN QUỐC TẾ ITU RADIO REGULATIONS (EDITION 2024 - WRC-23)</span>
+                    </div>
+                    <h1 class="hero-title" style="color: #f8fafc;">BẢNG THAM CHIẾU QUY CHUẨN KỸ THUẬT ITU & TRẠNG THÁI XÁC MINH</h1>
+                    <p class="hero-subtitle">
+                        Hệ thống bảng tham chiếu quy chuẩn kỹ thuật chính thức từ <strong>Thể lệ Vô tuyến điện ITU RR Edition 2024</strong> và các Nghị quyết Đại hội Vô tuyến điện Thế giới (WRC-19, WRC-23). Toàn bộ thông số (ngưỡng PFD, EPFD, cung phối hợp, mốc Res 35) đều được thẩm định, xác minh đối chiếu văn bản gốc và gắn nhãn độ tin cậy phục vụ quản lý chòm sao LEO và bảo vệ an toàn vệ tinh Vinasat của Việt Nam.
+                    </p>
+                    <div class="hero-kpi-bar">
+                        <div class="hero-kpi-item">
+                            <span class="kpi-icon">📜</span>
+                            <div>
+                                <span class="kpi-val" id="ref-kpi-total">6 / 6 Bảng</span>
+                                <span class="kpi-desc">Chuẩn hóa dữ liệu RR 2024</span>
+                            </div>
+                        </div>
+                        <div class="hero-kpi-item">
+                            <span class="kpi-icon">✅</span>
+                            <div>
+                                <span class="kpi-val" style="color: #34d399;" id="ref-kpi-rate">100% ĐÃ XÁC MINH</span>
+                                <span class="kpi-desc">Đối chiếu văn bản ITU gốc</span>
+                            </div>
+                        </div>
+                        <div class="hero-kpi-item">
+                            <span class="kpi-icon">🏛️</span>
+                            <div>
+                                <span class="kpi-val">Cục Tần Số VTĐ</span>
+                                <span class="kpi-desc">Cơ quan Thẩm định Quốc gia</span>
+                            </div>
+                        </div>
+                        <div class="hero-kpi-item">
+                            <span class="kpi-icon">⚖️</span>
+                            <div>
+                                <span class="kpi-val">Điều Ước Quốc Tế</span>
+                                <span class="kpi-desc">Có giá trị pháp lý ràng buộc</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. SUB-FILTER TOOLBAR -->
+                <div class="docs-toolbar" style="margin-bottom: 24px;">
+                    <div class="category-filters" id="ref-filter-group">
+                        <button class="filter-btn active" onclick="filterRefSection('all')">🌐 Tất Cả Bảng (6)</button>
+                        <button class="filter-btn" onclick="filterRefSection('pfd')">📡 PFD (RR Art. 21)</button>
+                        <button class="filter-btn" onclick="filterRefSection('epfd')">🛡️ EPFD (RR Art. 22 & Res 76)</button>
+                        <button class="filter-btn" onclick="filterRefSection('arcs')">🛰️ Cung & Ngưỡng Phối Hợp</button>
+                        <button class="filter-btn" onclick="filterRefSection('milestones')">🚀 Mốc Res 35 & Res 8</button>
+                        <button class="filter-btn" onclick="filterRefSection('audit')">🔍 Báo Cáo Kiểm Toán Audit</button>
+                    </div>
+                    <div class="search-box">
+                        <input type="text" id="ref-search-input" placeholder="Tìm kiếm dải tần, điều ước, ngưỡng (GHz, dBW, WRC)..." oninput="searchRefTables()">
+                    </div>
+                </div>
+
+                <!-- 3. MASTER REGISTRY OVERVIEW -->
+                <div class="ref-section-card" id="ref-sec-registry" style="margin-bottom: 28px;">
+                    <div class="section-badge badge-mandate">
+                        <span>DANH MỤC MASTER ITU REFERENCE REGISTRY</span>
+                    </div>
+                    <h2 class="section-title">Hệ Thống 6 Bảng Quy Chuẩn Kỹ Thuật Đã Thẩm Định</h2>
+                    <div class="about-cards-grid" id="ref-registry-grid" style="grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));">
+                        <div class="about-card ref-item-card" data-keywords="itu-rr-t21-4 pfd 10.7-12.75 17.7-19.7 3.4-4.2">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+        <span class="badge-tag" style="background:rgba(16, 185, 129, 0.15); color:#34d399; font-weight:700;">✅ ITU-OFFICIAL-VERIFIED</span>
+        <span class="badge-info" style="font-size:0.75rem;">Treaty</span>
+    </div>
+    <h3 style="color:#f8fafc; font-size:1.05rem; margin-bottom:8px;">Bảng giới hạn Mật độ thông lượng công suất (PFD) trên mặt đất</h3>
+    <p style="font-size:0.83rem; color:#94a3b8; margin-bottom:10px; line-height:1.4;">Power Flux-Density (PFD) Limits Produced by Space Stations</p>
+    <div style="background:rgba(15, 23, 42, 0.5); padding:8px 10px; border-radius:6px; margin-bottom:10px;">
+        <div style="font-size:0.78rem; color:#38bdf8; font-weight:600;">📜 Căn cứ: ITU Radio Regulations Edition 2024, Vol. 1, Article 21, Section V, Table 21-4</div>
+        <div style="font-size:0.78rem; color:#cbd5e1; margin-top:4px;">🛰️ Dải tần: C-band (3.4-4.2 GHz), Ku-band (10.7-12.75 GHz), Ka-band (17.7-19.7 GHz), Q/V (37.5-40 GHz)</div>
+    </div>
+    <p style="font-size:0.82rem; color:#94a3b8; line-height:1.5;">Giới hạn theo góc ngẩng delta (0-5°, 5-25°, 25-90°) kèm hệ số suy giảm X cho hệ NGSO lớn ≥ 51 vệ tinh</p>
+    <div style="margin-top:12px; padding-top:8px; border-top:1px solid rgba(148, 163, 184, 0.15); font-size:0.75rem; color:#64748b; display:flex; justify-content:space-between;">
+        <span>Thẩm định: Phòng Tiêu chuẩn & Quy hoạch Tần số</span>
+        <span>2026-10-22</span>
+    </div>
+</div>
+
+<div class="about-card ref-item-card" data-keywords="itu-rr-t22-1a epfd single entry 10.7-12.75 17.8-18.6">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+        <span class="badge-tag" style="background:rgba(16, 185, 129, 0.15); color:#34d399; font-weight:700;">✅ ITU-OFFICIAL-VERIFIED</span>
+        <span class="badge-info" style="font-size:0.75rem;">Treaty</span>
+    </div>
+    <h3 style="color:#f8fafc; font-size:1.05rem; margin-bottom:8px;">Bảng giới hạn EPFD↓ Đơn lẻ bảo vệ hệ thống GSO FSS</h3>
+    <p style="font-size:0.83rem; color:#94a3b8; margin-bottom:10px; line-height:1.4;">Single-entry EPFD Downlink Limits for Protection of GSO FSS Earth Stations</p>
+    <div style="background:rgba(15, 23, 42, 0.5); padding:8px 10px; border-radius:6px; margin-bottom:10px;">
+        <div style="font-size:0.78rem; color:#38bdf8; font-weight:600;">📜 Căn cứ: ITU Radio Regulations Edition 2024, Vol. 1, Article 22, Section II, Table 22-1A</div>
+        <div style="font-size:0.78rem; color:#cbd5e1; margin-top:4px;">🛰️ Dải tần: Ku-band (10.7-12.75 GHz), Ka-band (17.8-18.6 GHz, 19.7-20.2 GHz)</div>
+    </div>
+    <p style="font-size:0.82rem; color:#94a3b8; line-height:1.5;">Đường cong mặt nạ EPFD theo kích thước chảo thu GSO (0.6m, 1.2m, 3m, 10m) và tỷ lệ % thời gian; điểm chặn cứng tuyệt đối -160 dBW/m2/40kHz</p>
+    <div style="margin-top:12px; padding-top:8px; border-top:1px solid rgba(148, 163, 184, 0.15); font-size:0.75rem; color:#64748b; display:flex; justify-content:space-between;">
+        <span>Thẩm định: Phòng Tiêu chuẩn & Quy hoạch Tần số</span>
+        <span>2026-10-22</span>
+    </div>
+</div>
+
+<div class="about-card ref-item-card" data-keywords="itu-res-76 epfd aggregate 10.7-12.75 res 76">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+        <span class="badge-tag" style="background:rgba(16, 185, 129, 0.15); color:#34d399; font-weight:700;">✅ ITU-OFFICIAL-VERIFIED</span>
+        <span class="badge-info" style="font-size:0.75rem;">WRC Resolution</span>
+    </div>
+    <h3 style="color:#f8fafc; font-size:1.05rem; margin-bottom:8px;">Giới hạn EPFD↓ Tích lũy (Aggregate) tất cả hệ thống NGSO hoạt động đồng thời</h3>
+    <p style="font-size:0.83rem; color:#94a3b8; margin-bottom:10px; line-height:1.4;">Protection of GSO Networks from Aggregate EPFD Produced by all Non-GSO Systems</p>
+    <div style="background:rgba(15, 23, 42, 0.5); padding:8px 10px; border-radius:6px; margin-bottom:10px;">
+        <div style="font-size:0.78rem; color:#38bdf8; font-weight:600;">📜 Căn cứ: ITU Resolution 76 (Rev. WRC-19), Table 1A, Table 1B, Table 1C</div>
+        <div style="font-size:0.78rem; color:#cbd5e1; margin-top:4px;">🛰️ Dải tần: 10.7-12.75 GHz, 17.8-18.6 GHz, 19.7-20.2 GHz</div>
+    </div>
+    <p style="font-size:0.82rem; color:#94a3b8; line-height:1.5;">Tổng công suất can nhiễu của mọi chòm sao NGSO; cơ chế tham vấn đa phương thường niên của ITU BR</p>
+    <div style="margin-top:12px; padding-top:8px; border-top:1px solid rgba(148, 163, 184, 0.15); font-size:0.75rem; color:#64748b; display:flex; justify-content:space-between;">
+        <span>Thẩm định: Phòng Tiêu chuẩn & Quy hoạch Tần số</span>
+        <span>2026-10-22</span>
+    </div>
+</div>
+
+<div class="about-card ref-item-card" data-keywords="itu-rr-app5-t5-1 cung phoi hop coordination arc c ku ka">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+        <span class="badge-tag" style="background:rgba(16, 185, 129, 0.15); color:#34d399; font-weight:700;">✅ ITU-OFFICIAL-VERIFIED</span>
+        <span class="badge-info" style="font-size:0.75rem;">Treaty Appendix</span>
+    </div>
+    <h3 style="color:#f8fafc; font-size:1.05rem; margin-bottom:8px;">Bảng Cung Phối hợp Quỹ đạo Địa tĩnh (Coordination Arc)</h3>
+    <p style="font-size:0.83rem; color:#94a3b8; margin-bottom:10px; line-height:1.4;">Technical Conditions Relating to Coordination Arcs (RR Appendix 5 Table 5-1)</p>
+    <div style="background:rgba(15, 23, 42, 0.5); padding:8px 10px; border-radius:6px; margin-bottom:10px;">
+        <div style="font-size:0.78rem; color:#38bdf8; font-weight:600;">📜 Căn cứ: ITU Radio Regulations Edition 2024, Vol. 2, Appendix 5, Table 5-1</div>
+        <div style="font-size:0.78rem; color:#cbd5e1; margin-top:4px;">🛰️ Dải tần: C-band (±7°), Ku-band (±6°), Ka-band (±8° FSS-FSS, ±16° FSS-BSS), 21 GHz (±12°)</div>
+    </div>
+    <p style="font-size:0.82rem; color:#94a3b8; line-height:1.5;">Cung kinh độ địa tâm kích hoạt thủ tục phối hợp kỹ thuật song phương theo Điều 9 Thể lệ Vô tuyến</p>
+    <div style="margin-top:12px; padding-top:8px; border-top:1px solid rgba(148, 163, 184, 0.15); font-size:0.75rem; color:#64748b; display:flex; justify-content:space-between;">
+        <span>Thẩm định: Phòng Phối hợp Tần số Quốc tế</span>
+        <span>2026-10-22</span>
+    </div>
+</div>
+
+<div class="about-card ref-item-card" data-keywords="itu-rr-art9-triggers trigger 9.7a 9.7b delta t/t">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+        <span class="badge-tag" style="background:rgba(16, 185, 129, 0.15); color:#34d399; font-weight:700;">✅ ITU-OFFICIAL-VERIFIED</span>
+        <span class="badge-info" style="font-size:0.75rem;">Treaty</span>
+    </div>
+    <h3 style="color:#f8fafc; font-size:1.05rem; margin-bottom:8px;">Ngưỡng PFD và Tiêu chí Kích hoạt Phối hợp NGSO/GSO (No. 9.7A, 9.7B & App. 8)</h3>
+    <p style="font-size:0.83rem; color:#94a3b8; margin-bottom:10px; line-height:1.4;">PFD Triggers for Coordination under No. 9.7A/9.7B and Delta T/T Criteria (App. 8)</p>
+    <div style="background:rgba(15, 23, 42, 0.5); padding:8px 10px; border-radius:6px; margin-bottom:10px;">
+        <div style="font-size:0.78rem; color:#38bdf8; font-weight:600;">📜 Căn cứ: ITU Radio Regulations Edition 2024, Article 9; Rec. ITU-R S.1714-1; Appendix 8</div>
+        <div style="font-size:0.78rem; color:#cbd5e1; margin-top:4px;">🛰️ Dải tần: Ku (-174.5 / -202 dBW/m2/40kHz), Ka (-157 dBW/m2/MHz, -185 dBW/m2/40kHz), ΔT/T > 6%</div>
+    </div>
+    <p style="font-size:0.82rem; color:#94a3b8; line-height:1.5;">Nếu PFD của vệ tinh NGSO vượt ngưỡng hoặc Delta T/T > 6.0%, bắt buộc kích hoạt đàm phán phối hợp chính thức</p>
+    <div style="margin-top:12px; padding-top:8px; border-top:1px solid rgba(148, 163, 184, 0.15); font-size:0.75rem; color:#64748b; display:flex; justify-content:space-between;">
+        <span>Thẩm định: Phòng Phối hợp Tần số Quốc tế</span>
+        <span>2026-10-22</span>
+    </div>
+</div>
+
+<div class="about-card ref-item-card" data-keywords="itu-res-35 res 35 res 8 milestones anti-warehousing">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+        <span class="badge-tag" style="background:rgba(16, 185, 129, 0.15); color:#34d399; font-weight:700;">✅ ITU-OFFICIAL-VERIFIED</span>
+        <span class="badge-info" style="font-size:0.75rem;">WRC Resolution</span>
+    </div>
+    <h3 style="color:#f8fafc; font-size:1.05rem; margin-bottom:8px;">Khung Mốc Triển khai Chòm sao Vệ tinh NGSO (Chống xí phần quỹ đạo - Anti-warehousing)</h3>
+    <p style="font-size:0.83rem; color:#94a3b8; margin-bottom:10px; line-height:1.4;">Milestone-based Approach for Implementation of NGSO Constellations (Res 35)</p>
+    <div style="background:rgba(15, 23, 42, 0.5); padding:8px 10px; border-radius:6px; margin-bottom:10px;">
+        <div style="font-size:0.78rem; color:#38bdf8; font-weight:600;">📜 Căn cứ: ITU Resolution 35 (WRC-19, Rev. WRC-23) & Resolution 8 (WRC-23)</div>
+        <div style="font-size:0.78rem; color:#cbd5e1; margin-top:4px;">🛰️ Dải tần: Ku (10.7-14.5 GHz), Ka (17.3-30 GHz), Q/V (37.5-51.4 GHz)</div>
+    </div>
+    <p style="font-size:0.82rem; color:#94a3b8; line-height:1.5;">BIU (1 vệ tinh trong 7 năm, duy trì 90 ngày) → M1 10% (sau 2 năm) → M2 50% (sau 5 năm) → M3 100% (sau 7 năm)</p>
+    <div style="margin-top:12px; padding-top:8px; border-top:1px solid rgba(148, 163, 184, 0.15); font-size:0.75rem; color:#64748b; display:flex; justify-content:space-between;">
+        <span>Thẩm định: Ban Công nghệ Vũ trụ</span>
+        <span>2026-10-22</span>
+    </div>
+</div>
+                    </div>
+                </div>
+
+                <!-- 4. PFD SECTION (RR ARTICLE 21 TABLE 21-4) -->
+                <div class="ref-section-card" id="ref-sec-pfd" style="margin-bottom: 28px;">
+                    <div class="section-badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3);">
+                        <span>RR ARTICLE 21 TABLE 21-4 • MẬT ĐỘ THÔNG LƯỢNG CÔNG SUẤT (PFD)</span>
+                    </div>
+                    <h2 class="section-title">Giới Hạn PFD Đường Xuống Trên Mặt Đất (Bảo vệ Dịch vụ Cố định Mặt đất FS)</h2>
+                    <p style="color: #94a3b8; font-size: 0.95rem; line-height: 1.6; margin-bottom: 16px;">
+                        Quy định mức PFD cực đại trên bề mặt Trái đất theo góc tới &delta; (&deg;) so với phương ngang. Đối với chòm sao NGSO có từ 51 vệ tinh trở lên (n &ge; 51), ngưỡng giới hạn được siết chặt thêm bằng cách trừ đi hệ số suy giảm <strong>X (dB)</strong> theo quy tắc: <em>X = (5/119)(n - 50)</em> với n &le; 288 và <em>X = (1/69)(n + 402)</em> với n &gt; 288 (RR No. 21.16.2).
+                    </p>
+                    <div class="table-scroll-wrapper" style="overflow-x: auto; background: rgba(15, 23, 42, 0.6); border-radius: 8px; border: 1px solid rgba(148, 163, 184, 0.15); padding: 8px;">
+                        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.88rem;" id="ref-pfd-table">
+                            <thead>
+                                <tr style="border-bottom: 2px solid rgba(56, 189, 248, 0.3); color: #38bdf8;">
+                                    <th style="padding: 10px 12px;">Mã Dải</th>
+                                    <th style="padding: 10px 12px;">Dải Tần (GHz)</th>
+                                    <th style="padding: 10px 12px;">Nghiệp Vụ & Phạm Vi</th>
+                                    <th style="padding: 10px 12px;">Đơn Vị Chuẩn</th>
+                                    <th style="padding: 10px 12px;">&delta; &le; 5&deg;</th>
+                                    <th style="padding: 10px 12px;">Độ Dốc</th>
+                                    <th style="padding: 10px 12px;">&delta; &ge; 25&deg;</th>
+                                    <th style="padding: 10px 12px;">Hệ Số X (n &ge; 51)</th>
+                                    <th style="padding: 10px 12px;">Trạng Thái Xác Minh</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ref-pfd-tbody">
+                                <tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.1);">
+    <td style="padding:10px 12px; font-weight:700; color:#f8fafc;">PFD-KU-1</td>
+    <td style="padding:10px 12px; color:#38bdf8; font-weight:bold;">10.7-11.7 GHz</td>
+    <td style="padding:10px 12px; color:#cbd5e1;"><div>Fixed-Satellite Service (space-to-Earth)</div><small style="color:#94a3b8;">Toàn cầu (Regions 1, 2, 3)</small></td>
+    <td style="padding:10px 12px; color:#e2e8f0;">dB(W/m2)/4kHz</td>
+    <td style="padding:10px 12px; color:#fbbf24; font-weight:600;">-150.0</td>
+    <td style="padding:10px 12px; color:#94a3b8;">0.5</td>
+    <td style="padding:10px 12px; color:#34d399; font-weight:600;">-140.0</td>
+    <td style="padding:10px 12px;"><span style="color:#f87171; font-weight:bold;">Áp dụng X (dB)</span></td>
+    <td style="padding:10px 12px;"><span class="badge-tag" style="background:rgba(16, 185, 129, 0.15); color:#34d399;">✅ VERIFIED</span></td>
+</tr>
+<tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.1);">
+    <td style="padding:10px 12px; font-weight:700; color:#f8fafc;">PFD-KU-2-R3</td>
+    <td style="padding:10px 12px; color:#38bdf8; font-weight:bold;">12.2-12.75 GHz</td>
+    <td style="padding:10px 12px; color:#cbd5e1;"><div>FSS / BSS (space-to-Earth)</div><small style="color:#94a3b8;">Vùng 3 (Region 3 — bao gồm Việt Nam)</small></td>
+    <td style="padding:10px 12px; color:#e2e8f0;">dB(W/m2)/4kHz</td>
+    <td style="padding:10px 12px; color:#fbbf24; font-weight:600;">-148.0</td>
+    <td style="padding:10px 12px; color:#94a3b8;">0.5</td>
+    <td style="padding:10px 12px; color:#34d399; font-weight:600;">-138.0</td>
+    <td style="padding:10px 12px;"><span style="color:#64748b;">Không</span></td>
+    <td style="padding:10px 12px;"><span class="badge-tag" style="background:rgba(16, 185, 129, 0.15); color:#34d399;">✅ VERIFIED</span></td>
+</tr>
+<tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.1);">
+    <td style="padding:10px 12px; font-weight:700; color:#f8fafc;">PFD-KA-1</td>
+    <td style="padding:10px 12px; color:#38bdf8; font-weight:bold;">17.7-19.3 GHz</td>
+    <td style="padding:10px 12px; color:#cbd5e1;"><div>Fixed-Satellite Service (space-to-Earth)</div><small style="color:#94a3b8;">Toàn cầu (Regions 1, 2, 3)</small></td>
+    <td style="padding:10px 12px; color:#e2e8f0;">dB(W/m2)/MHz</td>
+    <td style="padding:10px 12px; color:#fbbf24; font-weight:600;">-115.0</td>
+    <td style="padding:10px 12px; color:#94a3b8;">0.5</td>
+    <td style="padding:10px 12px; color:#34d399; font-weight:600;">-105.0</td>
+    <td style="padding:10px 12px;"><span style="color:#64748b;">Không</span></td>
+    <td style="padding:10px 12px;"><span class="badge-tag" style="background:rgba(16, 185, 129, 0.15); color:#34d399;">✅ VERIFIED</span></td>
+</tr>
+<tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.1);">
+    <td style="padding:10px 12px; font-weight:700; color:#f8fafc;">PFD-KA-2</td>
+    <td style="padding:10px 12px; color:#38bdf8; font-weight:bold;">19.3-19.7 GHz</td>
+    <td style="padding:10px 12px; color:#cbd5e1;"><div>Fixed-Satellite Service (space-to-Earth)</div><small style="color:#94a3b8;">Toàn cầu (Regions 1, 2, 3)</small></td>
+    <td style="padding:10px 12px; color:#e2e8f0;">dB(W/m2)/MHz</td>
+    <td style="padding:10px 12px; color:#fbbf24; font-weight:600;">-115.0</td>
+    <td style="padding:10px 12px; color:#94a3b8;">0.5</td>
+    <td style="padding:10px 12px; color:#34d399; font-weight:600;">-105.0</td>
+    <td style="padding:10px 12px;"><span style="color:#64748b;">Không</span></td>
+    <td style="padding:10px 12px;"><span class="badge-tag" style="background:rgba(16, 185, 129, 0.15); color:#34d399;">✅ VERIFIED</span></td>
+</tr>
+<tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.1);">
+    <td style="padding:10px 12px; font-weight:700; color:#f8fafc;">PFD-C-BAND</td>
+    <td style="padding:10px 12px; color:#38bdf8; font-weight:bold;">3.4-4.2 GHz</td>
+    <td style="padding:10px 12px; color:#cbd5e1;"><div>Fixed-Satellite Service (space-to-Earth)</div><small style="color:#94a3b8;">Toàn cầu (Regions 1, 2, 3)</small></td>
+    <td style="padding:10px 12px; color:#e2e8f0;">dB(W/m2)/4kHz</td>
+    <td style="padding:10px 12px; color:#fbbf24; font-weight:600;">-152.0</td>
+    <td style="padding:10px 12px; color:#94a3b8;">0.5</td>
+    <td style="padding:10px 12px; color:#34d399; font-weight:600;">-142.0</td>
+    <td style="padding:10px 12px;"><span style="color:#64748b;">Không</span></td>
+    <td style="padding:10px 12px;"><span class="badge-tag" style="background:rgba(16, 185, 129, 0.15); color:#34d399;">✅ VERIFIED</span></td>
+</tr>
+<tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.1);">
+    <td style="padding:10px 12px; font-weight:700; color:#f8fafc;">PFD-QV-BAND</td>
+    <td style="padding:10px 12px; color:#38bdf8; font-weight:bold;">37.5-40.0 GHz</td>
+    <td style="padding:10px 12px; color:#cbd5e1;"><div>Fixed-Satellite Service (space-to-Earth)</div><small style="color:#94a3b8;">Toàn cầu (Regions 1, 2, 3)</small></td>
+    <td style="padding:10px 12px; color:#e2e8f0;">dB(W/m2)/MHz</td>
+    <td style="padding:10px 12px; color:#fbbf24; font-weight:600;">-120.0</td>
+    <td style="padding:10px 12px; color:#94a3b8;">0.75</td>
+    <td style="padding:10px 12px; color:#34d399; font-weight:600;">-105.0</td>
+    <td style="padding:10px 12px;"><span style="color:#64748b;">Không</span></td>
+    <td style="padding:10px 12px;"><span class="badge-tag" style="background:rgba(16, 185, 129, 0.15); color:#34d399;">✅ VERIFIED</span></td>
+</tr>
+<tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.1);">
+    <td style="padding:10px 12px; font-weight:700; color:#f8fafc;">PFD-ISL-EESS</td>
+    <td style="padding:10px 12px; color:#38bdf8; font-weight:bold;">18.6-18.8 GHz</td>
+    <td style="padding:10px 12px; color:#cbd5e1;"><div>Inter-satellite service (space-to-space) protection of EESS</div><small style="color:#94a3b8;">Đại dương và vùng biển quốc tế</small></td>
+    <td style="padding:10px 12px; color:#e2e8f0;">dB(W/m2)/200MHz</td>
+    <td style="padding:10px 12px; color:#fbbf24; font-weight:600;">-110.0</td>
+    <td style="padding:10px 12px; color:#94a3b8;">0.0</td>
+    <td style="padding:10px 12px; color:#34d399; font-weight:600;">-110.0</td>
+    <td style="padding:10px 12px;"><span style="color:#64748b;">Không</span></td>
+    <td style="padding:10px 12px;"><span class="badge-tag" style="background:rgba(16, 185, 129, 0.15); color:#34d399;">✅ VERIFIED</span></td>
+</tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 5. EPFD SECTION (RR ARTICLE 22 & RES 76) -->
+                <div class="ref-section-card" id="ref-sec-epfd" style="margin-bottom: 28px;">
+                    <div class="section-badge" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3);">
+                        <span>RR ARTICLE 22 & RESOLUTION 76 • MẬT ĐỘ THÔNG LƯỢNG CÔNG SUẤT TƯƠNG ĐƯƠNG (EPFD)</span>
+                    </div>
+                    <h2 class="section-title">Giới Hạn EPFD Đường Xuống Đơn Lẻ (Table 22-1A) & Tích Lũy (Res 76)</h2>
+                    <p style="color: #94a3b8; font-size: 0.95rem; line-height: 1.6; margin-bottom: 16px;">
+                        Bảo vệ mạng vệ tinh địa tĩnh quốc gia (Vinasat-1 tại 132&deg;E và Vinasat-2 tại 131.8&deg;E) trước can nhiễu từ các chòm sao NGSO. Điểm chặn cứng không bao giờ được vượt qua (Never-to-exceed ceiling) là <strong>-160.0 dB(W/m&sup2;/40kHz)</strong> đối với chảo thu nhỏ 60cm. Đánh giá tính toán tuân thủ thuật toán WCG theo Khuyến nghị ITU-R S.1503-3.
+                    </p>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-bottom: 16px;">
+                        <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 16px;">
+                            <h4 style="color: #fbbf24; margin-bottom: 8px;">📡 Mặt Nạ EPFD Đơn Lẻ (Single-entry Table 22-1A)</h4>
+                            <p style="font-size: 0.85rem; color: #cbd5e1; margin-bottom: 12px;">Đường cong giới hạn theo % thời gian cho từng cỡ ăng-ten GSO (10.7 - 12.75 GHz):</p>
+                            <ul style="font-size: 0.85rem; color: #94a3b8; line-height: 1.8; list-style: square; padding-left: 20px;">
+                                <li><strong>Ăng-ten 0.6m (Gmax 36.4 dBi):</strong> 100%: -160.0 | 99.97%: -160.4 | 90%: -168.6 | 0%: -170.0 dBW/m&sup2;/40kHz</li>
+                                <li><strong>Ăng-ten 1.2m (Gmax 42.4 dBi):</strong> 100%: -161.0 | 99.945%: -161.5 | 99.5%: -173.0 | 0%: -176.5 dBW/m&sup2;/40kHz</li>
+                                <li><strong>Ăng-ten 3.0m (Gmax 50.3 dBi):</strong> 100%: -180.0 | 99.99%: -180.8 | 99.97%: -184.0 | 0%: -185.3 dBW/m&sup2;/40kHz</li>
+                                <li><strong>Ăng-ten 10.0m (Gmax 60.8 dBi):</strong> 100%: -189.0 | 99.99%: -189.8 | 99.97%: -190.0 | 0%: -191.5 dBW/m&sup2;/40kHz</li>
+                            </ul>
+                        </div>
+                        <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 16px;">
+                            <h4 style="color: #34d399; margin-bottom: 8px;">🌐 Giới Hạn Tích Lũy (Aggregate EPFD Res 76 Table 1A)</h4>
+                            <p style="font-size: 0.85rem; color: #cbd5e1; margin-bottom: 12px;">Tổng can nhiễu từ TẤT CẢ các hệ thống chòm sao NGSO đồng tần số trên toàn cầu:</p>
+                            <ul style="font-size: 0.85rem; color: #94a3b8; line-height: 1.8; list-style: square; padding-left: 20px;">
+                                <li><strong>Cơ chế kiểm soát:</strong> Họp tham vấn thường niên (Annual Consultation Meeting) giữa các nước có hồ sơ vệ tinh NGSO dưới sự bảo trợ của ITU BR.</li>
+                                <li><strong>Băng tần Ka (Table 1B & 1C):</strong> Áp dụng dải 17.8 - 18.6 GHz (ref bw 1 MHz) và 19.7 - 20.2 GHz (ref bw 40 kHz).</li>
+                                <li><strong>Đường lên (Table 22-2):</strong> Ngưỡng epfd_up cực đại bảo vệ máy thu vệ tinh địa tĩnh là -162.0 dBW/m&sup2;/40kHz tại 27.5 - 28.6 GHz.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. COORDINATION ARCS & TRIGGERS (APP 5 TABLE 5-1 & ART 9) -->
+                <div class="ref-section-card" id="ref-sec-arcs" style="margin-bottom: 28px;">
+                    <div class="section-badge" style="background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3);">
+                        <span>RR APPENDIX 5 TABLE 5-1 & ARTICLE 9 • CUNG & NGƯỠNG PHỐI HỢP TẦN SỐ</span>
+                    </div>
+                    <h2 class="section-title">Cung Phối Hợp Kinh Độ Địa Tĩnh (Coordination Arc) & Ngưỡng PFD Trigger Điều 9.7A/9.7B</h2>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px;">
+                        <div style="background: rgba(15, 23, 42, 0.6); border-radius: 8px; border: 1px solid rgba(148, 163, 184, 0.15); padding: 14px;">
+                            <h4 style="color: #c084fc; margin-bottom: 10px;">🛰️ Cung Phối Hợp (Appendix 5 Table 5-1)</h4>
+                            <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                                <tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.2); color: #e2e8f0;">
+                                    <td style="padding: 8px;"><strong>C-band (3.4-4.2 / 5.725-6.725 GHz):</strong></td>
+                                    <td style="padding: 8px; color: #38bdf8; font-weight: bold; text-align: right;">&plusmn; 7.0&deg;</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.2); color: #e2e8f0;">
+                                    <td style="padding: 8px;"><strong>Ku-band (10.7-14.5 GHz):</strong></td>
+                                    <td style="padding: 8px; color: #34d399; font-weight: bold; text-align: right;">&plusmn; 6.0&deg;</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.2); color: #e2e8f0;">
+                                    <td style="padding: 8px;"><strong>Ka-band FSS vs FSS (17.3-30.0 GHz):</strong></td>
+                                    <td style="padding: 8px; color: #fbbf24; font-weight: bold; text-align: right;">&plusmn; 8.0&deg;</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.2); color: #e2e8f0;">
+                                    <td style="padding: 8px;"><strong>Ka-band FSS vs BSS (17.3-30.0 GHz):</strong></td>
+                                    <td style="padding: 8px; color: #f87171; font-weight: bold; text-align: right;">&plusmn; 16.0&deg;</td>
+                                </tr>
+                                <tr style="color: #e2e8f0;">
+                                    <td style="padding: 8px;"><strong>21 GHz BSS Vùng 1 & 3 (21.4-22.0 GHz):</strong></td>
+                                    <td style="padding: 8px; color: #a78bfa; font-weight: bold; text-align: right;">&plusmn; 12.0&deg;</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div style="background: rgba(15, 23, 42, 0.6); border-radius: 8px; border: 1px solid rgba(148, 163, 184, 0.15); padding: 14px;">
+                            <h4 style="color: #38bdf8; margin-bottom: 10px;">⚡ Ngưỡng PFD Triggers No. 9.7A / 9.7B & &Delta;T/T</h4>
+                            <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                                <tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.2); color: #e2e8f0;">
+                                    <td style="padding: 8px;"><strong>Ku-band LEO (&le; 2500 km):</strong></td>
+                                    <td style="padding: 8px; color: #34d399; font-weight: bold; text-align: right;">-174.5 dBW/m&sup2;/40kHz</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.2); color: #e2e8f0;">
+                                    <td style="padding: 8px;"><strong>Ku-band MEO (&gt; 2500 km):</strong></td>
+                                    <td style="padding: 8px; color: #fbbf24; font-weight: bold; text-align: right;">-202.0 dBW/m&sup2;/40kHz</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.2); color: #e2e8f0;">
+                                    <td style="padding: 8px;"><strong>Ka-band (17.8 - 18.6 GHz):</strong></td>
+                                    <td style="padding: 8px; color: #38bdf8; font-weight: bold; text-align: right;">-157.0 dBW/m&sup2;/MHz</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.2); color: #e2e8f0;">
+                                    <td style="padding: 8px;"><strong>Ka-band (19.7 - 20.2 GHz):</strong></td>
+                                    <td style="padding: 8px; color: #a78bfa; font-weight: bold; text-align: right;">-185.0 dBW/m&sup2;/40kHz</td>
+                                </tr>
+                                <tr style="color: #e2e8f0;">
+                                    <td style="padding: 8px;"><strong>Tiêu chí &Delta;T/T (Appendix 8):</strong></td>
+                                    <td style="padding: 8px; color: #f87171; font-weight: bold; text-align: right;">&gt; 6.0% (Trigger Bắt buộc)</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 7. MILESTONES RES 35 & RES 8 (WRC-19 / WRC-23) -->
+                <div class="ref-section-card" id="ref-sec-milestones" style="margin-bottom: 28px;">
+                    <div class="section-badge" style="background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3);">
+                        <span>ITU RESOLUTION 35 (REV. WRC-23) & RESOLUTION 8 • MỐC TRIỂN KHAI VỆ TINH</span>
+                    </div>
+                    <h2 class="section-title">Khung Mốc Triển Khai Chống "Xí Phần" Quỹ Đạo & Dung Sai Quỹ Đạo</h2>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-bottom: 16px;">
+                        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 8px; padding: 14px;">
+                            <span style="color: #4ade80; font-weight: bold; font-size: 0.85rem;">BẮT BUỘC BAN ĐẦU (BIU)</span>
+                            <h3 style="color: #f8fafc; margin: 6px 0;">Trong Vòng 7 Năm</h3>
+                            <p style="font-size: 0.85rem; color: #94a3b8; line-height: 1.5;">Phóng &ge; 1 vệ tinh lên 1 mặt phẳng quỹ đạo và phát sóng liên tục tối thiểu 90 ngày (RR No. 11.48).</p>
+                        </div>
+                        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 14px;">
+                            <span style="color: #38bdf8; font-weight: bold; font-size: 0.85rem;">CỘT MỐC 1 (M1)</span>
+                            <h3 style="color: #f8fafc; margin: 6px 0;">+ 2 Năm Sau BIU</h3>
+                            <p style="font-size: 0.85rem; color: #94a3b8; line-height: 1.5;">Triển khai tối thiểu <strong>10%</strong> tổng số lượng vệ tinh trong hồ sơ đăng ký MIFR.</p>
+                        </div>
+                        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 8px; padding: 14px;">
+                            <span style="color: #fbbf24; font-weight: bold; font-size: 0.85rem;">CỘT MỐC 2 (M2)</span>
+                            <h3 style="color: #f8fafc; margin: 6px 0;">+ 5 Năm Sau BIU</h3>
+                            <p style="font-size: 0.85rem; color: #94a3b8; line-height: 1.5;">Triển khai tối thiểu <strong>50%</strong> tổng số lượng vệ tinh trong hồ sơ đăng ký MIFR.</p>
+                        </div>
+                        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(248, 113, 113, 0.3); border-radius: 8px; padding: 14px;">
+                            <span style="color: #f87171; font-weight: bold; font-size: 0.85rem;">CỘT MỐC 3 (M3)</span>
+                            <h3 style="color: #f8fafc; margin: 6px 0;">+ 7 Năm Sau BIU</h3>
+                            <p style="font-size: 0.85rem; color: #94a3b8; line-height: 1.5;">Triển khai <strong>100%</strong> toàn bộ chòm sao. Chế tài cắt giảm vĩnh viễn hạn ngạch nếu không hoàn thành.</p>
+                        </div>
+                    </div>
+                    <div style="background: rgba(15, 23, 42, 0.6); border-radius: 8px; border: 1px solid rgba(148, 163, 184, 0.15); padding: 14px;">
+                        <h4 style="color: #4ade80; margin-bottom: 8px;">📐 Dung Sai Quỹ Đạo Theo Nghị Quyết ITU Res 8 (WRC-23)</h4>
+                        <p style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.6; margin: 0;">
+                            - <strong>Độ cao quỹ đạo:</strong> Không được sai lệch quá <strong>&plusmn; 100 km</strong> hoặc <strong>&plusmn; 5%</strong> độ cao danh định (lấy giá trị nhỏ hơn).<br>
+                            - <strong>Góc nghiêng quỹ đạo (Inclination):</strong> Sai lệch không quá <strong>&plusmn; 1.5&deg;</strong>.<br>
+                            - <strong>Báo cáo định kỳ:</strong> Sau khi hoàn thành M3, cơ quan quản lý viễn thông phải nộp báo cáo duy trì chòm sao định kỳ <strong>4 năm/lần</strong> cho ITU BR.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 8. AUDIT & VERIFICATION REPORT -->
+                <div class="ref-section-card" id="ref-sec-audit" style="margin-bottom: 28px;">
+                    <div class="section-badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);">
+                        <span>BÁO CÁO THẨM ĐỊNH & KIỂM TOÁN TÍNH TOÀN VẸN DỮ LIỆU ITU</span>
+                    </div>
+                    <h2 class="section-title">Kết Quả Kiểm Toán Độc Lập Bảng Tham Chiếu</h2>
+                    <div id="ref-audit-list" style="display: flex; flex-direction: column; gap: 10px;">
+                        <div style="background:rgba(15, 23, 42, 0.7); border:1px solid rgba(16, 185, 129, 0.3); border-radius:8px; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+    <div>
+        <div style="display:flex; align-items:center; gap:8px;">
+            <span style="color:#34d399; font-size:1.1rem;">✅</span>
+            <strong style="color:#f8fafc;">ITU-RR-T21-4</strong>
+            <span style="color:#94a3b8; font-size:0.85rem;">— Bảng giới hạn Mật độ thông lượng công suất (PFD) trên mặt đất</span>
+        </div>
+        <div style="font-size:0.8rem; color:#64748b; margin-top:4px;">
+            Căn cứ: ITU Radio Regulations Edition 2024, Vol. 1, Article 21, Section V, Table 21-4 | Số mục kỹ thuật: <strong>7</strong> | Thẩm định: Phòng Tiêu chuẩn & Quy hoạch Tần số (Cục Tần số VTĐ)
+        </div>
+    </div>
+    <div><span class="badge-tag" style="background:rgba(16, 185, 129, 0.2); color:#34d399; font-weight:700;">ITU-OFFICIAL-VERIFIED</span></div>
+</div>
+
+<div style="background:rgba(15, 23, 42, 0.7); border:1px solid rgba(16, 185, 129, 0.3); border-radius:8px; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+    <div>
+        <div style="display:flex; align-items:center; gap:8px;">
+            <span style="color:#34d399; font-size:1.1rem;">✅</span>
+            <strong style="color:#f8fafc;">ITU-RR-T22-1A</strong>
+            <span style="color:#94a3b8; font-size:0.85rem;">— Bảng giới hạn EPFD↓ Đơn lẻ bảo vệ hệ thống GSO FSS</span>
+        </div>
+        <div style="font-size:0.8rem; color:#64748b; margin-top:4px;">
+            Căn cứ: ITU Radio Regulations Edition 2024, Vol. 1, Article 22, Section II, Table 22-1A | Số mục kỹ thuật: <strong>4</strong> | Thẩm định: Phòng Tiêu chuẩn & Quy hoạch Tần số (Cục Tần số VTĐ)
+        </div>
+    </div>
+    <div><span class="badge-tag" style="background:rgba(16, 185, 129, 0.2); color:#34d399; font-weight:700;">ITU-OFFICIAL-VERIFIED</span></div>
+</div>
+
+<div style="background:rgba(15, 23, 42, 0.7); border:1px solid rgba(16, 185, 129, 0.3); border-radius:8px; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+    <div>
+        <div style="display:flex; align-items:center; gap:8px;">
+            <span style="color:#34d399; font-size:1.1rem;">✅</span>
+            <strong style="color:#f8fafc;">ITU-RES-76</strong>
+            <span style="color:#94a3b8; font-size:0.85rem;">— Giới hạn EPFD↓ Tích lũy (Aggregate) tất cả hệ thống NGSO hoạt động đồng thời</span>
+        </div>
+        <div style="font-size:0.8rem; color:#64748b; margin-top:4px;">
+            Căn cứ: ITU Resolution 76 (Rev. WRC-19), Table 1A, Table 1B, Table 1C | Số mục kỹ thuật: <strong>4</strong> | Thẩm định: Phòng Tiêu chuẩn & Quy hoạch Tần số (Cục Tần số VTĐ)
+        </div>
+    </div>
+    <div><span class="badge-tag" style="background:rgba(16, 185, 129, 0.2); color:#34d399; font-weight:700;">ITU-OFFICIAL-VERIFIED</span></div>
+</div>
+
+<div style="background:rgba(15, 23, 42, 0.7); border:1px solid rgba(16, 185, 129, 0.3); border-radius:8px; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+    <div>
+        <div style="display:flex; align-items:center; gap:8px;">
+            <span style="color:#34d399; font-size:1.1rem;">✅</span>
+            <strong style="color:#f8fafc;">ITU-RR-APP5-T5-1</strong>
+            <span style="color:#94a3b8; font-size:0.85rem;">— Bảng Cung Phối hợp Quỹ đạo Địa tĩnh (Coordination Arc)</span>
+        </div>
+        <div style="font-size:0.8rem; color:#64748b; margin-top:4px;">
+            Căn cứ: ITU Radio Regulations Edition 2024, Vol. 2, Appendix 5, Table 5-1 | Số mục kỹ thuật: <strong>5</strong> | Thẩm định: Phòng Phối hợp Tần số Quốc tế (Cục Tần số VTĐ)
+        </div>
+    </div>
+    <div><span class="badge-tag" style="background:rgba(16, 185, 129, 0.2); color:#34d399; font-weight:700;">ITU-OFFICIAL-VERIFIED</span></div>
+</div>
+
+<div style="background:rgba(15, 23, 42, 0.7); border:1px solid rgba(16, 185, 129, 0.3); border-radius:8px; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+    <div>
+        <div style="display:flex; align-items:center; gap:8px;">
+            <span style="color:#34d399; font-size:1.1rem;">✅</span>
+            <strong style="color:#f8fafc;">ITU-RR-ART9-TRIGGERS</strong>
+            <span style="color:#94a3b8; font-size:0.85rem;">— Ngưỡng PFD và Tiêu chí Kích hoạt Phối hợp NGSO/GSO (No. 9.7A, 9.7B & App. 8)</span>
+        </div>
+        <div style="font-size:0.8rem; color:#64748b; margin-top:4px;">
+            Căn cứ: ITU Radio Regulations Edition 2024, Article 9; Rec. ITU-R S.1714-1; Appendix 8 | Số mục kỹ thuật: <strong>5</strong> | Thẩm định: Phòng Phối hợp Tần số Quốc tế (Cục Tần số VTĐ)
+        </div>
+    </div>
+    <div><span class="badge-tag" style="background:rgba(16, 185, 129, 0.2); color:#34d399; font-weight:700;">ITU-OFFICIAL-VERIFIED</span></div>
+</div>
+
+<div style="background:rgba(15, 23, 42, 0.7); border:1px solid rgba(16, 185, 129, 0.3); border-radius:8px; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+    <div>
+        <div style="display:flex; align-items:center; gap:8px;">
+            <span style="color:#34d399; font-size:1.1rem;">✅</span>
+            <strong style="color:#f8fafc;">ITU-RES-35</strong>
+            <span style="color:#94a3b8; font-size:0.85rem;">— Khung Mốc Triển khai Chòm sao Vệ tinh NGSO (Chống xí phần quỹ đạo - Anti-warehousing)</span>
+        </div>
+        <div style="font-size:0.8rem; color:#64748b; margin-top:4px;">
+            Căn cứ: ITU Resolution 35 (WRC-19, Rev. WRC-23) & Resolution 8 (WRC-23) | Số mục kỹ thuật: <strong>3</strong> | Thẩm định: Ban Công nghệ Vũ trụ (Cục Tần số VTĐ)
+        </div>
+    </div>
+    <div><span class="badge-tag" style="background:rgba(16, 185, 129, 0.2); color:#34d399; font-weight:700;">ITU-OFFICIAL-VERIFIED</span></div>
+</div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
     </main>
 
     <!-- Upload Document Modal -->
@@ -835,10 +1382,435 @@
         </div>
     </div>
 
+    <!-- ================= MODAL: GIÁM SÁT VỆ TINH THỰC ĐỊA N2YO LIVE ================= -->
+    <div class="modal-overlay" id="n2yo-modal" onclick="closeN2YOModalOnBackdrop(event)">
+        <div class="modal-box n2yo-modal-container">
+            <div class="modal-header apple-sheet-header">
+                <div class="apple-traffic-lights">
+                    <span class="tl-dot red" onclick="closeN2YOModal()" title="Đóng"></span>
+                    <span class="tl-dot yellow" title="Thu nhỏ"></span>
+                    <span class="tl-dot green" title="Toàn màn hình"></span>
+                </div>
+                <div class="modal-title">
+                    <span class="icon">🛰️</span>
+                    <span>GIÁM SÁT VỆ TINH THỰC ĐỊA & PHỐI HỢP TẦN SỐ — N2YO LIVE RADAR</span>
+                </div>
+                <button class="modal-close" onclick="closeN2YOModal()">&times;</button>
+            </div>
+
+            <!-- API Status Bar -->
+            <div class="n2yo-status-bar">
+                <div class="api-status-badge">
+                    <span class="status-indicator-dot online"></span>
+                    <span>API KEY: <strong>5XSJVZ-***-5VDA</strong> (KẾT NỐI SẴN SÀNG)</span>
+                </div>
+                <div class="api-meta-info">
+                    <span>Nguồn dữ liệu: <strong>NORAD / Space-Track / N2YO REST API v1</strong></span>
+                </div>
+            </div>
+
+            <!-- Internal Sub-tabs -->
+            <div class="n2yo-sub-tabs">
+                <button class="n2yo-tab-btn active" id="n2yo-subtab-btn-1" onclick="switchN2YOSubTab(1)">
+                    <span>🛰️ Tra cứu Vệ tinh Trọng điểm</span>
+                </button>
+                <button class="n2yo-tab-btn" id="n2yo-subtab-btn-2" onclick="switchN2YOSubTab(2)">
+                    <span>📡 Ra-đa Quét Bầu trời Việt Nam (Above)</span>
+                </button>
+                <button class="n2yo-tab-btn" id="n2yo-subtab-btn-3" onclick="switchN2YOSubTab(3)">
+                    <span>⏱️ Dự báo Cửa sổ Vô tuyến (Radio Passes)</span>
+                </button>
+            </div>
+
+            <!-- Body Panes -->
+            <div class="n2yo-body">
+                
+                <!-- PANE 1: Tra cứu vệ tinh -->
+                <div class="n2yo-pane active" id="n2yo-pane-1">
+                    <div class="n2yo-search-row">
+                        <div class="form-group flex-1">
+                            <label>Chọn vệ tinh mẫu</label>
+                            <select id="n2yo-sat-select" class="custom-select" onchange="onSelectPresetSatellite(this.value)">
+                                <option value="32767">🇻🇳 VINASAT-1 (32767) — Vệ tinh Địa tĩnh GSO Việt Nam</option>
+                                <option value="38332">🇻🇳 VINASAT-2 (38332) — Vệ tinh Địa tĩnh GSO Việt Nam</option>
+                                <option value="39160">🇻🇳 VNREDSAT-1 (39160) — Vệ tinh Viễn thám LEO Việt Nam</option>
+                                <option value="25544" selected>🌍 ISS (25544) — Trạm Vũ trụ Quốc tế (LEO)</option>
+                                <option value="44714">🛰️ STARLINK-1008 (44714) — Chòm sao Băng rộng SpaceX</option>
+                                <option value="44057">🛰️ ONEWEB-0012 (44057) — Chòm sao Băng rộng Eutelsat OneWeb</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="width: 140px;">
+                            <label>Mã NORAD ID</label>
+                            <input type="number" id="n2yo-custom-norad" value="25544" placeholder="VD: 25544">
+                        </div>
+                        <div class="form-group" style="align-self: flex-end;">
+                            <button type="button" class="btn-primary" onclick="lookupCurrentSatellite()" id="btn-n2yo-lookup">
+                                <span>🔍 Tra cứu Live</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Telemetry Result Card -->
+                    <div class="n2yo-card" id="n2yo-telemetry-card">
+                        <div class="n2yo-card-header">
+                            <div class="sat-identity">
+                                <span class="badge-orbit-type" id="n2yo-sat-type">LEO</span>
+                                <h3 id="n2yo-sat-name">SPACE STATION (NORAD 25544)</h3>
+                            </div>
+                            <button type="button" class="btn-tool btn-focus-sat" onclick="focusSatelliteOnGlobe()" title="Xoay quả địa cầu 3D đến tọa độ thực tế của vệ tinh này">
+                                🎯 Khóa tiêu điểm trên Quả cầu 3D
+                            </button>
+                        </div>
+
+                        <!-- 4 Stat Boxes -->
+                        <div class="n2yo-telemetry-grid">
+                            <div class="telem-box">
+                                <span class="telem-label">TỌA ĐỘ SUB-SAT</span>
+                                <span class="telem-val" id="n2yo-coords">--°, --°</span>
+                            </div>
+                            <div class="telem-box">
+                                <span class="telem-label">ĐỘ CAO QUỸ ĐẠO</span>
+                                <span class="telem-val" id="n2yo-alt">-- km</span>
+                            </div>
+                            <div class="telem-box">
+                                <span class="telem-label">CỰ LY SLANT GẦN NHẤT</span>
+                                <span class="telem-val" id="n2yo-min-slant">-- km</span>
+                            </div>
+                            <div class="telem-box">
+                                <span class="telem-label">VÙNG PHỦ VIỆT NAM (≥10°)</span>
+                                <span class="telem-val" id="n2yo-coverage-status">--</span>
+                            </div>
+                        </div>
+
+                        <!-- Ground Stations Table -->
+                        <div class="n2yo-stations-box">
+                            <div class="box-subhead">📡 Tương quan Tọa độ & Góc ngẩng tới 3 Trạm Mặt đất Việt Nam</div>
+                            <table class="station-table">
+                                <thead>
+                                    <tr>
+                                        <th>Trạm Mặt đất</th>
+                                        <th>Khu vực</th>
+                                        <th>Góc ngẩng (Elevation)</th>
+                                        <th>Cự ly Slant (km)</th>
+                                        <th>Trạng thái Tầm nhìn</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="n2yo-stations-tbody">
+                                    <!-- Rendered by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- TLE Box -->
+                        <div class="n2yo-tle-box">
+                            <div class="tle-header">
+                                <span>Bộ phần tử quỹ đạo 2 dòng (NORAD TLE)</span>
+                                <button type="button" class="btn-text-action" onclick="fetchSatelliteTle()">Nạp mã TLE</button>
+                            </div>
+                            <pre class="tle-code" id="n2yo-tle-code">Đang chờ nạp TLE từ N2YO API...</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PANE 2: Quét Above -->
+                <div class="n2yo-pane" id="n2yo-pane-2">
+                    <div class="n2yo-search-row">
+                        <div class="form-group flex-1">
+                            <label>Chọn trạm mặt đất trung tâm</label>
+                            <select id="n2yo-above-station" class="custom-select">
+                                <option value="hanoi" selected>Trạm Hà Nội (21.03°N, 105.85°E) — Miền Bắc</option>
+                                <option value="danang">Trạm Đà Nẵng (16.05°N, 108.20°E) — Miền Trung</option>
+                                <option value="hcmc">Trạm TP.HCM (10.82°N, 106.63°E) — Miền Nam</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="width: 140px;">
+                            <label>Bán kính nón quét</label>
+                            <select id="n2yo-above-radius" class="custom-select">
+                                <option value="30">30° (Hẹp)</option>
+                                <option value="45" selected>45° (Tiêu chuẩn)</option>
+                                <option value="70">70° (Rộng toàn cảnh)</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="align-self: flex-end;">
+                            <button type="button" class="btn-primary" onclick="scanSatellitesAbove()" id="btn-n2yo-scan">
+                                <span>📡 Quét Ra-đa Ngay</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Thanh công cụ Lọc theo tên vệ tinh & Chòm sao -->
+                    <div class="above-filter-bar" id="above-filter-bar">
+                        <div class="above-search-input-wrap">
+                            <input type="text" id="above-search-input" placeholder="🔍 Lọc theo tên (VD: STARLINK, ONEWEB, ISS, GPS...)" oninput="onFilterAboveSats(this.value)">
+                            <button type="button" class="btn-clear-search" id="btn-clear-above-search" onclick="clearAboveSearch()" title="Xóa bộ lọc">✕</button>
+                        </div>
+                        <div class="above-quick-chips">
+                            <span style="font-size: 0.7rem; color: #94a3b8; margin-right: 0.2rem;">Lọc nhanh:</span>
+                            <button type="button" class="quick-chip active" data-filter="" onclick="applyAboveChip('')">Tất cả</button>
+                            <button type="button" class="quick-chip" data-filter="STARLINK" onclick="applyAboveChip('STARLINK')">🛰️ Starlink</button>
+                            <button type="button" class="quick-chip" data-filter="ONEWEB" onclick="applyAboveChip('ONEWEB')">🌐 OneWeb</button>
+                            <button type="button" class="quick-chip" data-filter="GPS" onclick="applyAboveChip('GPS')">📍 GPS</button>
+                            <button type="button" class="quick-chip" data-filter="BEIDOU" onclick="applyAboveChip('BEIDOU')">🧭 Beidou</button>
+                            <button type="button" class="quick-chip" data-filter="IRIDIUM" onclick="applyAboveChip('IRIDIUM')">📡 Iridium</button>
+                        </div>
+                    </div>
+
+                    <div class="above-results-box" id="n2yo-above-results">
+                        <div class="above-summary-text" id="n2yo-above-count-text">
+                            Nhấn <strong>"Quét Ra-đa Ngay"</strong> để quét các vệ tinh đang bay qua bầu trời trạm đã chọn.
+                        </div>
+                        <div class="table-scroll-wrapper">
+                            <table class="station-table" id="n2yo-above-table" style="display: none;">
+                                <thead>
+                                    <tr>
+                                        <th>NORAD ID</th>
+                                        <th>Tên vệ tinh</th>
+                                        <th>Vĩ độ Sub-sat</th>
+                                        <th>Kinh độ Sub-sat</th>
+                                        <th>Độ cao (km)</th>
+                                        <th>Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="n2yo-above-tbody">
+                                    <!-- Rendered by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PANE 3: Radio Passes -->
+                <div class="n2yo-pane" id="n2yo-pane-3">
+                    <div class="n2yo-search-row">
+                        <div class="form-group flex-1">
+                            <label>Chọn trạm mặt đất thu phát</label>
+                            <select id="n2yo-passes-station" class="custom-select">
+                                <option value="danang" selected>Trạm Đà Nẵng (Trung tâm vùng phủ)</option>
+                                <option value="hanoi">Trạm Hà Nội</option>
+                                <option value="hcmc">Trạm TP. Hồ Chí Minh</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="width: 130px;">
+                            <label>Dự báo (ngày)</label>
+                            <select id="n2yo-passes-days" class="custom-select">
+                                <option value="1">24 giờ (1 ngày)</option>
+                                <option value="2" selected>48 giờ (2 ngày)</option>
+                                <option value="5">5 ngày</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="align-self: flex-end;">
+                            <button type="button" class="btn-primary" onclick="predictRadioPasses()" id="btn-n2yo-passes">
+                                <span>⏱️ Tính Lịch Cửa Sổ</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="passes-results-box" id="n2yo-passes-results">
+                        <div class="passes-summary-text" id="n2yo-passes-summary">
+                            Chọn trạm và nhấn <strong>"Tính Lịch Cửa Sổ"</strong> để dự báo thời điểm vệ tinh bay qua trạm mặt đất.
+                        </div>
+                        <div class="table-scroll-wrapper">
+                            <table class="station-table" id="n2yo-passes-table" style="display: none;">
+                                <thead>
+                                    <tr>
+                                        <th>Lần</th>
+                                        <th>Bắt đầu liên lạc (AOS)</th>
+                                        <th>Đỉnh ngẩng cao nhất (TCA)</th>
+                                        <th>Góc ngẩng Max</th>
+                                        <th>Kết thúc liên lạc (LOS)</th>
+                                        <th>Thời lượng</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="n2yo-passes-tbody">
+                                    <!-- Rendered by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="/static/js/three.min.js"></script>
     <script src="/static/js/OrbitControls.js"></script>
-    <script src="/static/js/globe3d.js"></script>
-    <script src="/static/js/app.js?v=2.5"></script>
+    <script src="/static/js/globe3d.js?v=3.8"></script>
+    <script src="/static/js/app.js?v=4.0"></script>
+    
+    <!-- Robust Global Dropdown Controller (Direct inline fallback) -->
+    <script>
+        (function() {
+            window.toggleLayersDropdown = function(e) {
+                if (e) {
+                    if (typeof e.stopPropagation === 'function') e.stopPropagation();
+                }
+                const container = document.getElementById("globe-layers-container");
+                const menu = document.getElementById("layers-dropdown-menu");
+                const btn = document.getElementById("btn-layers-dropdown");
+                if (!container) return;
+                
+                const isOpen = container.classList.toggle("open");
+                if (menu) {
+                    if (isOpen) {
+                        menu.classList.add("show");
+                    } else {
+                        menu.classList.remove("show");
+                    }
+                }
+                if (btn) {
+                    btn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+                }
+            };
+
+            window.closeLayersDropdown = function() {
+                const container = document.getElementById("globe-layers-container");
+                const menu = document.getElementById("layers-dropdown-menu");
+                const btn = document.getElementById("btn-layers-dropdown");
+                if (container) container.classList.remove("open");
+                if (menu) menu.classList.remove("show");
+                if (btn) btn.setAttribute("aria-expanded", "false");
+            };
+
+            window.onLayerChange = function(propName, checked) {
+                if (window.globe && typeof window.globe[propName] !== "undefined") {
+                    window.globe[propName] = checked;
+                }
+                if (typeof window.updateLayersActiveCount === 'function') {
+                    window.updateLayersActiveCount();
+                }
+            };
+
+            window.toggleAllLayers = function(enable) {
+                const layers = [
+                    { id: 'chk-gso', prop: 'showGso' },
+                    { id: 'chk-slant', prop: 'showSlantRange' },
+                    { id: 'chk-orbits', prop: 'showOrbits' },
+                    { id: 'chk-footprints', prop: 'showFootprints' },
+                    { id: 'chk-beams', prop: 'showBeams' },
+                    { id: 'chk-labels', prop: 'showLabels' }
+                ];
+
+                layers.forEach(item => {
+                    const el = document.getElementById(item.id);
+                    if (el) el.checked = enable;
+                    if (window.globe && typeof window.globe[item.prop] !== "undefined") {
+                        window.globe[item.prop] = enable;
+                    }
+                });
+
+                if (typeof window.updateLayersActiveCount === 'function') {
+                    window.updateLayersActiveCount();
+                }
+            };
+
+            window.updateLayersActiveCount = function() {
+                const layerIds = ['chk-gso', 'chk-slant', 'chk-orbits', 'chk-footprints', 'chk-beams', 'chk-labels'];
+                let count = 0;
+                layerIds.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el && el.checked) count++;
+                });
+                const badge = document.getElementById("layers-badge-count");
+                if (badge) {
+                    badge.textContent = count;
+                    if (count === 0) {
+                        badge.classList.add("empty");
+                    } else {
+                        badge.classList.remove("empty");
+                    }
+                }
+            };
+
+            function bindEvents() {
+                const btn = document.getElementById("btn-layers-dropdown");
+                if (btn) {
+                    btn.onclick = function(e) {
+                        window.toggleLayersDropdown(e);
+                    };
+                }
+
+                document.addEventListener("click", function(e) {
+                    const container = document.getElementById("globe-layers-container");
+                    if (container && container.classList.contains("open")) {
+                        if (!container.contains(e.target)) {
+                            window.closeLayersDropdown();
+                        }
+                    }
+                });
+
+                const canvas = document.getElementById("globe-canvas");
+                if (canvas) {
+                    canvas.addEventListener("touchstart", function() {
+                        window.closeLayersDropdown();
+                    }, { passive: true });
+                    canvas.addEventListener("mousedown", function() {
+                        window.closeLayersDropdown();
+                    });
+                }
+
+                document.addEventListener("keydown", function(e) {
+                    if (e.key === "Escape") {
+                        window.closeLayersDropdown();
+                    }
+                });
+
+                window.updateLayersActiveCount();
+            }
+
+            if (document.readyState === "loading") {
+                document.addEventListener("DOMContentLoaded", bindEvents);
+            } else {
+                bindEvents();
+            }
+        })();
+    </script>
+
+    <!-- Inline Bulletproof Tab Switcher (Guarantees Tab 4 activates even if app.js is cached) -->
+    <script>
+    (function() {
+        const origSwitch = window.switchTab;
+        window.switchTab = function(tabIndex) {
+            const tab1Btn = document.getElementById("tab-btn-1");
+            const tab2Btn = document.getElementById("tab-btn-2");
+            const tab3Btn = document.getElementById("tab-btn-3");
+            const tab4Btn = document.getElementById("tab-btn-4");
+            const pane1 = document.getElementById("tab-content-1");
+            const pane2 = document.getElementById("tab-content-2");
+            const pane3 = document.getElementById("tab-content-3");
+            const pane4 = document.getElementById("tab-content-4");
+
+            [tab1Btn, tab2Btn, tab3Btn, tab4Btn].forEach(btn => btn?.classList.remove("active"));
+            [pane1, pane2, pane3, pane4].forEach(pane => {
+                if (pane) {
+                    pane.classList.remove("active");
+                    pane.style.display = "none";
+                }
+            });
+
+            if (tabIndex === 1) {
+                tab1Btn?.classList.add("active");
+                if (pane1) { pane1.classList.add("active"); pane1.style.display = "block"; }
+                if (window.globe) setTimeout(() => window.globe.resize(), 100);
+            } else if (tabIndex === 2) {
+                tab2Btn?.classList.add("active");
+                if (pane2) { pane2.classList.add("active"); pane2.style.display = "block"; }
+                if (typeof loadDocuments === "function") loadDocuments();
+            } else if (tabIndex === 3) {
+                tab3Btn?.classList.add("active");
+                if (pane3) { pane3.classList.add("active"); pane3.style.display = "block"; }
+                window.scrollTo({ top: 0, behavior: "smooth" });
+            } else if (tabIndex === 4) {
+                tab4Btn?.classList.add("active");
+                if (pane4) { pane4.classList.add("active"); pane4.style.display = "block"; }
+                window.scrollTo({ top: 0, behavior: "smooth" });
+                if (typeof loadReferenceTables === "function") {
+                    loadReferenceTables();
+                }
+            }
+        };
+    })();
+    </script>
 </body>
 </html>

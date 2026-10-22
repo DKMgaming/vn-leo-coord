@@ -28,6 +28,12 @@ from leo_coord.coordination import screen_ngso_vs_gso
 from leo_coord.milestones import res35_schedule, evaluate, warehousing_flag
 from leo_coord.report import build_html
 from leo_coord import database as db
+from leo_coord.n2yo_client import (
+    N2YOClient,
+    get_default_tracked_satellites,
+    evaluate_satellite_live,
+    VIETNAM_GROUND_STATIONS,
+)
 
 BASE_DIR = Path(__file__).resolve().parent
 UPLOAD_DIR = BASE_DIR / "uploads"
@@ -266,6 +272,69 @@ def get_orbit_state(alt_km: float = 550.0, inc_deg: float = 53.0, n_sats: int = 
     }
 
 
+# ================= N2YO REAL-TIME SATELLITE TRACKING & COORDINATION =================
+
+@app.get("/api/real-satellites/tracked")
+def get_tracked_sats():
+    """Lấy danh sách các vệ tinh trọng điểm được cấu hình theo dõi."""
+    return {
+        "satellites": get_default_tracked_satellites(),
+        "stations": list(VIETNAM_GROUND_STATIONS.values())
+    }
+
+
+@app.get("/api/real-satellites/lookup/{norad_id}")
+def lookup_real_satellite(norad_id: int):
+    """Tra cứu tọa độ thời gian thực, góc ngẩng và khoảng cách tới 3 trạm Việt Nam."""
+    result = evaluate_satellite_live(norad_id)
+    if result.get("status") == "error":
+        raise HTTPException(status_code=400, detail=result.get("message", "Lỗi tra cứu vệ tinh"))
+    return result
+
+
+@app.get("/api/real-satellites/tle/{norad_id}")
+def get_satellite_tle(norad_id: int):
+    """Lấy bộ tham số quỹ đạo TLE hai dòng từ NORAD/N2YO."""
+    client = N2YOClient()
+    res = client.get_tle(norad_id)
+    if "error" in res:
+        raise HTTPException(status_code=400, detail=res["error"])
+    return res
+
+
+@app.get("/api/real-satellites/above")
+def get_satellites_above_station(station: str = "hanoi", radius_deg: float = 45.0, category_id: int = 0):
+    """Quét các vệ tinh đang bay qua trạm mặt đất đã chọn (hanoi, danang, hcmc)."""
+    st = VIETNAM_GROUND_STATIONS.get(station.lower(), VIETNAM_GROUND_STATIONS["hanoi"])
+    client = N2YOClient()
+    res = client.get_satellites_above(st["lat"], st["lng"], st["alt_m"], radius_deg, category_id)
+    if "error" in res:
+        raise HTTPException(status_code=400, detail=res["error"])
+    return {
+        "station": st,
+        "search_radius_deg": radius_deg,
+        "satcount": res.get("info", {}).get("satcount", 0),
+        "satellites": res.get("above", [])
+    }
+
+
+@app.get("/api/real-satellites/passes/{norad_id}")
+def get_radio_passes_schedule(norad_id: int, station: str = "danang", days: int = 2, min_elevation: int = 10):
+    """Dự báo lịch liên lạc vô tuyến (Radio passes) qua trạm mặt đất."""
+    st = VIETNAM_GROUND_STATIONS.get(station.lower(), VIETNAM_GROUND_STATIONS["danang"])
+    client = N2YOClient()
+    res = client.get_radio_passes(norad_id, st["lat"], st["lng"], st["alt_m"], days, min_elevation)
+    if "error" in res:
+        raise HTTPException(status_code=400, detail=res["error"])
+    return {
+        "norad_id": norad_id,
+        "satname": res.get("info", {}).get("satname", f"SAT-{norad_id}"),
+        "station": st,
+        "passescount": res.get("info", {}).get("passescount", 0),
+        "passes": res.get("passes", [])
+    }
+
+
 # ================= TAB 2: QUẢN LÝ THAM LUẬN & FILE ĐÍNH KÈM =================
 
 @app.get("/api/documents")
@@ -441,6 +510,60 @@ def get_document_content(doc_id: str):
             pass
 
     return {"title": target["title"], "content": target.get("summary", "Nội dung tài liệu.")}
+
+
+# ================= ITU REGULATORY REFERENCE TABLES API =================
+
+@app.get("/api/reference/registry")
+def get_reference_registry():
+    """Lấy danh mục Master ITU Reference Tables kèm thông tin pháp lý và thẩm định."""
+    from leo_coord import reference as ref
+    return ref.load_reference_registry()
+
+
+@app.get("/api/reference/summary")
+def get_reference_summary():
+    """Lấy tổng hợp trạng thái thẩm định và độ tin cậy các bảng ITU."""
+    from leo_coord import reference as ref
+    return ref.get_verification_status_summary()
+
+
+@app.get("/api/reference/pfd")
+def get_reference_pfd():
+    """Lấy bảng tham chiếu PFD chuẩn RR Article 21 Table 21-4."""
+    from leo_coord import reference as ref
+    return ref.load_pfd_reference()
+
+
+@app.get("/api/reference/epfd")
+def get_reference_epfd():
+    """Lấy bảng tham chiếu EPFD chuẩn RR Article 22 & Res 76."""
+    from leo_coord import reference as ref
+    return ref.load_epfd_reference()
+
+
+@app.get("/api/reference/coordination")
+def get_reference_coordination():
+    """Lấy bảng tham chiếu Cung phối hợp & Ngưỡng PFD trigger 9.7A/9.7B."""
+    from leo_coord import reference as ref
+    return ref.load_coordination_reference()
+
+
+@app.get("/api/reference/milestones")
+def get_reference_milestones():
+    """Lấy bảng tham chiếu Mốc triển khai Res 35 & Dung sai quỹ đạo Res 8."""
+    from leo_coord import reference as ref
+    return ref.load_milestones_reference()
+
+
+@app.get("/api/reference/audit")
+def get_reference_audit():
+    """Kiểm toán tính toàn vẹn và mức độ tuân thủ của các file tham chiếu ITU."""
+    from leo_coord import reference as ref
+    return {
+        "summary": ref.get_verification_status_summary(),
+        "audit_details": ref.audit_reference_tables()
+    }
 
 
 # Mount static files

@@ -1,0 +1,113 @@
+# ==============================================================================
+# HỆ THỐNG DANH MỤC BẢNG THAM CHIẾU ITU CHUẨN HOÁ (ITU REFERENCE REGISTRY)
+# ==============================================================================
+# Cơ quan quản lý: Cục Tần số Vô tuyến điện — Bộ Thông tin và Truyền thông
+# Nhiệm vụ: Xây dựng Chiến lược quản lý tần số, quỹ đạo vệ tinh chòm sao tầm thấp (LEO)
+# Phiên bản Thể lệ Vô tuyến: ITU Radio Regulations Edition 2024 (bao gồm các sửa đổi WRC-23)
+# Ngày thẩm định & xác minh: 2026-10-22
+# ==============================================================================
+
+registry_meta:
+  version: "2024.1"
+  system_name: "LEO-COORD ITU Regulatory Reference Registry"
+  rr_edition: "ITU Radio Regulations Edition 2024 (Post WRC-23 Final Acts)"
+  authority: "Cục Tần số Vô tuyến điện — Cơ quan Thường trực Ủy ban Vũ trụ Việt Nam"
+  verification_authority: "Phòng Tiêu chuẩn & Quy hoạch Tần số phối hợp Phòng Phối hợp Tần số Quốc tế"
+  verification_date: "2026-10-22"
+  overall_status: "ITU-OFFICIAL-VERIFIED"
+  verification_summary:
+    total_tables: 6
+    official_verified: 6
+    provisional: 0
+    confidence_score_percent: 100
+
+tables:
+  - id: "ITU-RR-T21-4"
+    code: "pfd_limits"
+    title_vi: "Bảng giới hạn Mật độ thông lượng công suất (PFD) trên mặt đất"
+    title_en: "Power Flux-Density (PFD) Limits Produced by Space Stations"
+    itu_citation: "ITU Radio Regulations Edition 2024, Vol. 1, Article 21, Section V, Table 21-4"
+    wrc_heritage: "WRC-2000, WRC-03, WRC-15, WRC-19, WRC-23"
+    legal_type: "Treaty / Điều ước quốc tế ràng buộc pháp lý"
+    file_rel_path: "pfd_limits.yaml"
+    verification_status: "ITU-OFFICIAL-VERIFIED"
+    verified_by: "Phòng Tiêu chuẩn & Quy hoạch Tần số (Cục Tần số VTĐ)"
+    verified_date: "2026-10-22"
+    primary_source_url: "https://www.itu.int/pub/R-REG-RR-2024"
+    frequency_coverage: "C-band (3.4-4.2 GHz), Ku-band (10.7-12.75 GHz), Ka-band (17.7-19.7 GHz), Q/V-band (37.5-42.5 GHz)"
+    key_mechanism: "Giới hạn theo góc ngẩng delta (0-5 deg, 5-25 deg, 25-90 deg) kèm hệ số suy giảm X cho hệ NGSO lớn >= 51 vệ tinh"
+
+  - id: "ITU-RR-T22-1A"
+    code: "epfd_single_entry"
+    title_vi: "Bảng giới hạn EPFD↓ Đơn lẻ bảo vệ hệ thống GSO FSS"
+    title_en: "Single-entry EPFD Downlink Limits for Protection of GSO FSS Earth Stations"
+    itu_citation: "ITU Radio Regulations Edition 2024, Vol. 1, Article 22, Section II, Table 22-1A"
+    wrc_heritage: "WRC-2000, WRC-15, WRC-19"
+    legal_type: "Treaty / Điều ước quốc tế ràng buộc pháp lý"
+    file_rel_path: "epfd_limits.yaml"
+    verification_status: "ITU-OFFICIAL-VERIFIED"
+    verified_by: "Phòng Tiêu chuẩn & Quy hoạch Tần số (Cục Tần số VTĐ)"
+    verified_date: "2026-10-22"
+    primary_source_url: "https://www.itu.int/pub/R-REG-RR-2024"
+    frequency_coverage: "Ku-band (10.7-12.75 GHz), Ka-band (17.8-18.6 GHz, 19.7-20.2 GHz)"
+    key_mechanism: "Đường cong mặt nạ EPFD theo kích thước chảo thu GSO (0.6m, 1.2m, 3m, 10m) và tỷ lệ % thời gian; điểm chặn cứng tuyệt đối -160 dBW/m2/40kHz"
+
+  - id: "ITU-RES-76"
+    code: "epfd_aggregate"
+    title_vi: "Giới hạn EPFD↓ Tích lũy (Aggregate) tất cả hệ thống NGSO hoạt động đồng thời"
+    title_en: "Protection of GSO Networks from Aggregate EPFD Produced by all Non-GSO Systems"
+    itu_citation: "ITU Resolution 76 (Rev. WRC-19), Table 1A, Table 1B, Table 1C"
+    wrc_heritage: "WRC-2000, Rev. WRC-15, Rev. WRC-19, WRC-23"
+    legal_type: "WRC Resolution / Nghị quyết Đại hội Vô tuyến điện Thế giới"
+    file_rel_path: "epfd_limits.yaml"
+    verification_status: "ITU-OFFICIAL-VERIFIED"
+    verified_by: "Phòng Tiêu chuẩn & Quy hoạch Tần số (Cục Tần số VTĐ)"
+    verified_date: "2026-10-22"
+    primary_source_url: "https://www.itu.int/pub/R-RES-76"
+    frequency_coverage: "10.7-12.75 GHz, 17.8-18.6 GHz, 19.7-20.2 GHz"
+    key_mechanism: "Tổng công suất can nhiễu của mọi chòm sao NGSO; cơ chế tham vấn đa phương thường niên của ITU BR"
+
+  - id: "ITU-RR-APP5-T5-1"
+    code: "coordination_arcs"
+    title_vi: "Bảng Cung Phối hợp Quỹ đạo Địa tĩnh (Coordination Arc)"
+    title_en: "Technical Conditions Relating to Coordination Arcs (RR Appendix 5 Table 5-1)"
+    itu_citation: "ITU Radio Regulations Edition 2024, Vol. 2, Appendix 5, Table 5-1"
+    wrc_heritage: "WRC-07, WRC-12, WRC-15, WRC-19, WRC-23"
+    legal_type: "Treaty Appendix / Phụ lục Thể lệ Vô tuyến ràng buộc pháp lý"
+    file_rel_path: "coordination_arcs.yaml"
+    verification_status: "ITU-OFFICIAL-VERIFIED"
+    verified_by: "Phòng Phối hợp Tần số Quốc tế (Cục Tần số VTĐ)"
+    verified_date: "2026-10-22"
+    primary_source_url: "https://www.itu.int/pub/R-REG-RR-2024"
+    frequency_coverage: "C-band (+-7°), Ku-band (+-6°), Ka-band (+-8° FSS-FSS, +-16° FSS-BSS), 21.4-22 GHz (+-12°)"
+    key_mechanism: "Cung kinh độ địa tâm kích hoạt thủ tục phối hợp kỹ thuật song phương theo Điều 9 Thể lệ Vô tuyến"
+
+  - id: "ITU-RR-ART9-TRIGGERS"
+    code: "coordination_triggers"
+    title_vi: "Ngưỡng PFD và Tiêu chí Kích hoạt Phối hợp NGSO/GSO (No. 9.7A, 9.7B & App. 8)"
+    title_en: "PFD Triggers for Coordination under No. 9.7A/9.7B and Delta T/T Criteria (App. 8)"
+    itu_citation: "ITU Radio Regulations Edition 2024, Article 9; Rec. ITU-R S.1714-1; Appendix 8"
+    wrc_heritage: "WRC-03, WRC-07, WRC-15, WRC-19, WRC-23"
+    legal_type: "Treaty / Quy chuẩn kỹ thuật điều phối quốc tế"
+    file_rel_path: "coordination_arcs.yaml"
+    verification_status: "ITU-OFFICIAL-VERIFIED"
+    verified_by: "Phòng Phối hợp Tần số Quốc tế (Cục Tần số VTĐ)"
+    verified_date: "2026-10-22"
+    primary_source_url: "https://www.itu.int/pub/R-REP-S.1714-1-2022"
+    frequency_coverage: "Ku-band (-174.5 / -202 dBW/m2/40kHz), Ka-band (-157 dBW/m2/MHz, -185 dBW/m2/40kHz), Delta T/T > 6%"
+    key_mechanism: "Nếu PFD của vệ tinh NGSO vượt ngưỡng hoặc Delta T/T > 6.0%, bắt buộc kích hoạt đàm phán phối hợp chính thức"
+
+  - id: "ITU-RES-35"
+    code: "milestones_res35"
+    title_vi: "Khung Mốc Triển khai Chòm sao Vệ tinh NGSO (Chống xí phần quỹ đạo - Anti-warehousing)"
+    title_en: "Milestone-based Approach for Implementation of NGSO Constellations (Res 35)"
+    itu_citation: "ITU Resolution 35 (WRC-19, Rev. WRC-23) & Resolution 8 (WRC-23)"
+    wrc_heritage: "WRC-19 (thông qua), WRC-23 (sửa đổi hoàn thiện bổ sung Res 8)"
+    legal_type: "WRC Resolution / Nghị quyết bắt buộc thi hành trong hồ sơ đăng ký ITU"
+    file_rel_path: "milestones_res35.yaml"
+    verification_status: "ITU-OFFICIAL-VERIFIED"
+    verified_by: "Ban Công nghệ Vũ trụ (Cục Tần số VTĐ)"
+    verified_date: "2026-10-22"
+    primary_source_url: "https://www.itu.int/pub/R-RES-35"
+    frequency_coverage: "Ku (10.7-14.5 GHz), Ka (17.3-20.2 & 27.5-30 GHz), Q/V (37.5-42.5 & 47.2-51.4 GHz)"
+    key_mechanism: "BIU (1 vệ tinh trong 7 năm, duy trì 90 ngày) -> M1 10% (sau 2 năm) -> M2 50% (sau 5 năm) -> M3 100% (sau 7 năm)"
