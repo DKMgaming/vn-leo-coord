@@ -33,6 +33,7 @@ from leo_coord.n2yo_client import (
     get_default_tracked_satellites,
     evaluate_satellite_live,
     VIETNAM_GROUND_STATIONS,
+    calculate_look_angles,
 )
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -328,11 +329,50 @@ def get_satellites_above_station(
     res = client.get_satellites_above(st["lat"], st["lng"], st["alt_m"], radius_deg, category_id)
     if "error" in res:
         raise HTTPException(status_code=400, detail=res["error"])
+    raw_sats = res.get("above", [])
+    satellites = []
+    for s in raw_sats:
+        sat_data = dict(s)
+        slat = s.get("satlat")
+        slng = s.get("satlng")
+        salt = s.get("satalt")
+        if slat is not None and slng is not None and salt is not None:
+            try:
+                el, az, slant_km, compass = calculate_look_angles(
+                    obs_lat=st["lat"],
+                    obs_lng=st["lng"],
+                    obs_alt_m=st["alt_m"],
+                    sat_lat=float(slat),
+                    sat_lng=float(slng),
+                    sat_alt_km=float(salt)
+                )
+                sat_data["elevation"] = el
+                sat_data["azimuth"] = az
+                sat_data["azimuth_compass"] = compass
+                sat_data["slant_range_km"] = slant_km
+            except Exception:
+                sat_data["elevation"] = None
+                sat_data["azimuth"] = None
+                sat_data["azimuth_compass"] = "--"
+                sat_data["slant_range_km"] = None
+        else:
+            sat_data["elevation"] = None
+            sat_data["azimuth"] = None
+            sat_data["azimuth_compass"] = "--"
+            sat_data["slant_range_km"] = None
+        satellites.append(sat_data)
+
+    # Sắp xếp vệ tinh có góc ngẩng (Elevation) cao nhất lên đầu
+    satellites.sort(
+        key=lambda item: item["elevation"] if item.get("elevation") is not None else -999.0,
+        reverse=True
+    )
+
     return {
         "station": st,
         "search_radius_deg": radius_deg,
-        "satcount": res.get("info", {}).get("satcount", 0),
-        "satellites": res.get("above", [])
+        "satcount": len(satellites),
+        "satellites": satellites
     }
 
 

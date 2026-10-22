@@ -300,3 +300,61 @@ def evaluate_satellite_live(norad_id: int, client: Optional[N2YOClient] = None) 
         "stations": stations_analysis,
         "timestamp": pos.get("timestamp", int(time.time()))
     }
+
+
+def calculate_look_angles(
+    obs_lat: float,
+    obs_lng: float,
+    obs_alt_m: float,
+    sat_lat: float,
+    sat_lng: float,
+    sat_alt_km: float
+) -> tuple[float, float, float, str]:
+    """Tính góc ngẩng (elevation_deg), góc phương vị (azimuth_deg), cự ly nghiêng (slant_range_km)
+
+    và hướng la bàn (compass_str) từ trạm mặt đất tới vệ tinh theo hệ quy chiếu Topocentric ENU.
+    """
+    R_EARTH = 6371.0  # km
+    r_obs = R_EARTH + (float(obs_alt_m or 0.0) / 1000.0)
+    phi1 = math.radians(float(obs_lat))
+    lam1 = math.radians(float(obs_lng))
+    x1 = r_obs * math.cos(phi1) * math.cos(lam1)
+    y1 = r_obs * math.cos(phi1) * math.sin(lam1)
+    z1 = r_obs * math.sin(phi1)
+
+    r_sat = R_EARTH + float(sat_alt_km)
+    phi2 = math.radians(float(sat_lat))
+    lam2 = math.radians(float(sat_lng))
+    x2 = r_sat * math.cos(phi2) * math.cos(lam2)
+    y2 = r_sat * math.cos(phi2) * math.sin(lam2)
+    z2 = r_sat * math.sin(phi2)
+
+    dx = x2 - x1
+    dy = y2 - y1
+    dz = z2 - z1
+
+    # Chuyển đổi sang hệ trục địa phương ENU (East, North, Up) tại trạm quan sát
+    east = -math.sin(lam1) * dx + math.cos(lam1) * dy
+    north = -math.sin(phi1) * math.cos(lam1) * dx - math.sin(phi1) * math.sin(lam1) * dy + math.cos(phi1) * dz
+    up = math.cos(phi1) * math.cos(lam1) * dx + math.cos(phi1) * math.sin(lam1) * dy + math.sin(phi1) * dz
+
+    slant_km = math.sqrt(east * east + north * north + up * up)
+    sin_el = max(-1.0, min(1.0, up / max(0.001, slant_km)))
+    el_deg = math.degrees(math.asin(sin_el))
+    az_deg = (math.degrees(math.atan2(east, north)) + 360.0) % 360.0
+
+    compass_idx = round(az_deg / 45.0) % 8
+    compass_names = [
+        "B (N)",
+        "ĐB (NE)",
+        "Đ (E)",
+        "ĐN (SE)",
+        "N (S)",
+        "TN (SW)",
+        "T (W)",
+        "TB (NW)"
+    ]
+    compass_str = compass_names[compass_idx]
+
+    return round(el_deg, 2), round(az_deg, 2), round(slant_km, 1), compass_str
+

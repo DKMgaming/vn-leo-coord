@@ -69,3 +69,18 @@ def test_evaluate_satellite_live_mock(mock_urlopen):
     assert res["has_coverage_vietnam"] is True
     assert res["max_elevation_deg"] > 10.0
     assert len(res["stations"]) == 3
+
+
+def test_calculate_look_angles():
+    from leo_coord.n2yo_client import calculate_look_angles
+    # Vệ tinh ngay trên đỉnh đầu trạm ở độ cao 550km
+    el, az, slant, comp = calculate_look_angles(21.03, 105.85, 10, 21.03, 105.85, 550.0)
+    assert el == pytest.approx(90.0, abs=0.1)
+    assert slant == pytest.approx(550.0, abs=1.0)
+
+    # Vệ tinh chếch về phía bắc
+    el_n, az_n, slant_n, comp_n = calculate_look_angles(21.03, 105.85, 10, 22.03, 105.85, 550.0)
+    assert el_n < 90.0
+    assert az_n == pytest.approx(0.0, abs=0.5)
+    assert "N" in comp_n
+

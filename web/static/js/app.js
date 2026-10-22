@@ -1012,6 +1012,47 @@ let currentAboveSatellites = [];
 let currentAboveStationName = "Trạm Việt Nam";
 let currentAboveRadius = "45";
 let currentAboveFilterQuery = "";
+let currentAboveStationInfo = null;
+
+function calcLookAnglesClient(obsLat, obsLng, obsAltM, satLat, satLng, satAltKm) {
+    const R_EARTH = 6371.0;
+    const rObs = R_EARTH + ((parseFloat(obsAltM) || 0) / 1000.0);
+    const phi1 = (parseFloat(obsLat) * Math.PI) / 180.0;
+    const lam1 = (parseFloat(obsLng) * Math.PI) / 180.0;
+    const x1 = rObs * Math.cos(phi1) * Math.cos(lam1);
+    const y1 = rObs * Math.cos(phi1) * Math.sin(lam1);
+    const z1 = rObs * Math.sin(phi1);
+
+    const rSat = R_EARTH + parseFloat(satAltKm);
+    const phi2 = (parseFloat(satLat) * Math.PI) / 180.0;
+    const lam2 = (parseFloat(satLng) * Math.PI) / 180.0;
+    const x2 = rSat * Math.cos(phi2) * Math.cos(lam2);
+    const y2 = rSat * Math.cos(phi2) * Math.sin(lam2);
+    const z2 = rSat * Math.sin(phi2);
+
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const dz = z2 - z1;
+
+    const east = -Math.sin(lam1) * dx + Math.cos(lam1) * dy;
+    const north = -Math.sin(phi1) * Math.cos(lam1) * dx - Math.sin(phi1) * Math.sin(lam1) * dy + Math.cos(phi1) * dz;
+    const up = Math.cos(phi1) * Math.cos(lam1) * dx + Math.cos(phi1) * Math.sin(lam1) * dy + Math.sin(phi1) * dz;
+
+    const slantKm = Math.sqrt(east * east + north * north + up * up);
+    const sinEl = Math.max(-1.0, Math.min(1.0, up / Math.max(0.001, slantKm)));
+    const elDeg = (Math.asin(sinEl) * 180.0) / Math.PI;
+    const azDeg = ((Math.atan2(east, north) * 180.0) / Math.PI + 360.0) % 360.0;
+
+    const compassIdx = Math.round(azDeg / 45.0) % 8;
+    const compassNames = ["B (N)", "ĐB (NE)", "Đ (E)", "ĐN (SE)", "N (S)", "TN (SW)", "T (W)", "TB (NW)"];
+    return {
+        elevation: elDeg,
+        azimuth: azDeg,
+        slant_range_km: slantKm,
+        azimuth_compass: compassNames[compassIdx]
+    };
+}
+window.calcLookAnglesClient = calcLookAnglesClient;
 
 
 /* ================= 14.1. HỖ TRỢ ĐIỂM THAM CHIẾU TÙY CHỈNH (CUSTOM GROUND STATION) ================= */
@@ -1112,6 +1153,7 @@ async function scanSatellitesAbove() {
             const data = await res.json();
             currentAboveSatellites = data.satellites || [];
             currentAboveStationName = data.station ? data.station.name : stationDisplayName;
+            currentAboveStationInfo = data.station || null;
             currentAboveRadius = radius;
             renderFilteredAboveSats();
         } else {
@@ -1177,20 +1219,61 @@ function renderFilteredAboveSats() {
                 badge = '<span class="sat-badge gnss">GNSS</span>';
             }
 
+            // Fallback tính toán nếu thiếu dữ liệu từ cache cũ
+            if (s.elevation === undefined || s.elevation === null) {
+                if (currentAboveStationInfo && s.satlat != null && s.satlng != null && s.satalt != null) {
+                    const angles = calcLookAnglesClient(
+                        currentAboveStationInfo.lat,
+                        currentAboveStationInfo.lng,
+                        currentAboveStationInfo.alt_m,
+                        s.satlat,
+                        s.satlng,
+                        s.satalt
+                    );
+                    s.elevation = angles.elevation;
+                    s.azimuth = angles.azimuth;
+                    s.azimuth_compass = angles.azimuth_compass;
+                    s.slant_range_km = angles.slant_range_km;
+                }
+            }
+
+            let elHtml = '<span style="color:#64748b;">--</span>';
+            if (s.elevation !== null && s.elevation !== undefined) {
+                let elClass = 'el-badge-low';
+                if (s.elevation >= 45) elClass = 'el-badge-high';
+                else if (s.elevation >= 20) elClass = 'el-badge-med';
+                elHtml = `<span class="${elClass}">▲ ${s.elevation.toFixed(1)}°</span>`;
+            }
+
+            let azHtml = '<span style="color:#64748b;">--</span>';
+            if (s.azimuth !== null && s.azimuth !== undefined) {
+                const compass = s.azimuth_compass ? `<small class="badge-compass">${escapeHtml(s.azimuth_compass)}</small>` : '';
+                azHtml = `<span style="font-weight:600; color:#f8fafc;">${s.azimuth.toFixed(1)}°</span> ${compass}`;
+            }
+
+            const slantStr = (s.slant_range_km !== null && s.slant_range_km !== undefined)
+                ? `${Math.round(s.slant_range_km).toLocaleString()} km`
+                : '--';
+
             tr.innerHTML = `
                 <td><code>${s.satid}</code></td>
                 <td><strong>${escapeHtml(s.satname)}</strong> ${badge}</td>
-                <td>${s.satlat ? s.satlat.toFixed(2) + '°' : '--'}</td>
-                <td>${s.satlng ? s.satlng.toFixed(2) + '°' : '--'}</td>
-                <td>${s.satalt ? Math.round(s.satalt).toLocaleString() + ' km' : '--'}</td>
-                <td class="action-cell"></td>
+                <td style="font-family:'JetBrains Mono', monospace;">${elHtml}</td>
+                <td style="font-family:'JetBrains Mono', monospace;">${azHtml}</td>
+                <td><span style="color:#cbd5e1; font-family:'JetBrains Mono', monospace;">${slantStr}</span></td>
+                <td>${s.satlat != null ? s.satlat.toFixed(2) + '°' : '--'}</td>
+                <td>${s.satlng != null ? s.satlng.toFixed(2) + '°' : '--'}</td>
+                <td>${s.satalt != null ? Math.round(s.satalt).toLocaleString() + ' km' : '--'}</td>
+                <td class="action-cell" style="text-align:center;"></td>
             `;
             const actionCell = tr.querySelector(".action-cell");
             const btnLock = document.createElement("button");
             btnLock.className = "btn-tool";
             btnLock.style.cssText = "font-size:0.68rem; padding:0.2rem 0.5rem; cursor:pointer;";
             btnLock.innerHTML = "🎯 Khóa 3D";
-            btnLock.title = `Khóa vệ tinh ${s.satname} trên Quả cầu 3D`;
+            const elStr = (s.elevation !== null && s.elevation !== undefined) ? `${s.elevation.toFixed(1)}°` : '--';
+            const azStr = (s.azimuth !== null && s.azimuth !== undefined) ? `${s.azimuth.toFixed(1)}°` : '--';
+            btnLock.title = `Khóa vệ tinh ${s.satname} trên Quả cầu 3D (Góc ngẩng: ${elStr}, Phương vị: ${azStr})`;
             btnLock.onclick = function() {
                 quickFocusAboveSat(s.satid, s.satname, s.satlat, s.satlng, s.satalt);
             };
@@ -1200,7 +1283,7 @@ function renderFilteredAboveSats() {
 
         if (filtered.length > 300) {
             const trMore = document.createElement("tr");
-            trMore.innerHTML = `<td colspan="6" style="text-align:center; color:#94a3b8; font-size:0.75rem; padding:0.6rem;">... Còn ${filtered.length - 300} vệ tinh khác. Nhập thêm từ khóa để thu hẹp kết quả.</td>`;
+            trMore.innerHTML = `<td colspan="9" style="text-align:center; color:#94a3b8; font-size:0.75rem; padding:0.6rem;">... Còn ${filtered.length - 300} vệ tinh khác. Nhập thêm từ khóa để thu hẹp kết quả.</td>`;
             tbody.appendChild(trMore);
         }
     } else {

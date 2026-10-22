@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/style.css?v=3.8">
+    <link rel="stylesheet" href="/static/css/style.css?v=4.2">
 </head>
 <body class="dark-theme">
     <!-- Top Navigation Header -->
@@ -1597,12 +1597,15 @@
                             <table class="station-table" id="n2yo-above-table" style="display: none;">
                                 <thead>
                                     <tr>
-                                        <th>NORAD ID</th>
-                                        <th>Tên vệ tinh</th>
-                                        <th>Vĩ độ Sub-sat</th>
-                                        <th>Kinh độ Sub-sat</th>
-                                        <th>Độ cao (km)</th>
-                                        <th>Thao tác</th>
+                                        <th style="width: 75px;">NORAD ID</th>
+                                        <th style="min-width: 170px;">Tên vệ tinh</th>
+                                        <th style="width: 110px; color: #34d399;" title="Góc ngẩng anten so với mặt phẳng chân trời trạm quan sát">Góc ngẩng (El) ↕</th>
+                                        <th style="width: 125px; color: #38bdf8;" title="Góc phương vị (hướng la bàn) từ trạm quan sát tới vệ tinh">Phương vị (Az)</th>
+                                        <th style="width: 95px;" title="Cự ly đường thẳng từ trạm tới vệ tinh">Cự ly (km)</th>
+                                        <th style="width: 90px;">Vĩ độ Sub-sat</th>
+                                        <th style="width: 90px;">Kinh độ Sub-sat</th>
+                                        <th style="width: 95px;">Độ cao (km)</th>
+                                        <th style="width: 80px; text-align: center;">Thao tác</th>
                                     </tr>
                                 </thead>
                                 <tbody id="n2yo-above-tbody">
@@ -1705,7 +1708,7 @@
     <script src="/static/js/three.min.js"></script>
     <script src="/static/js/OrbitControls.js"></script>
     <script src="/static/js/globe3d.js?v=3.8"></script>
-    <script src="/static/js/app.js?v=4.1"></script>
+    <script src="/static/js/app.js?v=4.2"></script>
     
     <!-- Robust Global Dropdown Controller (Direct inline fallback) -->
     <script>
