@@ -1013,24 +1013,105 @@ let currentAboveStationName = "Trạm Việt Nam";
 let currentAboveRadius = "45";
 let currentAboveFilterQuery = "";
 
+
+/* ================= 14.1. HỖ TRỢ ĐIỂM THAM CHIẾU TÙY CHỈNH (CUSTOM GROUND STATION) ================= */
+function toggleCustomStationInputs(type) {
+    if (type === 'above') {
+        const val = document.getElementById('n2yo-above-station')?.value;
+        const box = document.getElementById('above-custom-station-box');
+        if (box) box.style.display = (val === 'custom') ? 'block' : 'none';
+    } else if (type === 'passes') {
+        const val = document.getElementById('n2yo-passes-station')?.value;
+        const box = document.getElementById('passes-custom-station-box');
+        if (box) box.style.display = (val === 'custom') ? 'block' : 'none';
+    }
+}
+window.toggleCustomStationInputs = toggleCustomStationInputs;
+
+function setAboveCustomStation(name, lat, lng, alt) {
+    if (document.getElementById('above-custom-name')) document.getElementById('above-custom-name').value = name;
+    if (document.getElementById('above-custom-lat')) document.getElementById('above-custom-lat').value = lat;
+    if (document.getElementById('above-custom-lng')) document.getElementById('above-custom-lng').value = lng;
+    if (document.getElementById('above-custom-alt')) document.getElementById('above-custom-alt').value = alt;
+}
+window.setAboveCustomStation = setAboveCustomStation;
+
+function setPassesCustomStation(name, lat, lng, alt) {
+    if (document.getElementById('passes-custom-name')) document.getElementById('passes-custom-name').value = name;
+    if (document.getElementById('passes-custom-lat')) document.getElementById('passes-custom-lat').value = lat;
+    if (document.getElementById('passes-custom-lng')) document.getElementById('passes-custom-lng').value = lng;
+    if (document.getElementById('passes-custom-alt')) document.getElementById('passes-custom-alt').value = alt;
+}
+window.setPassesCustomStation = setPassesCustomStation;
+
+function getCurrentLocationForAbove() {
+    if (!navigator.geolocation) {
+        alert("Trình duyệt không hỗ trợ Geolocation GPS.");
+        return;
+    }
+    navigator.geolocation.getCurrentPosition(
+        pos => {
+            const lat = pos.coords.latitude.toFixed(4);
+            const lng = pos.coords.longitude.toFixed(4);
+            const alt = pos.coords.altitude ? Math.round(pos.coords.altitude) : 10;
+            setAboveCustomStation("Vị trí GPS thực tế của tôi", lat, lng, alt);
+        },
+        err => alert("Không thể lấy tọa độ GPS: " + err.message)
+    );
+}
+window.getCurrentLocationForAbove = getCurrentLocationForAbove;
+
+function getCurrentLocationForPasses() {
+    if (!navigator.geolocation) {
+        alert("Trình duyệt không hỗ trợ Geolocation GPS.");
+        return;
+    }
+    navigator.geolocation.getCurrentPosition(
+        pos => {
+            const lat = pos.coords.latitude.toFixed(4);
+            const lng = pos.coords.longitude.toFixed(4);
+            const alt = pos.coords.altitude ? Math.round(pos.coords.altitude) : 10;
+            setPassesCustomStation("Vị trí GPS thực tế của tôi", lat, lng, alt);
+        },
+        err => alert("Không thể lấy tọa độ GPS: " + err.message)
+    );
+}
+window.getCurrentLocationForPasses = getCurrentLocationForPasses;
+
 async function scanSatellitesAbove() {
     const station = document.getElementById("n2yo-above-station").value;
     const radius = document.getElementById("n2yo-above-radius").value;
     const btn = document.getElementById("btn-n2yo-scan");
     const summaryText = document.getElementById("n2yo-above-count-text");
 
+    let url = `/api/real-satellites/above?station=${station}&radius_deg=${radius}`;
+    let stationDisplayName = station;
+
+    if (station === "custom") {
+        const lat = parseFloat(document.getElementById("above-custom-lat")?.value);
+        const lng = parseFloat(document.getElementById("above-custom-lng")?.value);
+        const alt = parseFloat(document.getElementById("above-custom-alt")?.value || 10);
+        const name = document.getElementById("above-custom-name")?.value || "Điểm tham chiếu Tùy chỉnh";
+        if (isNaN(lat) || isNaN(lng)) {
+            alert("Vui lòng nhập vĩ độ và kinh độ hợp lệ!");
+            return;
+        }
+        url = `/api/real-satellites/above?lat=${lat}&lng=${lng}&alt_m=${alt}&custom_name=${encodeURIComponent(name)}&radius_deg=${radius}`;
+        stationDisplayName = name;
+    }
+
     if (btn) {
         btn.disabled = true;
         btn.innerHTML = `<span>⏳ Đang quét Ra-đa...</span>`;
     }
-    summaryText.innerHTML = `Đang kết nối Ra-đa N2YO quét vệ tinh trong nón góc ${radius}° quanh trạm...`;
+    summaryText.innerHTML = `Đang kết nối Ra-đa N2YO quét vệ tinh trong nón góc ${radius}° quanh <strong>${stationDisplayName}</strong>...`;
 
     try {
-        const res = await fetch(`/api/real-satellites/above?station=${station}&radius_deg=${radius}`);
+        const res = await fetch(url);
         if (res.ok) {
             const data = await res.json();
             currentAboveSatellites = data.satellites || [];
-            currentAboveStationName = data.station ? data.station.name : station;
+            currentAboveStationName = data.station ? data.station.name : stationDisplayName;
             currentAboveRadius = radius;
             renderFilteredAboveSats();
         } else {
@@ -1186,13 +1267,29 @@ async function predictRadioPasses() {
     const table = document.getElementById("n2yo-passes-table");
     const tbody = document.getElementById("n2yo-passes-tbody");
 
+    let url = `/api/real-satellites/passes/${noradId}?station=${station}&days=${days}&min_elevation=10`;
+    let stationDisplayName = station;
+
+    if (station === "custom") {
+        const lat = parseFloat(document.getElementById("passes-custom-lat")?.value);
+        const lng = parseFloat(document.getElementById("passes-custom-lng")?.value);
+        const alt = parseFloat(document.getElementById("passes-custom-alt")?.value || 10);
+        const name = document.getElementById("passes-custom-name")?.value || "Trạm thu phát Tùy chỉnh";
+        if (isNaN(lat) || isNaN(lng)) {
+            alert("Vui lòng nhập vĩ độ và kinh độ hợp lệ!");
+            return;
+        }
+        url = `/api/real-satellites/passes/${noradId}?lat=${lat}&lng=${lng}&alt_m=${alt}&custom_name=${encodeURIComponent(name)}&days=${days}&min_elevation=10`;
+        stationDisplayName = name;
+    }
+
     if (btn) {
         btn.disabled = true;
         btn.innerHTML = `<span>⏳ Đang tính toán quỹ đạo...</span>`;
     }
 
     try {
-        const res = await fetch(`/api/real-satellites/passes/${noradId}?station=${station}&days=${days}&min_elevation=10`);
+        const res = await fetch(url);
         if (res.ok) {
             const data = await res.json();
             const passes = data.passes || [];

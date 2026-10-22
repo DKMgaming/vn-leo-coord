@@ -303,9 +303,27 @@ def get_satellite_tle(norad_id: int):
 
 
 @app.get("/api/real-satellites/above")
-def get_satellites_above_station(station: str = "hanoi", radius_deg: float = 45.0, category_id: int = 0):
-    """Quét các vệ tinh đang bay qua trạm mặt đất đã chọn (hanoi, danang, hcmc)."""
-    st = VIETNAM_GROUND_STATIONS.get(station.lower(), VIETNAM_GROUND_STATIONS["hanoi"])
+def get_satellites_above_station(
+    station: str = "hanoi",
+    radius_deg: float = 45.0,
+    category_id: int = 0,
+    lat: Optional[float] = None,
+    lng: Optional[float] = None,
+    alt_m: Optional[float] = None,
+    custom_name: Optional[str] = None
+):
+    """Quét các vệ tinh đang bay qua trạm mặt đất đã chọn (hanoi, danang, hcmc hoặc điểm tùy chỉnh)."""
+    if lat is not None and lng is not None:
+        st = {
+            "id": "custom",
+            "name": custom_name or f"Trạm Tùy chỉnh ({lat:.2f}°N, {lng:.2f}°E)",
+            "region": "Điểm tham chiếu người dùng",
+            "lat": float(lat),
+            "lng": float(lng),
+            "alt_m": float(alt_m if alt_m is not None else 10.0)
+        }
+    else:
+        st = VIETNAM_GROUND_STATIONS.get(station.lower(), VIETNAM_GROUND_STATIONS["hanoi"])
     client = N2YOClient()
     res = client.get_satellites_above(st["lat"], st["lng"], st["alt_m"], radius_deg, category_id)
     if "error" in res:
@@ -319,9 +337,28 @@ def get_satellites_above_station(station: str = "hanoi", radius_deg: float = 45.
 
 
 @app.get("/api/real-satellites/passes/{norad_id}")
-def get_radio_passes_schedule(norad_id: int, station: str = "danang", days: int = 2, min_elevation: int = 10):
-    """Dự báo lịch liên lạc vô tuyến (Radio passes) qua trạm mặt đất."""
-    st = VIETNAM_GROUND_STATIONS.get(station.lower(), VIETNAM_GROUND_STATIONS["danang"])
+def get_radio_passes_schedule(
+    norad_id: int,
+    station: str = "danang",
+    days: int = 2,
+    min_elevation: int = 10,
+    lat: Optional[float] = None,
+    lng: Optional[float] = None,
+    alt_m: Optional[float] = None,
+    custom_name: Optional[str] = None
+):
+    """Dự báo lịch liên lạc vô tuyến (Radio passes) qua trạm mặt đất (đặt sẵn hoặc tùy chỉnh)."""
+    if lat is not None and lng is not None:
+        st = {
+            "id": "custom",
+            "name": custom_name or f"Trạm Tùy chỉnh ({lat:.2f}°N, {lng:.2f}°E)",
+            "region": "Điểm tham chiếu người dùng",
+            "lat": float(lat),
+            "lng": float(lng),
+            "alt_m": float(alt_m if alt_m is not None else 10.0)
+        }
+    else:
+        st = VIETNAM_GROUND_STATIONS.get(station.lower(), VIETNAM_GROUND_STATIONS["danang"])
     client = N2YOClient()
     res = client.get_radio_passes(norad_id, st["lat"], st["lng"], st["alt_m"], days, min_elevation)
     if "error" in res:
