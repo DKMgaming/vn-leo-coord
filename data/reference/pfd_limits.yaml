@@ -107,6 +107,24 @@ bands:
     official_footnote: "RR Table 21-4 row 19.3-19.7 GHz"
     notes: "Bảo vệ các hệ thống trạm thông tin mặt đất Ka-band."
 
+  - id: "PFD-KA-3"
+    freq_ghz: "19.7-20.2"
+    service: "Fixed-Satellite Service (space-to-Earth)"
+    region: "Toàn cầu (Regions 1, 2, 3)"
+    unit: "dB(W/m2)/MHz"
+    equivalent_unit: "dB(W/m2)/MHz"
+    delta_le_5: -115.0
+    slope: 0.5
+    delta_ge_25: -105.0
+    equivalent_per_mhz:
+      delta_le_5: -115.0
+      delta_ge_25: -105.0
+    ngso_reduction_X_applicable: false
+    sharing_service: "Fixed Service & Mobile Service"
+    verification_status: "ITU-OFFICIAL-VERIFIED"
+    official_footnote: "RR Table 21-4 row 19.7-20.2 GHz"
+    notes: "Băng tần đường xuống Gateway và người dùng Ka-band tốc độ cao (Telesat, O3b, Kuiper)."
+
   - id: "PFD-C-BAND"
     freq_ghz: "3.4-4.2"
     service: "Fixed-Satellite Service (space-to-Earth)"

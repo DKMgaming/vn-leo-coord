@@ -1112,6 +1112,8 @@ body.dark-theme {
 
 .text-green { color: var(--green-pass); }
 .text-amber { color: var(--amber-warn); }
+.text-orange { color: #f97316; }
+.text-red { color: #ef4444; }
 .text-muted { color: var(--text-muted); }
 
 .report-action-bar {
@@ -3525,5 +3527,70 @@ select option:hover, select option:focus, select option:checked {
     border: 1px solid rgba(52, 211, 153, 0.6);
     color: #34d399;
 }
+
+/* ================= ITU GIBC BENCHMARK & ANTENNA PATTERNS (PHASE 1) ================= */
+.box-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.antenna-specs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+    margin-top: 10px;
+}
+.antenna-card {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 12px;
+}
+.antenna-title {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #38bdf8;
+    margin-bottom: 4px;
+}
+.antenna-desc {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    margin-bottom: 8px;
+}
+.antenna-stat {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    padding: 3px 0;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+}
+.antenna-stat:last-child {
+    border-bottom: none;
+}
+.in-line-alert-container {
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+.in-line-alert-critical {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid #ef4444;
+    color: #fca5a5;
+}
+.in-line-alert-coord {
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid #f59e0b;
+    color: #fde68a;
+}
+.in-line-alert-safe {
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid #10b981;
+    color: #a7f3d0;
+}
+
 
 

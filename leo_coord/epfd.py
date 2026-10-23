@@ -110,3 +110,143 @@ def single_entry_epfd_down(constellation, eirp_dbw_per_mhz: float, freq_ghz: flo
         "provenance": "RR Article 22 Table 22-1A anchor, index-sourced",
     }
     return result
+
+
+def simulate_s1503_cumulative_epfd(
+    constellation,
+    eirp_dbw_per_mhz: float = 10.0,
+    freq_ghz: float = 11.7,
+    victim_lat: float = 16.0544,
+    victim_lon: float = 108.2022,
+    gso_lon_deg: float = 132.0,
+    dish_d_m: float = 1.2,
+    duration_s: float = 7200.0,
+    dt_s: float = 60.0,
+    antenna_model: str = "S.580"
+) -> dict:
+    """Mô phỏng hàm phân bố tích lũy EPFD (CDF Curve) theo Khuyến nghị ITU-R S.1503-3.
+
+    Đánh giá độ tuân thủ đối với:
+    - Bảng 22-1A Thể lệ Vô tuyến (RR Article 22, Table 22-1A: Single-entry limits).
+    - Nghị quyết Resolution 76 (WRC-19, Table 1A: Aggregate EPFD limits).
+    """
+    from .antenna import itu_r_s580_pattern
+
+    times = np.arange(0.0, duration_s, dt_s)
+    sat_ecef = constellation.ecef_positions(times)  # (T, S, 3)
+    gs = _gs_ecef(victim_lat, victim_lon)
+    gso = _gs_ecef(0.0, gso_lon_deg, R_GEO)
+    bore = gso - gs
+    bore = bore / np.linalg.norm(bore)
+    up = gs / np.linalg.norm(gs)
+
+    gmax = dish_gmax_dbi(dish_d_m, freq_ghz)
+    eirp_40k = eirp_dbw_per_mhz - 10.0 * math.log10(1000.0 / 40.0)
+
+    n_t = times.size
+    epfd_series = np.full(n_t, np.nan)
+
+    for k in range(n_t):
+        sats = sat_ecef[k]  # (S, 3)
+        rho = sats - gs
+        rng = np.linalg.norm(rho, axis=1)  # km
+        los = rho / rng[:, None]
+        vis = (los @ up) > 0.0  # Vệ tinh trên đường chân trời
+
+        if not np.any(vis):
+            continue
+
+        rng_v = rng[vis]
+        los_v = los[vis]
+        r_m = rng_v * 1000.0
+
+        pfd = eirp_40k - 10.0 * np.log10(4.0 * math.pi * r_m ** 2)
+        cos_th = np.clip(los_v @ bore, -1.0, 1.0)
+        theta_deg = np.degrees(np.arccos(cos_th))
+
+        if antenna_model == "S.580":
+            g_rx = itu_r_s580_pattern(theta_deg, d_m=dish_d_m, freq_ghz=freq_ghz)
+        else:
+            g_rx = s465_gain_dbi(theta_deg, gmax)
+
+        g_rel = g_rx - gmax  # dB <= 0
+        lin_sum = np.sum(10.0 ** ((pfd + g_rel) / 10.0))
+        if lin_sum > 0:
+            epfd_series[k] = 10.0 * math.log10(lin_sum)
+
+    valid_epfd = epfd_series[np.isfinite(epfd_series)]
+    if len(valid_epfd) == 0:
+        valid_epfd = np.array([-220.0])
+
+    # Tạo đường cong tích lũy xác suất thực nghiệm CDF
+    # P(EPFD <= X)
+    sorted_epfd = np.sort(valid_epfd)
+    percent_vals = np.linspace(0.0, 100.0, 51)
+    cdf_curve = []
+    for p in percent_vals:
+        val = float(np.percentile(sorted_epfd, p))
+        cdf_curve.append({
+            "percentage": round(float(p), 1),
+            "epfd_dbw_m2_40khz": round(val, 2)
+        })
+
+    # Lấy mặt nạ chuẩn ITU Table 22-1A / Resolution 76 cho kích thước chảo
+    if dish_d_m <= 0.8:
+        mask_spec = [
+            (0.0, -170.0),
+            (90.0, -168.6),
+            (99.0, -165.3),
+            (99.97, -160.4),
+            (100.0, -160.0)
+        ]
+        mask_name = "RR Table 22-1A (Antenna 0.6m)"
+    else:
+        mask_spec = [
+            (0.0, -176.5),
+            (99.5, -173.0),
+            (99.84, -164.0),
+            (99.945, -161.5),
+            (100.0, -161.0)
+        ]
+        mask_name = "RR Table 22-1A / Res 76 (Antenna 1.2m)"
+
+    mask_comparison = []
+    min_margin = 999.0
+    all_passed = True
+
+    for pct, limit_val in mask_spec:
+        sim_val = float(np.percentile(sorted_epfd, pct))
+        # Margin: limit - simulated (Margin > 0 nghĩa là mức nhiễu thấp hơn giới hạn -> ĐẠT)
+        margin = round(limit_val - sim_val, 2)
+        is_pass = margin >= 0.0
+        if not is_pass:
+            all_passed = False
+        min_margin = min(min_margin, margin)
+
+        mask_comparison.append({
+            "percentage_of_time": pct,
+            "limit_dbw_m2_40khz": limit_val,
+            "simulated_epfd_dbw_m2_40khz": round(sim_val, 2),
+            "margin_db": margin,
+            "compliant": is_pass
+        })
+
+    return {
+        "status": "success",
+        "methodology": "Rec. ITU-R S.1503-3 (Cumulative EPFD Downlink)",
+        "dish_diameter_m": dish_d_m,
+        "gmax_dbi": round(gmax, 2),
+        "antenna_model": antenna_model,
+        "freq_ghz": freq_ghz,
+        "victim_ground_station": {"lat": victim_lat, "lon": victim_lon},
+        "target_gso_vinasat_lon": gso_lon_deg,
+        "duration_minutes": int(duration_s / 60.0),
+        "time_samples_evaluated": n_t,
+        "mask_name": mask_name,
+        "min_margin_db": round(min_margin, 2),
+        "overall_compliant": all_passed,
+        "compliance_status": "ĐẠT CHUẨN EPFD (RR ARTICLE 22 & RES 76)" if all_passed else "VƯỢT GIỚI HẠN EPFD (CAN NHIỄU KHÔNG CHẤP NHẬN ĐƯỢC)",
+        "mask_comparison": mask_comparison,
+        "cdf_curve": cdf_curve,
+    }
+

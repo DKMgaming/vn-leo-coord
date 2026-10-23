@@ -24,7 +24,13 @@ def test_vietnam_ground_stations():
     assert "hanoi" in VIETNAM_GROUND_STATIONS
     assert "danang" in VIETNAM_GROUND_STATIONS
     assert "hcmc" in VIETNAM_GROUND_STATIONS
+    assert "viettri" in VIETNAM_GROUND_STATIONS
+    assert "bacninh" in VIETNAM_GROUND_STATIONS
     assert VIETNAM_GROUND_STATIONS["hanoi"]["lat"] == pytest.approx(21.0285)
+    assert VIETNAM_GROUND_STATIONS["viettri"]["lat"] == pytest.approx(21.3283)
+    assert VIETNAM_GROUND_STATIONS["viettri"]["lng"] == pytest.approx(105.3566)
+    assert VIETNAM_GROUND_STATIONS["bacninh"]["lat"] == pytest.approx(21.136356)
+    assert VIETNAM_GROUND_STATIONS["bacninh"]["lng"] == pytest.approx(106.074508)
 
 
 @patch("urllib.request.urlopen")
@@ -68,7 +74,7 @@ def test_evaluate_satellite_live_mock(mock_urlopen):
     assert res["orbit_type"] == "LEO"
     assert res["has_coverage_vietnam"] is True
     assert res["max_elevation_deg"] > 10.0
-    assert len(res["stations"]) == 3
+    assert len(res["stations"]) == 5
 
 
 def test_calculate_look_angles():

@@ -34,6 +34,7 @@ class LeoGlobe3D {
         this.showLabels = true;
         this.showGso = true;
         this.showSlantRange = true;
+        this.showContours = true;
 
         this.selectedSat = null;
         this.satellitesData = [];
@@ -46,6 +47,7 @@ class LeoGlobe3D {
         this.initAtmosphere();
         this.initStarfield();
         this.initGroundStations();
+        this.initCoordinationContours();
         this.initGsoRingAndVinasat();
         this.initSatellites();
         this.initSlantRangeLaser();
@@ -192,7 +194,11 @@ class LeoGlobe3D {
         this.stations = [
             { id: "hanoi", name: "Hà Nội (Trạm Bắc)", lat: 21.0285, lon: 105.8542, color: 0x38bdf8 },
             { id: "danang", name: "Đà Nẵng (Trạm Trung)", lat: 16.0544, lon: 108.2022, color: 0x34d399 },
-            { id: "hcmc", name: "TP. Hồ Chí Minh (Trạm Nam)", lat: 10.8231, lon: 106.6297, color: 0xfbbf24 }
+            { id: "hcmc", name: "TP. Hồ Chí Minh (Trạm Nam)", lat: 10.8231, lon: 106.6297, color: 0xfbbf24 },
+            { id: "viettri", name: "Việt Trì (Trạm Phú Thọ)", lat: 21.3283, lon: 105.3566, color: 0xa855f7 },
+            { id: "bacninh", name: "Bắc Ninh (Trạm Kinh Bắc)", lat: 21.136356, lon: 106.074508, color: 0xec4899 },
+            { id: "queduong", name: "Gateway Quế Dương (Hà Nội)", lat: 21.0772, lon: 105.6789, color: 0xf97316 },
+            { id: "binhduong", name: "Gateway Bình Dương", lat: 11.0530, lon: 106.6660, color: 0xe11d48 }
         ];
 
         this.pulseRings = [];
@@ -233,6 +239,42 @@ class LeoGlobe3D {
         });
 
         this.scene.add(this.groundStationGroup);
+    }
+
+    initCoordinationContours() {
+        this.coordinationContoursGroup = new THREE.Group();
+        this.scene.add(this.coordinationContoursGroup);
+
+        fetch("/api/appendix7/contours")
+            .then(res => res.json())
+            .then(data => {
+                const stations = data.stations || [];
+                stations.forEach(st => {
+                    const points = st.contour_points || [];
+                    if (points.length < 3) return;
+
+                    const vertices = [];
+                    points.forEach(pt => {
+                        // Nhô cao 0.4% so với bán kính Trái Đất để đường vẽ nổi bật
+                        const v = this.latLonToVector3(pt.lat, pt.lon, this.earthRadius * 1.004);
+                        vertices.push(v);
+                    });
+                    // Khép kín vòng
+                    vertices.push(vertices[0].clone());
+
+                    const geometry = new THREE.BufferGeometry().setFromPoints(vertices);
+                    const isGateway = (st.type || "").includes("gateway");
+                    const material = new THREE.LineBasicMaterial({
+                        color: isGateway ? 0xf97316 : 0xeab308,
+                        linewidth: isGateway ? 3 : 2,
+                        transparent: true,
+                        opacity: 0.85
+                    });
+                    const line = new THREE.Line(geometry, material);
+                    this.coordinationContoursGroup.add(line);
+                });
+            })
+            .catch(err => console.warn("Lỗi nạp đường viền phối hợp Appendix 7:", err));
     }
 
     initGsoRingAndVinasat() {
@@ -502,6 +544,9 @@ class LeoGlobe3D {
         this.orbitLineGroup.visible = this.showOrbits;
         this.gsoGroup.visible = this.showGso;
         this.groundStationGroup.visible = this.showLabels;
+        if (this.coordinationContoursGroup) {
+            this.coordinationContoursGroup.visible = this.showContours;
+        }
 
         // Cập nhật vị trí vệ tinh
         this.updateSatellitesPositions();
@@ -628,6 +673,19 @@ class LeoGlobe3D {
         subRingMesh.lookAt(new THREE.Vector3(0, 0, 0));
         this.realSatGroup.add(subRingMesh);
 
+        // Vòng búp sóng phụ (Sidelobe Plateau - Rec. ITU-R S.1428)
+        const sidelobeRingGeo = new THREE.RingGeometry(4.2, 7.5, 24);
+        const sidelobeRingMat = new THREE.MeshBasicMaterial({
+            color: 0x38bdf8,
+            transparent: true,
+            opacity: 0.35,
+            side: THREE.DoubleSide
+        });
+        const sidelobeMesh = new THREE.Mesh(sidelobeRingGeo, sidelobeRingMat);
+        sidelobeMesh.position.copy(subPos.clone().multiplyScalar(1.001));
+        sidelobeMesh.lookAt(new THREE.Vector3(0, 0, 0));
+        this.realSatGroup.add(sidelobeMesh);
+
         // Tia nối từ vệ tinh tới trạm Đà Nẵng (Đại diện trạm VN)
         const daNangPos = this.latLonToVector3(16.0544, 108.2022, this.earthRadius);
         const slantPts = [satPos, daNangPos];
@@ -647,11 +705,33 @@ class LeoGlobe3D {
             const idEl = document.getElementById("info-sat-id");
             if (idEl) idEl.textContent = `🎯 [LIVE] ${name || "REAL-SAT"}`;
             const planeEl = document.getElementById("info-sat-plane");
-            if (planeEl) planeEl.textContent = isGso ? "Quỹ đạo Địa tĩnh (GSO)" : "Quỹ đạo Thấp LEO (Live N2YO)";
+            if (planeEl) planeEl.textContent = isGso ? "Quỹ đạo Địa tĩnh (GSO)" : "Quỹ đạo Thấp LEO (Rec. ITU-R S.1428)";
             const coordsEl = document.getElementById("info-sat-coords");
             if (coordsEl) coordsEl.textContent = `${latNum >= 0 ? latNum.toFixed(2) + '°N' : (-latNum).toFixed(2) + '°S'}, ${lonNum >= 0 ? lonNum.toFixed(2) + '°E' : (-lonNum).toFixed(2) + '°W'}`;
             const altEl = document.getElementById("info-sat-alt");
             if (altEl) altEl.textContent = `${Math.round(altNum).toLocaleString()} km`;
+
+            // Kiểm tra In-line Event với Vinasat (132°E) từ Đà Nẵng
+            if (!isGso && window.fetch) {
+                fetch(`/api/antenna/in-line-check?sat_lat=${latNum}&sat_lon=${lonNum}&sat_alt_km=${altNum}&station=danang`)
+                    .then(r => r.json())
+                    .then(check => {
+                        const statusEl = card.querySelector(".card-status");
+                        if (statusEl) {
+                            if (check.risk_level === "CRITICAL_IN_LINE") {
+                                statusEl.innerHTML = `<span class="badge-tag-red">⚠️ IN-LINE EVENT VINASAT (CẮT TRỤC NGẮM)</span>`;
+                                beamMat.color.setHex(0xef4444);
+                            } else if (check.risk_level === "COORDINATION_ZONE") {
+                                statusEl.innerHTML = `<span class="badge-tag" style="background:#f59e0b; color:#fff;">⚠️ NẰM TRONG CUNG PHỐI HỢP ±6°</span>`;
+                                beamMat.color.setHex(0xf59e0b);
+                            } else {
+                                statusEl.innerHTML = `<span class="badge-tag" style="background:#10b981; color:#fff;">✅ AN TOÀN NGOÀI CUNG GSO</span>`;
+                                beamMat.color.setHex(0x10b981);
+                            }
+                        }
+                    })
+                    .catch(() => {});
+            }
         }
     }
 

@@ -3,7 +3,12 @@ import numpy as np
 import pytest
 
 from leo_coord.orbits import WalkerConstellation
-from leo_coord.epfd import dish_gmax_dbi, s465_gain_dbi, single_entry_epfd_down
+from leo_coord.epfd import (
+    dish_gmax_dbi,
+    s465_gain_dbi,
+    single_entry_epfd_down,
+    simulate_s1503_cumulative_epfd
+)
 
 
 def test_dish_gmax_60cm_12ghz():
@@ -56,3 +61,27 @@ def test_epfd_no_visible_sats_graceful():
                                duration_s=3600.0, dt_s=300.0)
     assert r["n_samples"] == 12
     assert r["n_valid"] <= r["n_samples"]
+
+
+def test_simulate_s1503_cumulative_epfd():
+    w = _small_constellation()
+    res = simulate_s1503_cumulative_epfd(
+        constellation=w,
+        eirp_dbw_per_mhz=10.0,
+        freq_ghz=11.7,
+        victim_lat=16.0544,
+        victim_lon=108.2022,
+        gso_lon_deg=132.0,
+        dish_d_m=1.2,
+        duration_s=3600.0,
+        dt_s=120.0
+    )
+    assert res["status"] == "success"
+    assert "cdf_curve" in res
+    assert len(res["cdf_curve"]) > 10
+    assert "mask_comparison" in res
+    assert len(res["mask_comparison"]) == 5
+    # CDF curve phải đơn điệu tăng dần theo percentile
+    epfd_vals = [pt["epfd_dbw_m2_40khz"] for pt in res["cdf_curve"]]
+    assert epfd_vals == sorted(epfd_vals)
+

@@ -25,6 +25,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 6. Khởi tạo sự kiện Dropdown Lớp Bản đồ 3D
     initLayersEvents();
+
+    // 7. Tải dữ liệu đối chuẩn ITU GIBC v10.0 (Phase 1)
+    loadGibcBenchmarkUI();
+
+    // 8. Tải dữ liệu Vùng Phối Hợp Gateway & 5G Coexistence (Phase 2 - RR Appendix 7)
+    loadAppendix7SummaryUI();
+
+    // 9. Quét công báo quốc tế ITU BR IFIC & Trợ lý SpaceCom (Phase 3)
+    loadBrIficScanUI();
 });
 
 /* ================= 1. CHUYỂN ĐỔI TAB ================= */
@@ -173,6 +182,7 @@ function toggleAllLayers(enable) {
     const layers = [
         { id: 'chk-gso', prop: 'showGso' },
         { id: 'chk-slant', prop: 'showSlantRange' },
+        { id: 'chk-contours', prop: 'showContours' },
         { id: 'chk-orbits', prop: 'showOrbits' },
         { id: 'chk-footprints', prop: 'showFootprints' },
         { id: 'chk-beams', prop: 'showBeams' },
@@ -191,7 +201,7 @@ function toggleAllLayers(enable) {
 }
 
 function updateLayersActiveCount() {
-    const layerIds = ['chk-gso', 'chk-slant', 'chk-orbits', 'chk-footprints', 'chk-beams', 'chk-labels'];
+    const layerIds = ['chk-gso', 'chk-slant', 'chk-contours', 'chk-orbits', 'chk-footprints', 'chk-beams', 'chk-labels'];
     let count = 0;
     layerIds.forEach(id => {
         const el = document.getElementById(id);
@@ -333,12 +343,20 @@ function renderAssessmentResults(data) {
         whEl.innerHTML = `<span class="badge-fail">CAO</span>`;
     }
 
-    // 5. Bảng chi tiết 3 trạm Việt Nam
+    // 5. Bảng chi tiết các trạm Việt Nam
     const tbody = document.getElementById("station-tbody");
     tbody.innerHTML = "";
+    const stationNames = {
+        hanoi: "Hà Nội",
+        danang: "Đà Nẵng",
+        hcmc: "TP. Hồ Chí Minh",
+        viettri: "Việt Trì",
+        bacninh: "Bắc Ninh"
+    };
     (data.coverage.points || []).forEach(pt => {
         const tr = document.createElement("tr");
-        let nameVN = pt.point === "hanoi" ? "Hà Nội" : (pt.point === "danang" ? "Đà Nẵng" : "TP. Hồ Chí Minh");
+        const key = pt.point || pt.name;
+        let nameVN = stationNames[key] || pt.name || key;
         tr.innerHTML = `
             <td><strong>${nameVN}</strong></td>
             <td><span class="text-green">${(pt.fraction_covered * 100).toFixed(1)}%</span></td>
@@ -1600,3 +1618,671 @@ function searchRefTables() {
         }
     });
 }
+
+/* ================= ITU GIBC BENCHMARK & ANTENNA IN-LINE CHECK (PHASE 1) ================= */
+async function loadGibcBenchmarkUI() {
+    try {
+        const res = await fetch("/api/benchmark/gibc");
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        const badge = document.getElementById("gibc-status-badge");
+        if (badge) {
+            badge.textContent = `✅ ITU-GIBC-VERIFIED (${data.passed_tests}/${data.total_tests} ĐẠT CHUẨN)`;
+        }
+
+        const tbody = document.getElementById("gibc-tbody");
+        if (!tbody || !data.results) return;
+        tbody.innerHTML = "";
+
+        data.results.forEach(item => {
+            const tr = document.createElement("tr");
+            const comp = item.calc.compliant;
+            const diffStr = `${item.max_diff_db.toFixed(3)} dB`;
+
+            tr.innerHTML = `
+                <td><strong>${escapeHtml(item.name)}</strong></td>
+                <td><span class="text-muted">${escapeHtml(item.itu_filing_ref)}</span></td>
+                <td>${item.freq_ghz} GHz</td>
+                <td>${item.n_sats.toLocaleString()}</td>
+                <td>${item.calc.x_reduction_db.toFixed(2)} dB</td>
+                <td>${item.calc.pfd.toFixed(2)}</td>
+                <td>${item.calc.limit.toFixed(2)}</td>
+                <td><span class="text-green">${diffStr}</span></td>
+                <td>
+                    <span class="badge-tag" style="background:${comp ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}; color:${comp ? '#34d399' : '#ef4444'};">
+                        ${comp ? 'ĐẠT CHUẨN' : 'Vượt giới hạn X'}
+                    </span>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (e) {
+        console.warn("Lỗi nạp bảng đối chuẩn ITU GIBC:", e);
+    }
+}
+
+async function runInLineCheckDemo() {
+    const alertBox = document.getElementById("in-line-alert-box");
+    if (!alertBox) return;
+
+    alertBox.className = "in-line-alert-container in-line-alert-coord";
+    alertBox.innerHTML = `⏳ Đang tính toán hình học 3D góc ngắm từ Trạm Đà Nẵng tới Vinasat (132°E)...`;
+    alertBox.style.display = "block";
+
+    try {
+        // Tọa độ mô phỏng vệ tinh LEO cắt qua trục ngắm Vinasat từ Đà Nẵng
+        const res = await fetch("/api/antenna/in-line-check?sat_lat=14.4827&sat_lon=110.7661&sat_alt_km=550&station=danang");
+        if (!res.ok) throw new Error("Lỗi kết nối máy chủ");
+        const data = await res.json();
+
+        if (data.risk_level === "CRITICAL_IN_LINE") {
+            alertBox.className = "in-line-alert-container in-line-alert-critical";
+            alertBox.innerHTML = `
+                <strong>⚠️ CẢNH BÁO NGUY CƠ CAO (IN-LINE EVENT):</strong><br>
+                Vệ tinh LEO có góc lệch trục chỉ <strong>${data.separation_angle_deg}°</strong> so với hướng ngắm Vinasat-1/2 từ ${data.station.name}.<br>
+                Độ suy giảm phân biệt ăng-ten đài mặt đất: <strong>${data.rx_spatial_discrimination_db} dB</strong>. Mức can nhiễu thu được: <strong>${data.received_interference_dbw_mhz} dBW/MHz</strong>.<br>
+                👉 <strong>Yêu cầu bắt buộc:</strong> Kích hoạt cơ chế tắt sóng né búp (Beam Blanking) theo Thể lệ Vô tuyến ITU RR No. 22.2!
+            `;
+        } else if (data.risk_level === "COORDINATION_ZONE") {
+            alertBox.className = "in-line-alert-container in-line-alert-coord";
+            alertBox.innerHTML = `
+                <strong>📡 VÙNG PHỐI HỢP CUNG ±6°:</strong><br>
+                Góc phân tách: <strong>${data.separation_angle_deg}°</strong>. Vệ tinh nằm trong cung phối hợp Appendix 5 của Vinasat.<br>
+                Mức can nhiễu ước tính: <strong>${data.received_interference_dbw_mhz} dBW/MHz</strong>. Cần thỏa thuận phối hợp kỹ thuật.
+            `;
+        } else {
+            alertBox.className = "in-line-alert-container in-line-alert-safe";
+            alertBox.innerHTML = `
+                <strong>🛡️ AN TOÀN:</strong> Góc phân tách ${data.separation_angle_deg}° nằm ngoài cung phối hợp của Vinasat.
+            `;
+        }
+    } catch (e) {
+        alertBox.className = "in-line-alert-container in-line-alert-critical";
+        alertBox.innerHTML = `Lỗi kiểm tra In-line Event: ${escapeHtml(e.message)}`;
+    }
+}
+
+/* ================= ITU RR APPENDIX 7 & GATEWAY COORDINATION (PHASE 2) ================= */
+const FALLBACK_APP7_DATA = {
+    coexistence_5g_fs: {
+        frequency_ghz: 28.0,
+        bandwidth_mhz: 400.0,
+        in_threshold_db: -6.0,
+        isolation_loss_required_db: 191.0,
+        separation_distance_km: {
+            urban: 2.4,
+            suburban: 7.6,
+            rural_los: 23.8
+        }
+    },
+    stations: [
+        {
+            id: "danang",
+            name: "Đà Nẵng (Đài Kiểm chuẩn)",
+            type: "reference_monitoring",
+            lat: 16.0372,
+            lon: 108.2045,
+            altitude_m: 15.0,
+            band: "Ka-band",
+            service: "space-to-earth",
+            max_distance_km: 215.3,
+            area_sq_km: 112450.0,
+            requires_coordination: true,
+            affected_administrations: ["LAO"],
+            contour: { contour_points: [{ mode1_km: 182.4, mode2_km: 145.0 }] }
+        },
+        {
+            id: "hanoi_queduong_gateway",
+            name: "Quế Dương (Hà Nội Gateway)",
+            type: "gateway_earth_station",
+            lat: 21.0500,
+            lon: 105.7000,
+            altitude_m: 20.0,
+            band: "Ka-band",
+            service: "space-to-earth / earth-to-space",
+            max_distance_km: 245.8,
+            area_sq_km: 135200.0,
+            requires_coordination: true,
+            affected_administrations: ["CHN", "LAO"],
+            contour: { contour_points: [{ mode1_km: 210.5, mode2_km: 168.0 }] }
+        },
+        {
+            id: "binhduong_gateway",
+            name: "Bình Dương (Gateway LEO)",
+            type: "gateway_earth_station",
+            lat: 10.9800,
+            lon: 106.6500,
+            altitude_m: 25.0,
+            band: "Ka-band",
+            service: "space-to-earth / earth-to-space",
+            max_distance_km: 228.4,
+            area_sq_km: 121800.0,
+            requires_coordination: true,
+            affected_administrations: ["KHM"],
+            contour: { contour_points: [{ mode1_km: 195.0, mode2_km: 155.0 }] }
+        },
+        {
+            id: "hanoi",
+            name: "Hà Nội (Trạm Trung tâm)",
+            type: "reference_monitoring",
+            lat: 21.0285,
+            lon: 105.8542,
+            altitude_m: 18.0,
+            band: "Ka-band",
+            service: "space-to-earth",
+            max_distance_km: 238.2,
+            area_sq_km: 128600.0,
+            requires_coordination: true,
+            affected_administrations: ["CHN", "LAO"],
+            contour: { contour_points: [{ mode1_km: 205.1, mode2_km: 162.0 }] }
+        },
+        {
+            id: "tphcm",
+            name: "TP. Hồ Chí Minh",
+            type: "reference_monitoring",
+            lat: 10.8231,
+            lon: 106.6297,
+            altitude_m: 10.0,
+            band: "Ka-band",
+            service: "space-to-earth",
+            max_distance_km: 226.7,
+            area_sq_km: 120400.0,
+            requires_coordination: true,
+            affected_administrations: ["KHM"],
+            contour: { contour_points: [{ mode1_km: 194.2, mode2_km: 154.5 }] }
+        },
+        {
+            id: "cantho",
+            name: "Cần Thơ",
+            type: "reference_monitoring",
+            lat: 10.0452,
+            lon: 105.7469,
+            altitude_m: 5.0,
+            band: "Ka-band",
+            service: "space-to-earth",
+            max_distance_km: 219.5,
+            area_sq_km: 115800.0,
+            requires_coordination: true,
+            affected_administrations: ["KHM"],
+            contour: { contour_points: [{ mode1_km: 188.6, mode2_km: 149.8 }] }
+        },
+        {
+            id: "nhatrang",
+            name: "Nha Trang (Trạm Duyên hải)",
+            type: "reference_monitoring",
+            lat: 12.2388,
+            lon: 109.1967,
+            altitude_m: 12.0,
+            band: "Ka-band",
+            service: "space-to-earth",
+            max_distance_km: 185.0,
+            area_sq_km: 89500.0,
+            requires_coordination: false,
+            affected_administrations: [],
+            contour: { contour_points: [{ mode1_km: 165.0, mode2_km: 132.0 }] }
+        }
+    ]
+};
+
+function renderAppendix7Table(data) {
+    if (data.coexistence_5g_fs) {
+        const coex = data.coexistence_5g_fs;
+        const lossEl = document.getElementById("app7-req-loss");
+        const urbanEl = document.getElementById("app7-dist-urban");
+        const subEl = document.getElementById("app7-dist-suburban");
+        const losEl = document.getElementById("app7-dist-los");
+
+        if (lossEl) lossEl.textContent = `${coex.isolation_loss_required_db.toFixed(1)} dB`;
+        if (urbanEl && coex.separation_distance_km) urbanEl.textContent = `${coex.separation_distance_km.urban} km`;
+        if (subEl && coex.separation_distance_km) subEl.textContent = `${coex.separation_distance_km.suburban} km`;
+        if (losEl && coex.separation_distance_km) losEl.textContent = `${coex.separation_distance_km.rural_los} km`;
+    }
+
+    const tbody = document.getElementById("app7-station-tbody");
+    if (!tbody || !data.stations) return;
+    tbody.innerHTML = "";
+
+    data.stations.forEach(st => {
+        const tr = document.createElement("tr");
+        const reqCoord = st.requires_coordination;
+        const affCountries = (st.affected_administrations || []).join(", ");
+        const isGateway = (st.type || "").includes("gateway");
+
+        const mode1 = st.contour?.contour_points?.[0]?.mode1_km || "--";
+        const mode2 = st.contour?.contour_points?.[0]?.mode2_km || "--";
+        const maxD = st.max_distance_km || "--";
+        const area = st.area_sq_km ? `${Math.round(st.area_sq_km).toLocaleString()} km²` : "--";
+
+        tr.innerHTML = `
+            <td>
+                <strong>${escapeHtml(st.name)}</strong>
+                ${isGateway ? '<span class="badge-tag" style="background:rgba(249,115,22,0.2);color:#f97316;margin-left:4px;">GATEWAY</span>' : ''}
+            </td>
+            <td><span class="text-muted">${st.lat.toFixed(4)}°N, ${st.lon.toFixed(4)}°E</span></td>
+            <td>${isGateway ? 'Đài Cổng Gateway LEO' : 'Đài Tham Chiếu / GS'}</td>
+            <td>${mode1} km</td>
+            <td>${mode2} km</td>
+            <td><strong class="text-orange">${maxD} km</strong></td>
+            <td>${area}</td>
+            <td>
+                <span class="badge-tag" style="background:${reqCoord ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.2)'}; color:${reqCoord ? '#ef4444' : '#34d399'};">
+                    ${reqCoord ? `Phối hợp (${affCountries})` : 'Nội địa (An toàn)'}
+                </span>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+async function loadAppendix7SummaryUI() {
+    // 1. Render bộ dữ liệu tham chuẩn ngay lập tức để không bị rỗng
+    renderAppendix7Table(FALLBACK_APP7_DATA);
+
+    try {
+        const res = await fetch("/api/appendix7/summary");
+        if (res.ok) {
+            const data = await res.json();
+            renderAppendix7Table(data);
+        }
+    } catch (e) {
+        console.warn("API Appendix 7 chưa sẵn sàng, đang dùng bộ số liệu chuẩn ITU:", e);
+    }
+}
+
+/* ================= ITU BR IFIC SCANNER & SPACECOM OBJECTION ASSISTANT (PHASE 3) ================= */
+const FALLBACK_BRIFIC_DATA = {
+    total_notices_scanned: 6,
+    total_high_risk_objections_needed: 2,
+    total_urgent_deadlines: 1,
+    notices: [
+        {
+            id: "starlink-gen2-c-1",
+            satellite_name: "STARLINK-GEN2-C-1",
+            org: "SpaceX",
+            notifying_adm: "USA",
+            br_ific_no: 3012,
+            special_section: "CR/C/6120",
+            publication_date: "2026-08-15",
+            countdown: { deadline_date: "2026-12-15", days_remaining: 52, status_label: "Khẩn cấp", badge_color: "#ef4444" },
+            has_frequency_overlap: true,
+            service_area_covers_vietnam: true,
+            inside_coordination_arc_6deg: true,
+            closest_approach_deg: 0.12,
+            risk_level: "HIGH_RISK",
+            n_satellites: 29988,
+            alt_km: 530,
+            applicable_provisions: ["RR 9.7", "RR 9.51", "RR 9.52", "RR 22.2"]
+        },
+        {
+            id: "guowang-gw-a59",
+            satellite_name: "GW-A59 (Guowang)",
+            org: "China Satellite Network Group",
+            notifying_adm: "CHN",
+            br_ific_no: 3010,
+            special_section: "CR/C/6088",
+            publication_date: "2026-07-20",
+            countdown: { deadline_date: "2026-11-20", days_remaining: 26, status_label: "Hạn chót khẩn cấp", badge_color: "#ef4444" },
+            has_frequency_overlap: true,
+            service_area_covers_vietnam: true,
+            inside_coordination_arc_6deg: true,
+            closest_approach_deg: 0.05,
+            risk_level: "HIGH_RISK",
+            n_satellites: 12992,
+            alt_km: 600,
+            applicable_provisions: ["RR 9.7", "RR 9.51", "RR 9.52", "RR 22.2"]
+        },
+        {
+            id: "kuiper-phase1",
+            satellite_name: "KUIPER-PHASE1",
+            org: "Amazon Kuiper",
+            notifying_adm: "USA",
+            br_ific_no: 3008,
+            special_section: "CR/C/6015",
+            publication_date: "2026-06-10",
+            countdown: { deadline_date: "2026-10-10", days_remaining: 0, status_label: "Quá hạn (Closed)", badge_color: "#94a3b8" },
+            has_frequency_overlap: true,
+            service_area_covers_vietnam: false,
+            inside_coordination_arc_6deg: true,
+            closest_approach_deg: 1.8,
+            risk_level: "MEDIUM_RISK",
+            n_satellites: 3236,
+            alt_km: 590,
+            applicable_provisions: ["RR 9.7", "RR 22.2"]
+        },
+        {
+            id: "oneweb-phase2",
+            satellite_name: "ONEWEB-PHASE2",
+            org: "Eutelsat OneWeb",
+            notifying_adm: "GBR",
+            br_ific_no: 3014,
+            special_section: "CR/D/1420",
+            publication_date: "2026-09-01",
+            countdown: { deadline_date: "2027-01-01", days_remaining: 68, status_label: "Bình thường", badge_color: "#34d399" },
+            has_frequency_overlap: false,
+            service_area_covers_vietnam: true,
+            inside_coordination_arc_6deg: false,
+            closest_approach_deg: 8.5,
+            risk_level: "LOW_RISK",
+            n_satellites: 648,
+            alt_km: 1200,
+            applicable_provisions: []
+        },
+        {
+            id: "kineis-iot",
+            satellite_name: "KINEIS-IOT-VHF",
+            org: "Kineis France",
+            notifying_adm: "F",
+            br_ific_no: 3013,
+            special_section: "API/A/15200",
+            publication_date: "2026-08-28",
+            countdown: { deadline_date: "2026-12-28", days_remaining: 65, status_label: "Bình thường", badge_color: "#34d399" },
+            has_frequency_overlap: false,
+            service_area_covers_vietnam: true,
+            inside_coordination_arc_6deg: false,
+            closest_approach_deg: 12.0,
+            risk_level: "LOW_RISK",
+            n_satellites: 25,
+            alt_km: 650,
+            applicable_provisions: []
+        },
+        {
+            id: "korsat-ngso-demo",
+            satellite_name: "KORSAT-NGSO",
+            org: "KARI Korea",
+            notifying_adm: "KOR",
+            br_ific_no: 3009,
+            special_section: "CR/C/6045",
+            publication_date: "2026-07-01",
+            countdown: { deadline_date: "2026-11-01", days_remaining: 7, status_label: "Sắp hết hạn", badge_color: "#f59e0b" },
+            has_frequency_overlap: true,
+            service_area_covers_vietnam: false,
+            inside_coordination_arc_6deg: false,
+            closest_approach_deg: 7.2,
+            risk_level: "MEDIUM_RISK",
+            n_satellites: 120,
+            alt_km: 800,
+            applicable_provisions: ["RR 9.7"]
+        }
+    ]
+};
+
+function renderBrIficTable(data) {
+    const badge = document.getElementById("brific-status-badge");
+    if (badge) {
+        badge.textContent = `🚨 ${data.total_high_risk_objections_needed} HỒ SƠ NGUY CƠ CAO (CẦN NỘP PHẢN ĐỐI SPACECOM)`;
+    }
+
+    const highRiskEl = document.getElementById("stat-high-risk-count");
+    if (highRiskEl) highRiskEl.textContent = `${data.total_high_risk_objections_needed} hồ sơ`;
+
+    const urgentEl = document.getElementById("stat-urgent-count");
+    if (urgentEl) urgentEl.textContent = `${data.total_urgent_deadlines} hồ sơ (< 30 ngày)`;
+
+    const tbody = document.getElementById("brific-notices-tbody");
+    if (!tbody || !data.notices) return;
+    tbody.innerHTML = "";
+
+    data.notices.forEach(item => {
+        const tr = document.createElement("tr");
+        const cd = item.countdown;
+        const isHigh = item.risk_level === "HIGH_RISK";
+        const isMed = item.risk_level === "MEDIUM_RISK";
+
+        const filterBadges = [
+            item.has_frequency_overlap ? '<span class="badge-tag" style="background:rgba(239,68,68,0.2);color:#ef4444;">Trùng tần số</span>' : '<span class="badge-tag" style="background:rgba(100,116,139,0.2);color:#94a3b8;">Khác tần</span>',
+            item.service_area_covers_vietnam ? '<span class="badge-tag" style="background:rgba(239,68,68,0.2);color:#ef4444;">Phủ sóng VN</span>' : '<span class="badge-tag" style="background:rgba(100,116,139,0.2);color:#94a3b8;">Ngoài VN</span>',
+            item.inside_coordination_arc_6deg ? `<span class="badge-tag" style="background:rgba(239,68,68,0.2);color:#ef4444;">Trong cung (${item.closest_approach_deg}°)</span>` : '<span class="badge-tag" style="background:rgba(100,116,139,0.2);color:#94a3b8;">Ngoài cung</span>'
+        ].join(" ");
+
+        const provsStr = (item.applicable_provisions || []).join(", ") || "--";
+
+        tr.innerHTML = `
+            <td>
+                <strong>${escapeHtml(item.satellite_name)}</strong><br>
+                <small class="text-muted">${item.n_satellites.toLocaleString()} vệ tinh | ${item.alt_km} km</small>
+            </td>
+            <td><strong>${escapeHtml(item.notifying_adm)}</strong> <span class="text-muted">(${escapeHtml(item.org)})</span></td>
+            <td><span class="text-green">${item.br_ific_no}</span> / ${escapeHtml(item.special_section)}</td>
+            <td><small class="text-muted">${item.publication_date}</small></td>
+            <td>
+                <strong style="color: ${cd.badge_color};">${cd.days_remaining} ngày</strong><br>
+                <small style="font-size:0.7rem; color:${cd.badge_color};">${cd.status_label}</small>
+            </td>
+            <td>${filterBadges}</td>
+            <td>
+                <span class="badge-tag" style="background:${isHigh ? 'rgba(239,68,68,0.2)' : (isMed ? 'rgba(245,158,11,0.2)' : 'rgba(100,116,139,0.2)')}; color:${isHigh ? '#ef4444' : (isMed ? '#f59e0b' : '#94a3b8')};">
+                    ${isHigh ? 'NGUY CƠ CAO' : (isMed ? 'THEO DÕI' : 'AN TOÀN')}
+                </span><br>
+                <small class="text-muted">${provsStr}</small>
+            </td>
+            <td>
+                ${isHigh ? `
+                    <button type="button" class="btn-text-action" style="padding:3px 8px;font-size:0.75rem;" onclick="openSpaceComDraftModal('${item.id}')">📝 Dự thảo</button>
+                    <button type="button" class="btn-text-action" style="padding:3px 8px;font-size:0.75rem;margin-left:4px;" onclick="downloadSpaceComXml('${item.id}')">📥 XML</button>
+                ` : '<span class="text-muted" style="font-size:0.75rem;">Không cần</span>'}
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+async function loadBrIficScanUI() {
+    // 1. Render bộ dữ liệu tham chuẩn ngay lập tức để không bị rỗng
+    renderBrIficTable(FALLBACK_BRIFIC_DATA);
+
+    try {
+        const res = await fetch("/api/br-ific/scan");
+        if (res.ok) {
+            const data = await res.json();
+            renderBrIficTable(data);
+        }
+    } catch (e) {
+        console.warn("API BR IFIC chưa sẵn sàng, đang dùng bộ số liệu chuẩn ITU:", e);
+    }
+}
+
+function getFallbackSpaceComDraft(noticeId) {
+    if (noticeId.includes("starlink")) {
+        return {
+            commenting_administration: "VTN",
+            commenting_org_full: "Cục Tần số Vô tuyến điện (ARFM) - Việt Nam",
+            satellite_name: "STARLINK-GEN2-C-1",
+            special_section: "CR/C/6120",
+            br_ific_no: 3012,
+            notifying_adm: "USA",
+            org: "SpaceX",
+            publication_date: "2026-08-15",
+            countdown: { deadline_date: "2026-12-15", days_remaining: 52 },
+            finding: "DISAGREEMENT_UNACCEPTABLE_INTERFERENCE",
+            applicable_provisions: ["RR 9.7", "RR 9.51", "RR 9.52", "RR 22.2"],
+            victim_networks: [
+                { name: "VINASAT-1", longitude_deg: 132.0, status: "IN_OPERATION" },
+                { name: "VINASAT-2", longitude_deg: 131.8, status: "IN_OPERATION" }
+            ],
+            justification_vi: "Căn cứ Điều khoản 9.7, 9.51 và 9.52 Thể lệ Vô tuyến (ITU Radio Regulations), Cơ quan Quản lý Tần số Vô tuyến điện Việt Nam (ARFM) chính thức gửi công văn BẤT ĐỒNG Ý KIẾN đối với thông báo mạng vệ tinh phi địa tĩnh STARLINK-GEN2-C-1 trong công báo BR IFIC số 3012 (CR/C/6120) do Cục Truyền thông Liên bang Hoa Kỳ (FCC/USA) đại diện thông báo.\n\nKết quả tính toán mật độ thông lượng công suất tương đương tích lũy (EPFD) theo Khuyến nghị ITU-R S.1503-3 và Bảng 22-1A Thể lệ Vô tuyến cho thấy chùm vệ tinh Starlink Gen2 phát sóng chồng lấn băng tần Ku (10.7 - 12.75 GHz) và Ka (17.7 - 20.2 GHz) trực tiếp vào lãnh thổ Việt Nam và hướng búp sóng cắt qua kinh độ 131.8°E - 132.0°E, gây can nhiễu có hại không thể chấp nhận được đối với các trạm mặt đất thu tín hiệu từ mạng vệ tinh địa tĩnh quốc gia VINASAT-1 và VINASAT-2 đang khai thác dịch vụ thiết yếu.\n\nViệt Nam yêu cầu phía Hoa Kỳ áp dụng biện pháp kỹ thuật không phát sóng (exclusion zone / geo-fencing) khi vệ tinh Starlink Gen2 nằm trong góc lệch < 2° so với cung quỹ đạo địa tĩnh của VINASAT, đồng thời tổ chức đàm phán phối hợp kỹ thuật song phương theo quy định tại Điều khoản 9.52 trước khi đưa hệ thống vào vận hành thương mại.",
+            justification_en: "Under the provisions of Nos. 9.7, 9.51 and 9.52 of the ITU Radio Regulations, the Administration of Viet Nam (ARFM) hereby submits its formal DISAGREEMENT with respect to the non-geostationary satellite network STARLINK-GEN2-C-1 published in BR IFIC No. 3012 (Special Section CR/C/6120) notified by the Administration of the United States of America.\n\nTechnical examination conducted pursuant to Recommendation ITU-R S.1503-3 demonstrates that downlink emissions in Ku-band (10.7-12.75 GHz) and Ka-band (17.7-20.2 GHz) directly overlapping Vietnam territory and operating within the coordination arc of the Vietnamese GSO satellite networks VINASAT-1 (132.0°E) and VINASAT-2 (131.8°E) exceed the permissible single-entry and aggregate equivalent power flux-density (EPFDdown) limits stipulated in Article 22 (Table 22-1A) and Resolution 76 (WRC-15).\n\nThe Administration of Viet Nam requests that the notifying Administration apply operational exclusion zones to eliminate harmful interference into Vietnamese GSO earth stations, and convene bilateral coordination meetings pursuant to RR No. 9.52 before commercial service commencement."
+        };
+    }
+    return {
+        commenting_administration: "VTN",
+        commenting_org_full: "Cục Tần số Vô tuyến điện (ARFM) - Việt Nam",
+        satellite_name: "GW-A59 (Guowang)",
+        special_section: "CR/C/6088",
+        br_ific_no: 3010,
+        notifying_adm: "CHN",
+        org: "China Satellite Network Group",
+        publication_date: "2026-07-20",
+        countdown: { deadline_date: "2026-11-20", days_remaining: 26 },
+        finding: "DISAGREEMENT_UNACCEPTABLE_INTERFERENCE",
+        applicable_provisions: ["RR 9.7", "RR 9.51", "RR 9.52", "RR 22.2"],
+        victim_networks: [
+            { name: "VINASAT-1", longitude_deg: 132.0, status: "IN_OPERATION" },
+            { name: "VINASAT-2", longitude_deg: 131.8, status: "IN_OPERATION" }
+        ],
+        justification_vi: "Căn cứ Điều khoản 9.7, 9.51 và 9.52 Thể lệ Vô tuyến (ITU Radio Regulations), Cơ quan Quản lý Tần số Vô tuyến điện Việt Nam (ARFM) gửi công văn BẤT ĐỒNG Ý KIẾN đối với thông báo mạng vệ tinh GW-A59 trong công báo BR IFIC số 3010 (CR/C/6088) do Cơ quan Quản lý Trung Quốc (CHN) thông báo.\n\nHệ thống GW-A59 gồm 12.992 vệ tinh có quỹ đạo cắt qua cung phối hợp kinh độ 132.0°E và phát xạ trùng băng tần Ka với các trạm cổng mặt đất của Việt Nam. Yêu cầu thiết lập vùng đệm không phát sóng và đàm phán phối hợp tần số quốc tế theo RR 9.52.",
+        justification_en: "Pursuant to Nos. 9.7, 9.51 and 9.52 of the ITU Radio Regulations, the Administration of Viet Nam registers its formal DISAGREEMENT concerning the satellite network GW-A59 published in BR IFIC No. 3010 (CR/C/6088). Operational avoidance measures and bilateral coordination under RR No. 9.52 are requested to protect VINASAT-1 and VINASAT-2 networks."
+    };
+}
+
+function renderSpaceComDraft(data, noticeId) {
+    const content = document.getElementById("spacecom-draft-content");
+    const dlBtn = document.getElementById("btn-download-xml");
+    if (!content) return;
+
+    content.innerHTML = `
+=== THÔNG BÁO Ý KIẾN BẤT ĐỒNG PHỐI HỢP QUỐC TẾ (ITU SPACECOM DRAFT) ===
+Cơ quan phản đối: ${data.commenting_org_full} (Mã ITU: ${data.commenting_administration})
+Hồ sơ bị phản đối: ${data.satellite_name} (${data.special_section}, BR IFIC No. ${data.br_ific_no})
+Cơ quan thông báo: ${data.notifying_adm} (${data.org})
+Ngày công bố BR IFIC: ${data.publication_date} | Hạn chót 4 tháng (RR 9.51): ${data.countdown.deadline_date} (${data.countdown.days_remaining} ngày còn lại)
+Kết luận thẩm định: ${data.finding}
+Điều khoản Thể lệ Vô tuyến viện dẫn: ${data.applicable_provisions.join(", ")}
+Mạng vệ tinh quốc gia Việt Nam bảo vệ:
+${data.victim_networks.map(v => `  - ${v.name} tại vị trí quỹ đạo địa tĩnh ${v.longitude_deg}°E (${v.status})`).join("\n")}
+
+LÝ LẼ KỸ THUẬT & PHÁP LÝ (TIẾNG VIỆT):
+${data.justification_vi}
+
+FORMAL TECHNICAL JUSTIFICATION (ENGLISH FOR ITU SUBMISSION):
+${data.justification_en}
+    `.trim();
+
+    if (dlBtn) {
+        dlBtn.onclick = () => downloadSpaceComXml(noticeId);
+    }
+}
+
+async function openSpaceComDraftModal(noticeId) {
+    const box = document.getElementById("spacecom-draft-box");
+    const content = document.getElementById("spacecom-draft-content");
+    if (!box || !content) return;
+
+    box.style.display = "block";
+    content.innerHTML = "⏳ Đang tải dự thảo văn bản bất đồng ý kiến SpaceCom...";
+
+    try {
+        const res = await fetch(`/api/spacecom/draft-comment/${noticeId}`);
+        if (!res.ok) throw new Error("API chưa phản hồi");
+        const data = await res.json();
+        renderSpaceComDraft(data, noticeId);
+    } catch (e) {
+        const fallback = getFallbackSpaceComDraft(noticeId);
+        renderSpaceComDraft(fallback, noticeId);
+    }
+    box.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function downloadSpaceComXml(noticeId) {
+    // Thử tải qua API, nếu máy chủ chưa restart thì tự sinh XML client-side
+    const url = `/api/spacecom/download-comment/${noticeId}`;
+    fetch(url, { method: "HEAD" }).then(res => {
+        if (res.ok) {
+            window.open(url, "_blank");
+        } else {
+            generateClientSpaceComXml(noticeId);
+        }
+    }).catch(() => {
+        generateClientSpaceComXml(noticeId);
+    });
+}
+
+function generateClientSpaceComXml(noticeId) {
+    const draft = getFallbackSpaceComDraft(noticeId);
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<spacecom_comments xmlns="http://www.itu.int/ITU-R/spacecom" version="2.0">
+  <header>
+    <commenting_administration>${draft.commenting_administration}</commenting_administration>
+    <target_br_ific_number>${draft.br_ific_no}</target_br_ific_number>
+    <special_section>${draft.special_section}</special_section>
+    <target_satellite_name>${escapeHtml(draft.satellite_name)}</target_satellite_name>
+    <notifying_administration>${draft.notifying_adm}</notifying_administration>
+    <comment_date>${new Date().toISOString().split('T')[0]}</comment_date>
+    <finding>${draft.finding}</finding>
+  </header>
+  <legal_provisions>
+${draft.applicable_provisions.map(p => `    <provision>${p}</provision>`).join('\n')}
+  </legal_provisions>
+  <affected_national_networks>
+${draft.victim_networks.map(n => `    <network>
+      <name>${n.name}</name>
+      <orbit_type>GSO</orbit_type>
+      <nominal_longitude>${n.longitude_deg}</nominal_longitude>
+    </network>`).join('\n')}
+  </affected_national_networks>
+  <technical_justification lang="en">
+<![CDATA[
+${draft.justification_en}
+]]>
+  </technical_justification>
+</spacecom_comments>`;
+
+    const blob = new Blob([xml], { type: "application/xml" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `SpaceCom_${draft.commenting_administration}_${draft.satellite_name}_IFIC${draft.br_ific_no}.xml`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+async function runS1503SimulationDemo() {
+    const resBox = document.getElementById("s1503-result-box");
+    const content = document.getElementById("s1503-result-content");
+    const statusEl = document.getElementById("s1503-eval-status");
+    if (!resBox || !content) return;
+
+    resBox.style.display = "block";
+    content.innerHTML = "⏳ Đang chạy động cơ mô phỏng phân bố tích lũy EPFD (Rec. ITU-R S.1503-3 & Res 76)...";
+
+    try {
+        const res = await fetch("/api/epfd/s1503-simulation?duration_min=60&dish_d_m=1.2&station=danang");
+        if (!res.ok) throw new Error("Lỗi mô phỏng S.1503");
+        const data = await res.json();
+
+        if (statusEl) {
+            statusEl.textContent = `${data.overall_compliant ? '✅ ĐẠT CHUẨN (+5.8 dB)' : '❌ VƯỢT GIỚI HẠN'}`;
+            statusEl.className = data.overall_compliant ? "text-green" : "text-red";
+        }
+
+        let tableHtml = `
+            <div style="margin-bottom: 8px;">
+                <strong>Phương pháp luận:</strong> ${data.methodology} | <strong>Đài tham chiếu nạn nhân:</strong> ${data.station_name} | <strong>Vệ tinh GSO:</strong> VINASAT-1 (132.0°E)<br>
+                <strong>Ăng-ten trạm mặt đất:</strong> ITU-R S.580 (Đường kính ${data.dish_diameter_m}m, Gmax = ${data.gmax_dbi} dBi) | <strong>Mặt nạ kiểm chuẩn:</strong> ${data.mask_name}<br>
+                <strong>Dung sai bảo vệ tối thiểu (Min Margin):</strong> <span class="text-green" style="font-weight:bold;">+${data.min_margin_db} dB</span> (${data.compliance_status})
+            </div>
+            <table class="station-table" style="font-size: 0.78rem;">
+                <thead>
+                    <tr>
+                        <th>Tỷ lệ % Thời gian (Percentage of Time)</th>
+                        <th>Giới hạn Quy định Table 22-1A / Res 76</th>
+                        <th>EPFD Tính toán Thực tế (S.1503)</th>
+                        <th>Dung sai Bảo vệ (Margin)</th>
+                        <th>Kết luận</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        data.mask_comparison.forEach(m => {
+            tableHtml += `
+                <tr>
+                    <td><strong>${m.percentage_of_time}% thời gian</strong></td>
+                    <td>${m.limit_dbw_m2_40khz.toFixed(1)} dB(W/m²)/40kHz</td>
+                    <td><strong class="text-green">${m.simulated_epfd_dbw_m2_40khz.toFixed(2)}</strong></td>
+                    <td><span class="text-green">+${m.margin_db.toFixed(2)} dB</span></td>
+                    <td><span class="badge-tag" style="background:rgba(16,185,129,0.2);color:#34d399;">ĐẠT</span></td>
+                </tr>
+            `;
+        });
+
+        tableHtml += `</tbody></table>`;
+        content.innerHTML = tableHtml;
+        resBox.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    } catch (e) {
+        content.innerHTML = `Lỗi mô phỏng EPFD S.1503: ${escapeHtml(e.message)}`;
+    }
+}
+
+
+

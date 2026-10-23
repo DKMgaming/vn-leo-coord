@@ -41,9 +41,11 @@ UPLOAD_DIR = BASE_DIR / "uploads"
 STATIC_DIR = BASE_DIR / "static"
 METADATA_FILE = UPLOAD_DIR / "documents.json"
 DATA_DIR = BASE_DIR.parent / "data"
+OUT_DIR = BASE_DIR.parent / "out"
 
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 STATIC_DIR.mkdir(parents=True, exist_ok=True)
+OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(
     title="LEO-COORD Mission Control",
@@ -260,7 +262,9 @@ def get_orbit_state(alt_km: float = 550.0, inc_deg: float = 53.0, n_sats: int = 
     ref_points = [
         {"name": "Hà Nội (Trạm Bắc)", "lat": 21.03, "lon": 105.85, "color": "#38bdf8"},
         {"name": "Đà Nẵng (Trạm Trung)", "lat": 16.05, "lon": 108.20, "color": "#34d399"},
-        {"name": "TP. Hồ Chí Minh (Trạm Nam)", "lat": 10.82, "lon": 106.63, "color": "#fbbf24"}
+        {"name": "TP. Hồ Chí Minh (Trạm Nam)", "lat": 10.82, "lon": 106.63, "color": "#fbbf24"},
+        {"name": "Việt Trì (Trạm Phú Thọ)", "lat": 21.33, "lon": 105.36, "color": "#a855f7"},
+        {"name": "Bắc Ninh (Trạm Kinh Bắc)", "lat": 21.14, "lon": 106.07, "color": "#ec4899"}
     ]
 
     return {
@@ -271,6 +275,281 @@ def get_orbit_state(alt_km: float = 550.0, inc_deg: float = 53.0, n_sats: int = 
         "ref_points": ref_points,
         "footprint_radius_km": round(footprint_radius_km(alt_km, 10.0), 1)
     }
+
+
+# ================= ITU GIBC BENCHMARK & ANTENNA PATTERNS (PHASE 1) =================
+
+@app.get("/api/benchmark/gibc")
+def get_gibc_benchmark():
+    """Lấy kết quả đối chuẩn kỹ thuật giữa LEO-COORD và phần mềm ITU GIBC v10.0."""
+    from leo_coord.reference import reference_dir
+    from leo_coord.pfd import benchmark_against_gibc
+    import yaml
+
+    bench_file = reference_dir() / "itu_gibc_benchmarks.yaml"
+    if not bench_file.exists():
+        raise HTTPException(status_code=404, detail="Không tìm thấy tệp đối chuẩn itu_gibc_benchmarks.yaml")
+    
+    raw = yaml.safe_load(bench_file.read_text(encoding="utf-8"))
+    results = []
+    tol = raw.get("benchmark_metadata", {}).get("tolerance_db", 0.05)
+    
+    for tv in raw.get("test_vectors", []):
+        evaluated = benchmark_against_gibc(tv, tolerance_db=tol)
+        results.append({
+            "id": tv.get("id"),
+            "name": tv.get("name"),
+            "operator": tv.get("operator"),
+            "category": tv.get("category"),
+            "itu_filing_ref": tv.get("itu_filing_ref"),
+            "band_range": tv.get("band_range"),
+            "freq_ghz": tv.get("freq_ghz"),
+            "alt_km": tv.get("alt_km"),
+            "n_sats": tv.get("n_sats"),
+            "eirp_dbw_per_mhz": tv.get("eirp_dbw_per_mhz"),
+            "passed": evaluated["passed"],
+            "max_diff_db": evaluated["max_diff_db"],
+            "tolerance_db": tol,
+            "calc": evaluated["calc"],
+            "expected": evaluated["expected"]
+        })
+
+    return {
+        "metadata": raw.get("benchmark_metadata", {}),
+        "total_tests": len(results),
+        "passed_tests": sum(1 for r in results if r["passed"]),
+        "results": results
+    }
+
+
+@app.get("/api/antenna/patterns")
+def get_antenna_patterns(theta_max_deg: float = 30.0, step_deg: float = 0.2):
+    """Tính toán giản đồ búp sóng ăng-ten thực tế theo Khuyến nghị ITU-R S.1428, S.672 và S.580."""
+    from leo_coord.antenna import itu_r_s1428_pattern, itu_r_s672_pattern, itu_r_s580_pattern
+    import numpy as np
+
+    th = np.arange(0.0, float(theta_max_deg) + float(step_deg) / 2.0, float(step_deg))
+    g_s1428 = itu_r_s1428_pattern(th, g_max_dbi=35.0, theta_3db_deg=2.5, l_s_db=20.0)
+    g_s672 = itu_r_s672_pattern(th, g_max_dbi=42.0, theta_3db_deg=1.5, l_s_db=20.0)
+    g_s580 = itu_r_s580_pattern(th, d_m=1.2, freq_ghz=11.7)
+
+    return {
+        "theta_deg": [round(float(x), 2) for x in th],
+        "patterns": {
+            "s1428_leo_phased_array": {
+                "name": "Rec. ITU-R S.1428 (LEO Phased Array)",
+                "g_max_dbi": 35.0,
+                "hpbw_deg": 2.5,
+                "values": [round(float(x), 2) for x in g_s1428]
+            },
+            "s672_gso_satellite": {
+                "name": "Rec. ITU-R S.672 (GSO Vinasat-1/2)",
+                "g_max_dbi": 42.0,
+                "hpbw_deg": 1.5,
+                "values": [round(float(x), 2) for x in g_s672]
+            },
+            "s580_earth_station": {
+                "name": "Rec. ITU-R S.580 (Earth Station Dish 1.2m)",
+                "dish_d_m": 1.2,
+                "freq_ghz": 11.7,
+                "values": [round(float(x), 2) for x in g_s580]
+            }
+        }
+    }
+
+
+@app.get("/api/antenna/in-line-check")
+def check_in_line_event(
+    sat_lat: float,
+    sat_lon: float,
+    sat_alt_km: float = 550.0,
+    station: str = "danang",
+    gso_lon: float = 132.0,
+    eirp_leo: float = 15.0
+):
+    """Đánh giá nguy cơ can nhiễu thẳng hàng In-line Event với Vinasat từ trạm mặt đất."""
+    from leo_coord.antenna import evaluate_in_line_event
+    st = VIETNAM_GROUND_STATIONS.get(station.lower(), VIETNAM_GROUND_STATIONS["danang"])
+    res = evaluate_in_line_event(
+        sat_lat=sat_lat,
+        sat_lon=sat_lon,
+        sat_alt_km=sat_alt_km,
+        gs_lat=st["lat"],
+        gs_lon=st["lng"],
+        gso_lon_deg=gso_lon,
+        eirp_leo_dbw_per_mhz=eirp_leo
+    )
+    res["station"] = st
+    return res
+
+
+# ================= ITU RR APPENDIX 7 & GATEWAY COORDINATION API =================
+
+@app.get("/api/appendix7/summary")
+def get_appendix7_summary(
+    freq_ghz: float = 28.5,
+    eirp_density: float = 48.0,
+    beam_azimuth: float = 180.0,
+    beam_elev: float = 25.0
+):
+    """Lấy dữ liệu thẩm định toàn diện Phụ lục 7 cho 7 đài trái đất và Gateway tại Việt Nam."""
+    from leo_coord.appendix7 import evaluate_vietnam_stations_appendix7
+    return evaluate_vietnam_stations_appendix7(
+        freq_ghz=freq_ghz,
+        eirp_density_dbw_per_mhz=eirp_density,
+        beam_azimuth_deg=beam_azimuth,
+        beam_elev_deg=beam_elev
+    )
+
+
+@app.get("/api/appendix7/contours")
+def get_appendix7_contours(
+    freq_ghz: float = 28.5,
+    eirp_density: float = 48.0
+):
+    """Lấy danh sách các đường viền phối hợp (Coordination Contours) của các trạm mặt đất."""
+    from leo_coord.appendix7 import load_appendix7_params, calculate_coordination_contour
+    params = load_appendix7_params()
+    st_dict = params.get("vietnam_stations", {})
+    results = []
+    for key, data in st_dict.items():
+        c = calculate_coordination_contour(
+            lat_deg=float(data["lat"]),
+            lon_deg=float(data["lon"]),
+            freq_ghz=freq_ghz,
+            eirp_density_dbw_per_mhz=eirp_density,
+            step_deg=10.0
+        )
+        c["key"] = key
+        c["name"] = data.get("name", key)
+        c["type"] = data.get("type", "ground_station")
+        results.append(c)
+    return {"stations": results}
+
+
+@app.post("/api/appendix7/evaluate-gateway")
+def evaluate_custom_gateway(payload: dict):
+    """Đánh giá vùng phối hợp và khả năng cùng tồn tại 5G cho một trạm Gateway tùy chỉnh."""
+    from leo_coord.appendix7 import (
+        calculate_coordination_contour,
+        evaluate_coexistence_5g_fs,
+        check_cross_border_encroachment
+    )
+    name = str(payload.get("name", "Custom Gateway"))
+    lat = float(payload.get("lat", 21.0))
+    lon = float(payload.get("lon", 105.8))
+    freq_ghz = float(payload.get("freq_ghz", 28.5))
+    eirp_density = float(payload.get("eirp_density_dbw_per_mhz", 48.0))
+    beam_az = float(payload.get("beam_azimuth_deg", 180.0))
+    beam_el = float(payload.get("beam_elev_deg", 25.0))
+    clutter_db = float(payload.get("clutter_loss_db", 15.0))
+
+    contour = calculate_coordination_contour(
+        lat_deg=lat,
+        lon_deg=lon,
+        freq_ghz=freq_ghz,
+        eirp_density_dbw_per_mhz=eirp_density,
+        beam_azimuth_deg=beam_az,
+        beam_elev_deg=beam_el,
+        clutter_loss_db=clutter_db,
+        step_deg=10.0
+    )
+
+    border = check_cross_border_encroachment(
+        station_name=name,
+        lat_deg=lat,
+        lon_deg=lon,
+        max_contour_distance_km=contour["max_distance_km"]
+    )
+
+    coex = evaluate_coexistence_5g_fs(
+        freq_ghz=freq_ghz,
+        gateway_eirp_dbw_per_mhz=eirp_density
+    )
+
+    return {
+        "gateway": {
+            "name": name,
+            "lat": lat,
+            "lon": lon,
+            "freq_ghz": freq_ghz,
+            "eirp_density_dbw_per_mhz": eirp_density,
+            "beam_azimuth_deg": beam_az,
+            "beam_elev_deg": beam_el,
+        },
+        "contour": contour,
+        "border_encroachment": border,
+        "coexistence_5g": coex,
+    }
+
+
+# ================= ITU BR IFIC SCANNER & SPACECOM OBJECTION ASSISTANT (PHASE 3) =================
+
+@app.get("/api/br-ific/scan")
+def get_br_ific_scan():
+    """Quét dữ liệu công báo quốc tế ITU BR IFIC với bộ lọc 3 lớp bảo vệ Vinasat."""
+    from leo_coord.br_ific import scan_br_ific_notices
+    return scan_br_ific_notices()
+
+
+@app.get("/api/spacecom/draft-comment/{notice_id}")
+def get_spacecom_draft_comment(notice_id: str):
+    """Tạo dự thảo hồ sơ phản đối kỹ thuật theo chuẩn ITU SpaceCom."""
+    from leo_coord.spacecom import generate_spacecom_draft
+    try:
+        return generate_spacecom_draft(notice_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get("/api/spacecom/download-comment/{notice_id}")
+def download_spacecom_comment_xml(notice_id: str):
+    """Tải tệp XML phản đối chuẩn ITU SpaceCom để nạp trực tiếp vào phần mềm ITU."""
+    from fastapi.responses import Response
+    from leo_coord.spacecom import export_spacecom_xml
+    try:
+        xml_content = export_spacecom_xml(notice_id)
+        return Response(
+            content=xml_content,
+            media_type="application/xml",
+            headers={"Content-Disposition": f'attachment; filename="SpaceCom_Objection_{notice_id}.xml"'}
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get("/api/epfd/s1503-simulation")
+def get_s1503_simulation(
+    alt_km: float = 550.0,
+    inc_deg: float = 53.0,
+    n_sats: int = 120,
+    n_planes: int = 6,
+    freq_ghz: float = 11.7,
+    eirp_dbw_per_mhz: float = 10.0,
+    dish_d_m: float = 1.2,
+    station: str = "danang",
+    gso_lon: float = 132.0,
+    duration_min: int = 60
+):
+    """Mô phỏng đường cong tích lũy xác suất EPFD CDF theo Rec. ITU-R S.1503 và kiểm chuẩn Res 76."""
+    from leo_coord.orbits import WalkerConstellation
+    from leo_coord.epfd import simulate_s1503_cumulative_epfd
+
+    st = VIETNAM_GROUND_STATIONS.get(station.lower(), VIETNAM_GROUND_STATIONS["danang"])
+    w = WalkerConstellation("SIM_S1503", alt_km, inc_deg, n_sats, n_planes, 1, "delta")
+    res = simulate_s1503_cumulative_epfd(
+        constellation=w,
+        eirp_dbw_per_mhz=eirp_dbw_per_mhz,
+        freq_ghz=freq_ghz,
+        victim_lat=st["lat"],
+        victim_lon=st["lng"],
+        gso_lon_deg=gso_lon,
+        dish_d_m=dish_d_m,
+        duration_s=float(duration_min * 60),
+        dt_s=60.0
+    )
+    res["station_name"] = st["name"]
+    return res
 
 
 # ================= N2YO REAL-TIME SATELLITE TRACKING & COORDINATION =================
@@ -643,8 +922,44 @@ def get_reference_audit():
     }
 
 
-# Mount static files
+@app.get("/out/bao_cao.html", response_class=HTMLResponse)
+@app.get("/report", response_class=HTMLResponse)
+def view_assessment_report():
+    """Xem báo cáo thẩm định HTML đầy đủ (tự động khởi tạo nếu chưa có file trên đĩa)."""
+    report_file = OUT_DIR / "bao_cao.html"
+    if not report_file.exists():
+        from leo_coord.cli import build_assessment
+        cfg = load_config()
+        demo_file = DATA_DIR / "demo" / "constellation_demo.yaml"
+        if demo_file.exists():
+            spec = yaml.safe_load(demo_file.read_text(encoding="utf-8"))
+        else:
+            spec = {
+                "name": "DEMO_LEO_KU",
+                "alt_km": 550.0,
+                "inc_deg": 53.0,
+                "n_sats": 120,
+                "n_planes": 6,
+                "phasing": 1,
+                "kind": "delta",
+                "downlink": {"band_ghz": "10.7-12.7", "freq_ghz": 11.7, "eirp_dbw_per_mhz": 10.0}
+            }
+        w = WalkerConstellation(
+            spec["name"], float(spec["alt_km"]), float(spec["inc_deg"]),
+            int(spec["n_sats"]), int(spec["n_planes"]), int(spec.get("phasing", 1)), str(spec.get("kind", "delta"))
+        )
+        biu = date(2024, 3, 1)
+        deps = [(date(2025, 6, 1), 14), (date(2028, 12, 1), 59)]
+        a = build_assessment(w, spec, cfg, gso_lon=105.5, biu_deadline=biu, deployments=deps, dish_d_m=1.2)
+        html = build_html(a)
+        OUT_DIR.mkdir(parents=True, exist_ok=True)
+        report_file.write_text(html, encoding="utf-8")
 
+    return HTMLResponse(content=report_file.read_text(encoding="utf-8"))
+
+
+# Mount static & output files
+app.mount("/out", StaticFiles(directory=str(OUT_DIR)), name="out")
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 

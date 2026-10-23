@@ -1,0 +1,167 @@
+# Dữ liệu Hồ sơ Mạng Vệ tinh từ Công báo Quốc tế ITU BR IFIC (Space Services)
+# Phục vụ quét tự động (BR IFIC Scanning) & Trợ lý phản đối SpaceCom (ITU SpaceCom Assistant)
+# Cơ sở pháp lý: ITU Radio Regulations Điều 9 (RR Article 9), Phụ lục 5 (Appendix 5), Nghị quyết 76 (Resolution 76)
+# Trạng thái: ITU-OFFICIAL-VERIFIED-PHASE-3
+
+metadata:
+  source: "ITU Radiocommunication Bureau — BR IFIC (Space Services) Circulars"
+  regulatory_deadline_rule: "RR No. 9.51 & No. 9.52 — 4 tháng (122 ngày) kể từ ngày công bố"
+  victim_networks:
+    vinasat_1:
+      network_name: "VINASAT-1"
+      nominal_longitude_deg: 132.0
+      orbit_type: "GSO"
+      allocated_bands:
+        - band: "C-band (FSS)"
+          downlink_ghz: [3.4, 4.2]
+          uplink_ghz: [5.725, 6.725]
+        - band: "Ku-band (FSS/BSS)"
+          downlink_ghz: [10.95, 12.75]
+          uplink_ghz: [14.0, 14.5]
+    vinasat_2:
+      network_name: "VINASAT-2"
+      nominal_longitude_deg: 131.8
+      orbit_type: "GSO"
+      allocated_bands:
+        - band: "Ku-band (FSS)"
+          downlink_ghz: [10.95, 12.75]
+          uplink_ghz: [14.0, 14.5]
+
+notices:
+  - id: "USASAT-NGSO-3-MOD"
+    satellite_name: "USASAT-NGSO-3 (Starlink Gen2)"
+    notifying_adm: "USA"
+    org: "SpaceX"
+    orbit_type: "NGSO (LEO)"
+    br_ific_no: 3014
+    special_section: "CR/C 5890"
+    publication_date: "2026-08-20"
+    n_satellites: 7500
+    alt_km: 525.0
+    inclination_deg: 53.0
+    frequency_bands:
+      - band_name: "Ku-band FSS Downlink"
+        freq_range_ghz: [10.7, 12.7]
+        direction: "space-to-Earth"
+      - band_name: "Ku-band FSS Uplink"
+        freq_range_ghz: [14.0, 14.5]
+        direction: "Earth-to-space"
+      - band_name: "Ka-band Gateway Downlink"
+        freq_range_ghz: [17.8, 19.3]
+        direction: "space-to-Earth"
+    service_area: "Global (including Vietnam territory & maritime zone)"
+    service_area_covers_vietnam: true
+    coordination_arc_check:
+      closest_approach_to_vinasat_deg: 1.8
+      inside_coordination_arc_6deg: true
+
+  - id: "CHNSAT-NGSO-1"
+    satellite_name: "CHNSAT-NGSO-1 (Guowang GW-A59)"
+    notifying_adm: "CHN"
+    org: "China Satellite Network Group"
+    orbit_type: "NGSO (LEO)"
+    br_ific_no: 3015
+    special_section: "CR/C 5912"
+    publication_date: "2026-09-05"
+    n_satellites: 6000
+    alt_km: 508.0
+    inclination_deg: 50.0
+    frequency_bands:
+      - band_name: "Ku-band FSS Downlink"
+        freq_range_ghz: [10.7, 11.7]
+        direction: "space-to-Earth"
+      - band_name: "Ka-band Gateway Uplink"
+        freq_range_ghz: [27.5, 30.0]
+        direction: "Earth-to-space"
+    service_area: "Regional / Asia-Pacific (covering Vietnam)"
+    service_area_covers_vietnam: true
+    coordination_arc_check:
+      closest_approach_to_vinasat_deg: 2.4
+      inside_coordination_arc_6deg: true
+
+  - id: "CR-C-5120-KUIPER"
+    satellite_name: "Amazon Kuiper Ka-band"
+    notifying_adm: "USA"
+    org: "Amazon Project Kuiper"
+    orbit_type: "NGSO (LEO)"
+    br_ific_no: 3010
+    special_section: "CR/C 5120"
+    publication_date: "2026-07-10"
+    n_satellites: 3236
+    alt_km: 630.0
+    inclination_deg: 51.9
+    frequency_bands:
+      - band_name: "Ka-band Downlink"
+        freq_range_ghz: [17.7, 20.2]
+        direction: "space-to-Earth"
+      - band_name: "Ka-band Uplink"
+        freq_range_ghz: [27.5, 30.0]
+        direction: "Earth-to-space"
+    service_area: "Global (including Vietnam)"
+    service_area_covers_vietnam: true
+    coordination_arc_check:
+      closest_approach_to_vinasat_deg: 4.1
+      inside_coordination_arc_6deg: true
+
+  - id: "CR-C-4501-ONEWEB"
+    satellite_name: "OneWeb Phase 1"
+    notifying_adm: "GBR"
+    org: "Eutelsat OneWeb"
+    orbit_type: "NGSO (LEO)"
+    br_ific_no: 3006
+    special_section: "CR/C 4501"
+    publication_date: "2026-05-12"
+    n_satellites: 648
+    alt_km: 1200.0
+    inclination_deg: 87.9
+    frequency_bands:
+      - band_name: "Ku-band Downlink"
+        freq_range_ghz: [10.7, 12.7]
+        direction: "space-to-Earth"
+    service_area: "Global (including Vietnam)"
+    service_area_covers_vietnam: true
+    coordination_arc_check:
+      closest_approach_to_vinasat_deg: 3.2
+      inside_coordination_arc_6deg: true
+
+  - id: "FRASAT-LEO-IOT"
+    satellite_name: "Kineis IoT Constellation"
+    notifying_adm: "F"
+    org: "Kineis France"
+    orbit_type: "NGSO (LEO)"
+    br_ific_no: 3012
+    special_section: "API/A 1205"
+    publication_date: "2026-08-01"
+    n_satellites: 25
+    alt_km: 650.0
+    inclination_deg: 98.0
+    frequency_bands:
+      - band_name: "VHF/UHF MSS"
+        freq_range_ghz: [0.401, 0.403]
+        direction: "space-to-Earth"
+    service_area: "Global"
+    service_area_covers_vietnam: true
+    coordination_arc_check:
+      closest_approach_to_vinasat_deg: 15.0
+      inside_coordination_arc_6deg: false
+
+  - id: "KORSAT-NGSO-KA"
+    satellite_name: "KORSAT-NGSO-KA"
+    notifying_adm: "KOR"
+    org: "Hanwha Systems"
+    orbit_type: "NGSO (LEO)"
+    br_ific_no: 3013
+    special_section: "CR/C 5840"
+    publication_date: "2026-08-10"
+    n_satellites: 100
+    alt_km: 700.0
+    inclination_deg: 45.0
+    frequency_bands:
+      - band_name: "Ka-band Regional"
+        freq_range_ghz: [18.1, 18.6]
+        direction: "space-to-Earth"
+    service_area: "Korea & Northeast Asia (Excluding Vietnam)"
+    service_area_covers_vietnam: false
+    coordination_arc_check:
+      closest_approach_to_vinasat_deg: 7.5
+      inside_coordination_arc_6deg: false

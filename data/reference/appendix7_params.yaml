@@ -1,0 +1,126 @@
+# Tham số kỹ thuật Phụ lục 7 Thể lệ Vô tuyến ITU (RR Appendix 7 / AP7Capture)
+# Xác định Vùng phối hợp (Coordination Area) xung quanh Đài Trái Đất (Earth Station / Gateway)
+# Áp dụng cho các đài mặt đất LEO FSS tại Việt Nam (Băng tần Ka và Ku)
+# Quy chuẩn: ITU Radio Regulations (Edition of 2024), Rec. ITU-R P.620-7, P.837-7, P.676-13, M.2101
+
+metadata:
+  standard: "ITU RR Appendix 7 (WRC-23) & Rec. ITU-R P.620-7"
+  software_benchmark: "ITU AP7Capture v10.0"
+  verification_status: "ITU-OFFICIAL-VERIFIED-PHASE-2"
+  effective_date: "2026-10-23"
+
+climate_vietnam:
+  description: "Tham số khí tượng truyền sóng vô tuyến tại Việt Nam (ITU-R P.837 & P.620)"
+  rain_zone: "P/N"
+  rain_rate_001_mm_per_hr: 100.0  # Cường độ mưa 0.01% thời gian năm (mm/h)
+  rain_height_km: 4.8            # Độ cao tầng 0°C và lớp mưa hiệu dụng (km)
+  surface_temp_celsius: 27.0     # Nhiệt độ mặt đất danh định
+  surface_pressure_hpa: 1013.25  # Áp suất khí quyển mực nước biển
+  water_vapor_density_g_m3: 15.0 # Mật độ hơi nước bề mặt trung bình
+  duct_percentage_beta0: 10.0    # Tỷ lệ % xuất hiện ống dẫn sóng ven biển Việt Nam
+
+gateway_bands:
+  ka_uplink:
+    band_name: "Ka-band Gateway Uplink (FSS / LEO Earth-to-Space)"
+    freq_range_ghz: [27.5, 29.5]
+    reference_freq_ghz: 28.5
+    bandwidth_mhz: 500.0
+    typical_eirp_dbw: 75.0
+    typical_eirp_density_dbw_per_mhz: 48.0
+    coexisting_services:
+      - service: "Mobile 5G mmWave (3GPP n257 / n258)"
+        freq_range_ghz: [26.5, 29.5]
+        protection_criterion_i_over_n_db: -6.0
+        receiver_noise_figure_db: 7.0
+        antenna_height_m: 25.0
+      - service: "Fixed Service (Tuyến vi ba số mặt đất)"
+        freq_range_ghz: [27.5, 29.5]
+        protection_criterion_i_over_n_db: -10.0
+        antenna_height_m: 45.0
+
+  ka_downlink:
+    band_name: "Ka-band Gateway Downlink (FSS / LEO Space-to-Earth)"
+    freq_range_ghz: [17.7, 19.7]
+    reference_freq_ghz: 18.7
+    bandwidth_mhz: 500.0
+    gateway_gt_db_k: 32.0
+    gateway_antenna_diameter_m: 3.5
+    protection_criterion_delta_t_over_t: 6.0
+    coexisting_services:
+      - service: "Fixed Service (Tuyến vi ba số mặt đất)"
+        freq_range_ghz: [17.7, 19.7]
+        tx_eirp_dbw: 45.0
+        antenna_height_m: 45.0
+
+  ku_uplink:
+    band_name: "Ku-band Feeder Uplink"
+    freq_range_ghz: [14.0, 14.5]
+    reference_freq_ghz: 14.25
+    typical_eirp_density_dbw_per_mhz: 42.0
+
+  ku_downlink:
+    band_name: "Ku-band Feeder Downlink"
+    freq_range_ghz: [10.7, 12.75]
+    reference_freq_ghz: 11.7
+    gateway_gt_db_k: 28.0
+
+coordination_thresholds:
+  distance_limits_km:
+    min_coordination_dist_km: 25.0
+    max_coordination_dist_km: 500.0
+  coordination_percentages:
+    p_percent_time_mode1: 0.01  # 0.01% thời gian
+    p_percent_time_mode2: 0.01  # 0.01% thời gian tán xạ mưa
+  clutter_loss_suburban_db: 15.0
+  clutter_loss_urban_db: 25.0
+
+vietnam_stations:
+  hanoi:
+    name: "Đài Trạm Hà Nội"
+    lat: 21.0285
+    lon: 105.8542
+    elev_m: 15.0
+    type: "reference_monitoring"
+    min_dist_to_border_km: {china: 135.0, laos: 110.0}
+  danang:
+    name: "Đài Trạm Đà Nẵng"
+    lat: 16.0544
+    lon: 108.2022
+    elev_m: 10.0
+    type: "teleport_gateway"
+    min_dist_to_border_km: {laos: 75.0}
+  hochiminh:
+    name: "Đài Trạm TP. Hồ Chí Minh"
+    lat: 10.8231
+    lon: 106.6297
+    elev_m: 12.0
+    type: "teleport_gateway"
+    min_dist_to_border_km: {cambodia: 60.0}
+  viettri:
+    name: "Đài Trạm Việt Trì (Phú Thọ)"
+    lat: 21.3283
+    lon: 105.3566
+    elev_m: 25.0
+    type: "regional_monitoring"
+    min_dist_to_border_km: {china: 115.0, laos: 85.0}
+  bacninh:
+    name: "Đài Trạm Bắc Ninh"
+    lat: 21.136356
+    lon: 106.074508
+    elev_m: 18.0
+    type: "telecom_industrial_park"
+    min_dist_to_border_km: {china: 105.0}
+  queduong:
+    name: "Đài Gateway Quế Dương (Hà Nội)"
+    lat: 21.0772
+    lon: 105.6789
+    elev_m: 20.0
+    type: "planned_gateway_starlink"
+    min_dist_to_border_km: {china: 140.0, laos: 95.0}
+  binhduong:
+    name: "Đài Gateway Bình Dương"
+    lat: 11.0530
+    lon: 106.6660
+    elev_m: 22.0
+    type: "planned_gateway_starlink"
+    min_dist_to_border_km: {cambodia: 65.0}

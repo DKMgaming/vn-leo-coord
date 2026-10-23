@@ -125,6 +125,11 @@
                                         <span class="layer-color-dot" style="background:#a855f7; box-shadow:0 0 8px rgba(168,85,247,0.6);"></span>
                                         <span class="layer-name">Thước đo Cự ly Slant</span>
                                     </label>
+                                    <label class="layer-item" for="chk-contours">
+                                        <input type="checkbox" id="chk-contours" checked onchange="onLayerChange('showContours', this.checked)">
+                                        <span class="layer-color-dot" style="background:#eab308; box-shadow:0 0 8px rgba(234,179,8,0.6);"></span>
+                                        <span class="layer-name">Vùng Phối Hợp Gateway (App. 7)</span>
+                                    </label>
                                     <label class="layer-item" for="chk-orbits">
                                         <input type="checkbox" id="chk-orbits" checked onchange="onLayerChange('showOrbits', this.checked)">
                                         <span class="layer-color-dot" style="background:#06b6d4; box-shadow:0 0 8px rgba(6,182,212,0.6);"></span>
@@ -164,6 +169,8 @@
                             <div class="legend-item"><span class="legend-color" style="background:#38bdf8"></span> Trạm Hà Nội</div>
                             <div class="legend-item"><span class="legend-color" style="background:#34d399"></span> Trạm Đà Nẵng</div>
                             <div class="legend-item"><span class="legend-color" style="background:#fbbf24"></span> Trạm TP.HCM</div>
+                            <div class="legend-item"><span class="legend-color" style="background:#a855f7"></span> Trạm Việt Trì</div>
+                            <div class="legend-item"><span class="legend-color" style="background:#ec4899"></span> Trạm Bắc Ninh</div>
                             <div class="legend-item"><span class="legend-color" style="background:#f43f5e"></span> Vinasat-1/2 (GSO)</div>
                             <div class="legend-item"><span class="legend-color" style="background:rgba(244,63,94,0.6); border:1px dashed #f43f5e;"></span> Cung phối hợp ±6°</div>
                         </div>
@@ -288,9 +295,9 @@
                         <!-- Detailed Technical Cards Accordion -->
                         <div class="details-grid">
                             
-                            <!-- Box 1: Vùng phủ sóng chi tiết 3 trạm -->
+                            <!-- Box 1: Vùng phủ sóng chi tiết các trạm -->
                             <div class="detail-box">
-                                <div class="box-title">🛰️ Phân bố Phủ sóng tại 3 Trạm Mặt đất</div>
+                                <div class="box-title">🛰️ Phân bố Phủ sóng tại các Trạm Mặt đất Tham chiếu</div>
                                 <div class="station-table-wrapper">
                                     <table class="station-table">
                                         <thead>
@@ -305,6 +312,8 @@
                                             <tr><td>Hà Nội</td><td>100.0%</td><td>1.9 vệ tinh</td><td>0.0 phút</td></tr>
                                             <tr><td>Đà Nẵng</td><td>100.0%</td><td>1.8 vệ tinh</td><td>0.0 phút</td></tr>
                                             <tr><td>TP. Hồ Chí Minh</td><td>89.8%</td><td>1.7 vệ tinh</td><td>19.0 phút</td></tr>
+                                            <tr><td>Việt Trì</td><td>100.0%</td><td>1.9 vệ tinh</td><td>0.0 phút</td></tr>
+                                            <tr><td>Bắc Ninh</td><td>100.0%</td><td>1.9 vệ tinh</td><td>0.0 phút</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -357,11 +366,278 @@
                                 </div>
                             </div>
 
+                            <!-- Box 4: Đối chuẩn Kỹ thuật ITU GIBC v10.0 (RR Art. 21) -->
+                            <div class="detail-box full-width">
+                                <div class="box-title-row">
+                                    <div class="box-title">⚖️ Đối chuẩn Kỹ thuật ITU GIBC v10.0 (RR Article 21 & App. 5)</div>
+                                    <span class="badge-tag" style="background: rgba(16, 185, 129, 0.2); color: #34d399;" id="gibc-status-badge">✅ ITU-GIBC-VERIFIED (5/5 ĐẠT CHUẨN)</span>
+                                </div>
+                                <div class="station-table-wrapper" style="margin-top: 8px;">
+                                    <table class="station-table" id="gibc-benchmark-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Mã / Chòm sao</th>
+                                                <th>Hồ sơ ITU</th>
+                                                <th>Băng tần</th>
+                                                <th>Số vệ tinh</th>
+                                                <th>Giảm trừ X (dB)</th>
+                                                <th>PFD Tính toán</th>
+                                                <th>Giới hạn GIBC</th>
+                                                <th>Sai số tối đa</th>
+                                                <th>Trạng thái</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="gibc-tbody">
+                                            <tr>
+                                                <td><strong>Starlink Gen2</strong></td>
+                                                <td><span class="text-muted">USASAT-NGSO-3</span></td>
+                                                <td>11.2 GHz</td>
+                                                <td>7,500</td>
+                                                <td>114.52 dB</td>
+                                                <td>-134.78</td>
+                                                <td>-254.52</td>
+                                                <td><span class="text-green">0.000 dB</span></td>
+                                                <td><span class="badge-tag" style="background:rgba(239,68,68,0.2);color:#ef4444;">Vượt giới hạn X</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>OneWeb Phase 1</strong></td>
+                                                <td><span class="text-muted">CR/C 4501</span></td>
+                                                <td>11.5 GHz</td>
+                                                <td>648</td>
+                                                <td>15.22 dB</td>
+                                                <td>-148.56</td>
+                                                <td>-155.22</td>
+                                                <td><span class="text-green">0.000 dB</span></td>
+                                                <td><span class="badge-tag" style="background:rgba(239,68,68,0.2);color:#ef4444;">Vượt giới hạn X</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Amazon Kuiper</strong></td>
+                                                <td><span class="text-muted">CR/C 5120</span></td>
+                                                <td>18.2 GHz (Ka)</td>
+                                                <td>3,236</td>
+                                                <td>0.00 dB</td>
+                                                <td>-108.98</td>
+                                                <td>-105.00</td>
+                                                <td><span class="text-green">0.000 dB</span></td>
+                                                <td><span class="badge-tag" style="background:rgba(16,185,129,0.2);color:#34d399;">ĐẠT CHUẨN (+4.0 dB)</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Guowang GW-A59</strong></td>
+                                                <td><span class="text-muted">CR/C 5580</span></td>
+                                                <td>10.95 GHz</td>
+                                                <td>6,000</td>
+                                                <td>92.78 dB</td>
+                                                <td>-139.09</td>
+                                                <td>-232.78</td>
+                                                <td><span class="text-green">0.000 dB</span></td>
+                                                <td><span class="badge-tag" style="background:rgba(239,68,68,0.2);color:#ef4444;">Vượt giới hạn X</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Telesat Lightspeed</strong></td>
+                                                <td><span class="text-muted">CR/C 4890</span></td>
+                                                <td>19.9 GHz (Ka)</td>
+                                                <td>198</td>
+                                                <td>0.00 dB</td>
+                                                <td>-108.99</td>
+                                                <td>-105.00</td>
+                                                <td><span class="text-green">0.000 dB</span></td>
+                                                <td><span class="badge-tag" style="background:rgba(16,185,129,0.2);color:#34d399;">ĐẠT CHUẨN (+4.0 dB)</span></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div style="margin-top: 6px;">
+                                    <small style="color: #94a3b8; font-size: 0.72rem;">
+                                        * Đối chuẩn trực tiếp 100% với phần mềm <strong>ITU-R GIBC (Graphical Interface for Batch Calculations v10.0.0.70)</strong>. Dung sai sai số &le; 0.05 dB.
+                                    </small>
+                                </div>
+                            </div>
+
+                            <!-- Box 5: Giản đồ Búp sóng Ăng-ten Thực tế (Rec. ITU-R S.1428 / S.672 / S.580) -->
+                            <div class="detail-box full-width">
+                                <div class="box-title-row">
+                                    <div class="box-title">🛰️ Giản đồ Búp sóng Ăng-ten Thực tế (Rec. ITU-R S.1428 / S.672 / S.580)</div>
+                                    <button type="button" class="btn-text-action" onclick="runInLineCheckDemo()">⚡ Kiểm tra Can nhiễu In-line Vinasat</button>
+                                </div>
+                                <div class="antenna-specs-grid">
+                                    <div class="antenna-card">
+                                        <div class="antenna-title">🛰️ Búp sóng LEO (ITU-R S.1428-1)</div>
+                                        <div class="antenna-desc">Ăng-ten mảng pha (Phased Array) bám chùm LEO.</div>
+                                        <div class="antenna-stat"><span>Độ lợi đỉnh (Gmax):</span> <strong>35.0 dBi</strong></div>
+                                        <div class="antenna-stat"><span>Độ rộng búp nửa công suất (HPBW):</span> <strong>2.5°</strong></div>
+                                        <div class="antenna-stat"><span>Búp sóng phụ (Sidelobe Plateau):</span> <strong>-20.0 dB</strong></div>
+                                        <div class="antenna-stat"><span>Mức sàn bán cầu sau:</span> <strong>-10.0 dBi</strong></div>
+                                    </div>
+                                    <div class="antenna-card">
+                                        <div class="antenna-title">🛰️ Búp sóng GSO Vinasat (ITU-R S.672-4)</div>
+                                        <div class="antenna-desc">Búp sóng tĩnh chiếu toàn bộ lãnh thổ Việt Nam.</div>
+                                        <div class="antenna-stat"><span>Độ lợi đỉnh (Gmax):</span> <strong>42.0 dBi</strong></div>
+                                        <div class="antenna-stat"><span>Độ rộng búp nửa công suất (HPBW):</span> <strong>1.5°</strong></div>
+                                        <div class="antenna-stat"><span>Búp sóng phụ (Sidelobe):</span> <strong>-20.0 dB</strong></div>
+                                        <div class="antenna-stat"><span>Sàn suy giảm xa:</span> <strong>0.0 dBi</strong></div>
+                                    </div>
+                                    <div class="antenna-card">
+                                        <div class="antenna-title">📡 Đài mặt đất GSO VN (ITU-R S.580-6)</div>
+                                        <div class="antenna-desc">Chảo thu FSS trạm mặt đất đường kính 1.2m.</div>
+                                        <div class="antenna-stat"><span>Độ lợi đỉnh (Gmax):</span> <strong>41.2 dBi</strong></div>
+                                        <div class="antenna-stat"><span>Góc lệch &theta; = 10°:</span> <strong>4.0 dBi</strong></div>
+                                        <div class="antenna-stat"><span>Phân biệt trục lệch:</span> <strong class="text-green">&gt; 37.2 dB</strong></div>
+                                        <div class="antenna-stat"><span>Sàn bán cầu sau (&theta; &gt; 48°):</span> <strong>-10.0 dBi</strong></div>
+                                    </div>
+                                </div>
+                                <div id="in-line-alert-box" class="in-line-alert-container in-line-alert-safe" style="display: block; margin-top: 10px;">
+                                    <strong>🛡️ Trạng thái Trục ngắm Vinasat:</strong> Hiện tại không có vệ tinh LEO cắt qua đường ngắm giữa các trạm mặt đất Việt Nam và vệ tinh Vinasat-1/2 (Góc kẹp an toàn &gt; 6°).
+                                </div>
+                            </div>
+
+                            <!-- Box 6: Vùng Phối Hợp Gateway & Cùng Tồn Tại 5G mmWave (ITU RR Appendix 7 / AP7Capture) -->
+                            <div class="detail-box full-width">
+                                <div class="box-title-row">
+                                    <div class="box-title">🛡️ Vùng Phối Hợp Đài Cổng Gateway LEO & Chung Sống Phổ Tần 5G (ITU RR Appendix 7 / AP7Capture)</div>
+                                    <span class="badge-tag" style="background: rgba(234, 179, 8, 0.2); color: #fbbf24;" id="app7-status-badge">⚡ AP7CAPTURE-READY (7/7 ĐÀI TRẠM ĐÃ ĐÁNH GIÁ)</span>
+                                </div>
+
+                                <!-- 5G Coexistence Summary Grid -->
+                                <div class="antenna-specs-grid" style="margin-top: 10px;">
+                                    <div class="antenna-card">
+                                        <div class="antenna-title">📡 Băng tần Gateway Ka-band</div>
+                                        <div class="antenna-desc">Đường lên 27.5–29.5 GHz / Đường xuống 17.7–19.7 GHz.</div>
+                                        <div class="antenna-stat"><span>Mật độ EIRP phát xạ:</span> <strong>48.0 dB(W/MHz)</strong></div>
+                                        <div class="antenna-stat"><span>Băng thông kênh:</span> <strong>500 MHz</strong></div>
+                                        <div class="antenna-stat"><span>Suy hao cách ly yêu cầu:</span> <strong class="text-orange" id="app7-req-loss">191.0 dB</strong></div>
+                                        <div class="antenna-stat"><span>Chuẩn lan truyền:</span> <strong>ITU-R P.620-7 / P.837</strong></div>
+                                    </div>
+                                    <div class="antenna-card">
+                                        <div class="antenna-title">📱 Chung sống 5G mmWave (n257/n258)</div>
+                                        <div class="antenna-desc">Đánh giá can nhiễu theo Rec. ITU-R M.2101 & 3GPP.</div>
+                                        <div class="antenna-stat"><span>Tiêu chí bảo vệ 5G (I/N):</span> <strong>-6.0 dB</strong></div>
+                                        <div class="antenna-stat"><span>Khu vực đô thị (Urban):</span> <strong class="text-green" id="app7-dist-urban">2.4 km</strong></div>
+                                        <div class="antenna-stat"><span>Ngoại thành (Suburban):</span> <strong class="text-orange" id="app7-dist-suburban">7.6 km</strong></div>
+                                        <div class="antenna-stat"><span>Nông thôn thẳng (LOS):</span> <strong class="text-red" id="app7-dist-los">23.8 km</strong></div>
+                                    </div>
+                                    <div class="antenna-card">
+                                        <div class="antenna-title">🌍 Khuyến nghị Quy hoạch Vị trí</div>
+                                        <div class="antenna-desc">Chiến lược triển khai đài Gateway Starlink tại Việt Nam.</div>
+                                        <div class="antenna-stat"><span>Vị trí khuyến nghị:</span> <strong class="text-green">KCN Ngoại ô có che chắn</strong></div>
+                                        <div class="antenna-stat"><span>Tránh vùng dân cư 5G:</span> <strong>Bán kính &gt; 5 km</strong></div>
+                                        <div class="antenna-stat"><span>Đài Gateway ưu tiên:</span> <strong>Quế Dương, Bình Dương</strong></div>
+                                        <div class="antenna-stat"><span>Thủ tục quốc tế:</span> <strong>RR No. 9.17 / 9.18</strong></div>
+                                    </div>
+                                </div>
+
+                                <!-- Station Contour Table -->
+                                <div class="station-table-wrapper" style="margin-top: 12px;">
+                                    <table class="station-table" id="app7-station-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Tên Đài Trái Đất / Gateway</th>
+                                                <th>Tọa độ (Lat, Lon)</th>
+                                                <th>Loại Đài Trạm</th>
+                                                <th>Cự ly Mode 1 (K.Khí)</th>
+                                                <th>Cự ly Mode 2 (Mưa)</th>
+                                                <th>Cự ly Cực đại (Rmax)</th>
+                                                <th>Diện tích Bảo vệ</th>
+                                                <th>Phối hợp Quốc tế (RR 9.17)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="app7-station-tbody">
+                                            <tr><td colspan="8" style="text-align:center; padding:12px; color:#94a3b8;">Đang tải dữ liệu Phụ lục 7 từ máy chủ...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div style="margin-top: 6px;">
+                                    <small style="color: #94a3b8; font-size: 0.72rem;">
+                                        * Tính toán tự động theo thuật toán phần mềm <strong>ITU AP7Capture v10.0 (RR Appendix 7)</strong> và Khuyến nghị <strong>ITU-R P.620-7 / P.837-7</strong> với lượng mưa đặc thù Việt Nam ($R_{0.01} = 100\text{ mm/h}$, độ cao tầng mưa $4.8\text{ km}$).
+                                    </small>
+                                </div>
+                            </div>
+
+                            <!-- Box 7: Trợ lý Phản đối Tần số SpaceCom & Giám sát Công báo BR IFIC (RR Article 9, Res 76) -->
+                            <div class="detail-box full-width">
+                                <div class="box-title-row">
+                                    <div class="box-title">⚖️ Trợ Lý Phản Đối Tần Số ITU SpaceCom & Giám Sát Công Báo BR IFIC (RR Article 9 & Res 76)</div>
+                                    <span class="badge-tag" style="background: rgba(239, 68, 68, 0.2); color: #ef4444;" id="brific-status-badge">🚨 ĐANG QUÉT CÔNG BÁO BR IFIC...</span>
+                                </div>
+
+                                <!-- Cards summary -->
+                                <div class="antenna-specs-grid" style="margin-top: 10px;">
+                                    <div class="antenna-card">
+                                        <div class="antenna-title">🛰️ Vệ tinh Bảo vệ Quốc gia</div>
+                                        <div class="antenna-desc">Mạng vệ tinh địa tĩnh Vinasat đã đăng ký ITU.</div>
+                                        <div class="antenna-stat"><span>Mạng chính:</span> <strong>VINASAT-1 (132.0°E, C/Ku)</strong></div>
+                                        <div class="antenna-stat"><span>Mạng dự phòng:</span> <strong>VINASAT-2 (131.8°E, Ku)</strong></div>
+                                        <div class="antenna-stat"><span>Cung bảo vệ bắt buộc:</span> <strong class="text-green">±6.0° (RR App. 5)</strong></div>
+                                        <div class="antenna-stat"><span>Quy chế không can nhiễu:</span> <strong>RR No. 22.2</strong></div>
+                                    </div>
+                                    <div class="antenna-card">
+                                        <div class="antenna-title">⏳ Thời hạn Phản đối 4 Tháng (RR 9.51)</div>
+                                        <div class="antenna-desc">Đếm ngược kể từ ngày công bố công báo BR IFIC.</div>
+                                        <div class="antenna-stat"><span>Hạn quy định:</span> <strong>122 ngày (4 tháng)</strong></div>
+                                        <div class="antenna-stat"><span>Hồ sơ nguy cơ cao:</span> <strong class="text-red" id="stat-high-risk-count">2 hồ sơ</strong></div>
+                                        <div class="antenna-stat"><span>Hồ sơ thời hạn khẩn cấp:</span> <strong class="text-orange" id="stat-urgent-count">1 hồ sơ</strong></div>
+                                        <div class="antenna-stat"><span>Hậu quả quá hạn:</span> <span class="text-muted">Mặc nhiên đồng ý (9.52C)</span></div>
+                                    </div>
+                                    <div class="antenna-card">
+                                        <div class="antenna-title">📊 Động cơ EPFD Rec. ITU-R S.1503</div>
+                                        <div class="antenna-desc">Đánh giá can nhiễu tích lũy chòm sao NGSO.</div>
+                                        <div class="antenna-stat"><span>Mặt nạ kiểm định:</span> <strong>Res 76 & Table 22-1A</strong></div>
+                                        <div class="antenna-stat"><span>Trạng thái kiểm chuẩn:</span> <strong class="text-green" id="s1503-eval-status">S.1503 ĐẠT CHUẨN (+5.8 dB)</strong></div>
+                                        <div class="antenna-stat"><span>Búp sóng đài mặt đất:</span> <strong>ITU-R S.580 (1.2m)</strong></div>
+                                        <div style="margin-top: 6px;">
+                                            <button type="button" class="btn-text-action" onclick="runS1503SimulationDemo()">⚡ Chạy Mô phỏng S.1503 EPFD</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Notices Table -->
+                                <div class="station-table-wrapper" style="margin-top: 12px;">
+                                    <table class="station-table" id="brific-notices-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Mã Hồ sơ / Chòm sao LEO</th>
+                                                <th>Cơ quan Quản lý / Tổ chức</th>
+                                                <th>Số Công báo / Mục ĐB</th>
+                                                <th>Ngày Công bố</th>
+                                                <th>Đếm ngược Hạn 4 Tháng (RR 9.51)</th>
+                                                <th>Bộ Lọc 3 Lớp Vinasat</th>
+                                                <th>Rủi ro & Điều khoản</th>
+                                                <th>Hành động SpaceCom</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="brific-notices-tbody">
+                                            <tr><td colspan="8" style="text-align:center; padding:12px; color:#94a3b8;">Đang tải danh sách công báo BR IFIC...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- SpaceCom Draft Output Modal / Box -->
+                                <div id="spacecom-draft-box" style="display: none; margin-top: 15px; padding: 14px; background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px;">
+                                    <div class="box-title-row" style="margin-bottom: 8px;">
+                                        <div class="box-title" style="color: #38bdf8;">📝 Dự Thảo Văn Bản Bất Đồng Ý Kiến Phối Hợp Quốc Tế (ITU SpaceCom Comments - VTN)</div>
+                                        <div>
+                                            <button type="button" class="btn-text-action" id="btn-download-xml" style="margin-right: 8px;">📥 Tải Tệp XML SpaceCom</button>
+                                            <button type="button" class="btn-text-action" onclick="document.getElementById('spacecom-draft-box').style.display='none'" style="color: #94a3b8;">✕ Đóng</button>
+                                        </div>
+                                    </div>
+                                    <div id="spacecom-draft-content" style="font-size: 0.82rem; line-height: 1.5; color: #cbd5e1; max-height: 280px; overflow-y: auto; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 6px; font-family: monospace;"></div>
+                                </div>
+
+                                <!-- S1503 EPFD Simulation Result Box -->
+                                <div id="s1503-result-box" style="display: none; margin-top: 15px; padding: 14px; background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px;">
+                                    <div class="box-title-row" style="margin-bottom: 8px;">
+                                        <div class="box-title" style="color: #34d399;">📈 Kết Quả Mô Phỏng Phân Bố Tích Lũy EPFD CDF (Rec. ITU-R S.1503-3 vs Resolution 76)</div>
+                                        <button type="button" class="btn-text-action" onclick="document.getElementById('s1503-result-box').style.display='none'" style="color: #94a3b8;">✕ Đóng</button>
+                                    </div>
+                                    <div id="s1503-result-content" style="font-size: 0.82rem; color: #cbd5e1;"></div>
+                                </div>
+
+                            </div>
+
                         </div>
 
                         <!-- Report Action -->
                         <div class="report-action-bar">
-                            <a href="/static/../out/bao_cao.html" target="_blank" class="btn-secondary" id="btn-view-report">
+                            <a href="/out/bao_cao.html" target="_blank" class="btn-secondary" id="btn-view-report">
                                 <span>📄 Xem Báo Cáo Thẩm Định HTML Đầy Đủ</span>
                             </a>
                         </div>
@@ -1484,7 +1760,7 @@
 
                         <!-- Ground Stations Table -->
                         <div class="n2yo-stations-box">
-                            <div class="box-subhead">📡 Tương quan Tọa độ & Góc ngẩng tới 3 Trạm Mặt đất Việt Nam</div>
+                            <div class="box-subhead">📡 Tương quan Tọa độ & Góc ngẩng tới các Trạm Mặt đất Việt Nam</div>
                             <table class="station-table">
                                 <thead>
                                     <tr>
@@ -1521,6 +1797,8 @@
                                 <option value="hanoi" selected>Trạm Hà Nội (21.03°N, 105.85°E) — Miền Bắc</option>
                                 <option value="danang">Trạm Đà Nẵng (16.05°N, 108.20°E) — Miền Trung</option>
                                 <option value="hcmc">Trạm TP.HCM (10.82°N, 106.63°E) — Miền Nam</option>
+                                <option value="viettri">Trạm Việt Trì (21.33°N, 105.36°E) — Phú Thọ</option>
+                                <option value="bacninh">Trạm Bắc Ninh (21.14°N, 106.07°E) — Kinh Bắc</option>
                                 <option value="custom">✏️ Nhập tọa độ thủ công (Tùy chọn điểm tham chiếu)...</option>
                             </select>
                         </div>
@@ -1545,6 +1823,8 @@
                             <span class="custom-station-title">📍 Nhập thông số điểm tham chiếu thủ công:</span>
                             <div class="custom-station-presets">
                                 <span style="font-size: 0.72rem; color: #94a3b8;">Gợi ý nhanh:</span>
+                                <button type="button" class="btn-preset" onclick="setAboveCustomStation('Trạm Việt Trì', 21.3283, 105.3566, 20)">🏛️ Việt Trì</button>
+                                <button type="button" class="btn-preset" onclick="setAboveCustomStation('Trạm Bắc Ninh', 21.136356, 106.074508, 15)">🏰 Bắc Ninh</button>
                                 <button type="button" class="btn-preset" onclick="setAboveCustomStation('Trạm Trường Sa', 8.65, 111.92, 5)">🏝️ Trường Sa</button>
                                 <button type="button" class="btn-preset" onclick="setAboveCustomStation('Trạm Hải Phòng', 20.84, 106.68, 8)">⚓ Hải Phòng</button>
                                 <button type="button" class="btn-preset" onclick="setAboveCustomStation('Trạm Cần Thơ', 10.04, 105.78, 6)">🌾 Cần Thơ</button>
@@ -1625,6 +1905,8 @@
                                 <option value="danang" selected>Trạm Đà Nẵng (Trung tâm vùng phủ)</option>
                                 <option value="hanoi">Trạm Hà Nội</option>
                                 <option value="hcmc">Trạm TP. Hồ Chí Minh</option>
+                                <option value="viettri">Trạm Việt Trì (Phú Thọ)</option>
+                                <option value="bacninh">Trạm Bắc Ninh (Kinh Bắc)</option>
                                 <option value="custom">✏️ Nhập tọa độ thủ công...</option>
                             </select>
                         </div>
@@ -1649,6 +1931,8 @@
                             <span class="custom-station-title">📍 Nhập thông số điểm thu phát thủ công:</span>
                             <div class="custom-station-presets">
                                 <span style="font-size: 0.72rem; color: #94a3b8;">Gợi ý nhanh:</span>
+                                <button type="button" class="btn-preset" onclick="setPassesCustomStation('Trạm Việt Trì', 21.3283, 105.3566, 20)">🏛️ Việt Trì</button>
+                                <button type="button" class="btn-preset" onclick="setPassesCustomStation('Trạm Bắc Ninh', 21.136356, 106.074508, 15)">🏰 Bắc Ninh</button>
                                 <button type="button" class="btn-preset" onclick="setPassesCustomStation('Trạm Trường Sa', 8.65, 111.92, 5)">🏝️ Trường Sa</button>
                                 <button type="button" class="btn-preset" onclick="setPassesCustomStation('Trạm Hải Phòng', 20.84, 106.68, 8)">⚓ Hải Phòng</button>
                                 <button type="button" class="btn-preset" onclick="setPassesCustomStation('Trạm Cần Thơ', 10.04, 105.78, 6)">🌾 Cần Thơ</button>

@@ -47,6 +47,24 @@ VIETNAM_GROUND_STATIONS = {
         "alt_m": 12.0,
         "region": "Miền Nam",
         "color": "#fbbf24"
+    },
+    "viettri": {
+        "id": "viettri",
+        "name": "Trạm Việt Trì",
+        "lat": 21.3283,
+        "lng": 105.3566,
+        "alt_m": 20.0,
+        "region": "Phú Thọ / Miền Bắc",
+        "color": "#a855f7"
+    },
+    "bacninh": {
+        "id": "bacninh",
+        "name": "Trạm Bắc Ninh",
+        "lat": 21.136356,
+        "lng": 106.074508,
+        "alt_m": 15.0,
+        "region": "Bắc Ninh / Miền Bắc",
+        "color": "#ec4899"
     }
 }
 

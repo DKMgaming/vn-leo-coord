@@ -12,6 +12,8 @@ vietnam:
     hanoi: {lat: 21.0285, lon: 105.8542}
     danang: {lat: 16.0544, lon: 108.2022}
     hcmc: {lat: 10.8231, lon: 106.6297}
+    viettri: {lat: 21.3283, lon: 105.3566}
+    bacninh: {lat: 21.136356, lon: 106.074508}
 
 analysis:
   min_elevation_deg: 10.0
