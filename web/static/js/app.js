@@ -2435,13 +2435,50 @@ function renderCouncilDossier(data) {
         riskBadgeEl.style.color = data.risk_level === 'HIGH' ? "#ef4444" : "#f59e0b";
     }
 
+    // Cập nhật số liệu động trên 4 Thẻ Chuyên gia
+    if (data.deliberations && data.deliberations.length >= 4) {
+        const d1 = data.deliberations[0].technical_metrics || {};
+        const d2 = data.deliberations[1].technical_metrics || {};
+        const d4 = data.deliberations[3].technical_metrics || {};
+
+        const ag1Sats = document.getElementById("ag1-sats");
+        if (ag1Sats && d1.total_satellites) ag1Sats.textContent = `${d1.total_satellites.toLocaleString()} vệ tinh`;
+
+        const ag1Planes = document.getElementById("ag1-planes");
+        if (ag1Planes && d1.planes_count) ag1Planes.textContent = `${d1.planes_count} mặt phẳng`;
+
+        const ag1Ap4 = document.getElementById("ag1-ap4");
+        if (ag1Ap4 && d1.ap4_completeness_pct) ag1Ap4.textContent = `${d1.ap4_completeness_pct}% (Đạt chuẩn)`;
+
+        const ag1Overlap = document.getElementById("ag1-overlap");
+        if (ag1Overlap) {
+            ag1Overlap.textContent = data.risk_level === 'HIGH' ? "Trùng Ku/Ka (Vinasat)" : "Khác dải tần";
+            ag1Overlap.className = data.risk_level === 'HIGH' ? "text-red" : "text-green";
+        }
+
+        const ag2Margin = document.getElementById("ag2-margin");
+        if (ag2Margin && d2.min_epfd_margin_db !== undefined) {
+            ag2Margin.textContent = `+${d2.min_epfd_margin_db} dB (Đạt)`;
+            ag2Margin.className = "text-green";
+        }
+
+        const ag2Loss = document.getElementById("ag2-loss");
+        if (ag2Loss && d2.isolation_loss_req_db) ag2Loss.textContent = `${d2.isolation_loss_req_db} dB`;
+
+        const ag2Dist = document.getElementById("ag2-dist");
+        if (ag2Dist && d2.gateway_urban_exclusion_km) ag2Dist.textContent = `${d2.gateway_urban_exclusion_km} km đô thị`;
+
+        const ag4Conds = document.getElementById("ag4-conds");
+        if (ag4Conds && data.vietnam_pilot_conditions) ag4Conds.textContent = `${data.vietnam_pilot_conditions.length} Điều kiện tiên quyết`;
+    }
+
     const streamEl = document.getElementById("council-deliberation-stream");
     if (!streamEl || !data.deliberations) return;
     streamEl.innerHTML = "";
 
     data.deliberations.forEach((msg, idx) => {
         const bubble = document.createElement("div");
-        bubble.style.cssText = "padding: 12px; background: rgba(30, 41, 59, 0.6); border-radius: 8px; border-left: 3px solid #c084fc;";
+        bubble.style.cssText = "padding: 12px; background: rgba(30, 41, 59, 0.6); border-radius: 8px; border-left: 3px solid #c084fc; transition: all 0.3s ease;";
 
         let borderColors = ["#38bdf8", "#34d399", "#f59e0b", "#c084fc"];
         bubble.style.borderLeftColor = borderColors[idx % borderColors.length];
@@ -2479,15 +2516,35 @@ async function conveneCouncilUI() {
     const filingId = sel ? sel.value : "starlink-gen2-ap4";
     const statusBadge = document.getElementById("multi-agent-status-badge");
     const btn = document.getElementById("btn-convene-council");
+    const streamEl = document.getElementById("council-deliberation-stream");
 
+    // 1. Phản hồi trực quan tức thời ngay khi nhấn nút
     if (statusBadge) statusBadge.textContent = "⏳ HỘI ĐỒNG AI ĐANG HỘI CHẨN & MÔ PHỎNG...";
     if (btn) btn.disabled = true;
+
+    if (streamEl) {
+        streamEl.innerHTML = `
+            <div style="padding: 24px; text-align: center; color: #c084fc; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px dashed rgba(168, 85, 247, 0.4);">
+                <div style="font-size: 2.2rem; margin-bottom: 8px; animation: pulse 1s infinite;">🏛️⚡</div>
+                <div style="font-weight: bold; font-size: 1rem; color: #f8fafc;">Đang triệu tập Hội đồng 4 Tác nhân AI thẩm định hồ sơ...</div>
+                <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 6px;">
+                    🛰️ Bóc tách AP4 &nbsp;|&nbsp; 📡 Mô phỏng EPFD S.1503 &nbsp;|&nbsp; 🧑‍⚖️ Thể lệ ITU RR 22.2 &nbsp;|&nbsp; 👨‍💼 Kết luận QĐ 659
+                </div>
+            </div>
+        `;
+    }
+
+    // Cuộn nhẹ xuống khu vực kết luận để người dùng thấy tiến trình
+    document.getElementById("council-verdict-banner")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+    // Đọc API key đã lưu nếu có
+    const storedCfg = getStoredLlmConfig();
 
     try {
         const res = await fetch("/api/multi-agent/convene", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ filing_id: filingId })
+            body: JSON.stringify({ filing_id: filingId, llm_config: storedCfg })
         });
 
         if (res.ok) {

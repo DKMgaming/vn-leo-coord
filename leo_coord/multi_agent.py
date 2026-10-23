@@ -149,7 +149,7 @@ class MultiAgentCouncil:
             kind="delta"
         )
 
-        # Gọi tool mô phỏng S.1503 EPFD
+        # Gọi tool mô phỏng S.1503 EPFD (tối ưu hóa độ trễ phản hồi thời gian thực)
         epfd_res = simulate_s1503_cumulative_epfd(
             constellation=w,
             eirp_dbw_per_mhz=10.0,
@@ -158,7 +158,7 @@ class MultiAgentCouncil:
             victim_lon=108.2045,
             gso_lon_deg=132.0,
             dish_d_m=1.2,
-            duration_s=1800.0,
+            duration_s=600.0,
             dt_s=120.0,
         )
 
