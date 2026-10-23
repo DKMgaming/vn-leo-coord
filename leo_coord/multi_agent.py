@@ -394,8 +394,21 @@ def call_llm_api(
 
     try:
         if provider == "gemini":
-            model_name = model or "gemini-1.5-flash"
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+            model_name = (model or "gemini-1.5-flash").strip()
+            # Hỗ trợ cả OAuth token/Session token (AQ., ya29.) và API key chuẩn (AIzaSy...)
+            if api_key.startswith("AQ.") or api_key.startswith("ya29."):
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
+                headers = {
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {api_key}"
+                }
+            else:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+                headers = {
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": api_key
+                }
+
             payload = {
                 "contents": [{"parts": [{"text": prompt}]}]
             }
@@ -405,7 +418,7 @@ def call_llm_api(
             req = urllib.request.Request(
                 url,
                 data=json.dumps(payload).encode("utf-8"),
-                headers={"Content-Type": "application/json"},
+                headers=headers,
                 method="POST"
             )
             with urllib.request.urlopen(req, timeout=timeout_s) as resp:
@@ -487,6 +500,33 @@ def call_llm_api(
         else:
             return {"status": "error", "message": f"Nhà cung cấp '{provider}' không được hỗ trợ."}
 
+    except urllib.error.HTTPError as e:
+        latency_ms = int((time.time() - start_t) * 1000)
+        err_msg = f"HTTP {e.code}: {e.reason}"
+        try:
+            raw_body = e.read().decode("utf-8")
+            err_json = json.loads(raw_body)
+            if "error" in err_json:
+                detail = err_json["error"].get("message", "")
+                reason = ""
+                if "details" in err_json["error"] and len(err_json["error"]["details"]) > 0:
+                    reason = err_json["error"]["details"][0].get("reason", "")
+                if reason in ("ACCESS_TOKEN_TYPE_UNSUPPORTED", "API_KEY_SERVICE_BLOCKED") or "API key not valid" in detail or "Expected OAuth 2" in detail or api_key.startswith("AQ."):
+                    err_msg = (
+                        f"Lỗi xác thực Google (HTTP {e.code}): Khóa bạn nhập ({api_key[:6]}...) là Session/Token nội bộ của trang web AI Studio. "
+                        f"Google REST API yêu cầu API Key chính thức bắt đầu bằng 'AIzaSy...'. "
+                        f"Cách lấy: Vào https://aistudio.google.com/apikey -> Nhấp nút 'Get API key' / 'Create API key' -> Sao chép khóa có tiền tố 'AIzaSy...'."
+                    )
+                else:
+                    err_msg = f"Lỗi {provider.upper()} API (HTTP {e.code}): {detail} {f'[{reason}]' if reason else ''}".strip()
+        except Exception:
+            pass
+        return {
+            "status": "error",
+            "provider": provider,
+            "message": err_msg,
+            "latency_ms": latency_ms
+        }
     except Exception as e:
         latency_ms = int((time.time() - start_t) * 1000)
         return {

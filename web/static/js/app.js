@@ -2666,8 +2666,10 @@ function onLlmProviderChange() {
     if (!modelEl) return;
 
     if (prov === "gemini") {
-        modelEl.value = "gemini-1.5-flash";
-        if (keyEl) keyEl.placeholder = "Nhập Gemini API Key (AIzaSy...)";
+        if (!modelEl.value || modelEl.value === "gpt-4o-mini" || modelEl.value === "claude-3-5-sonnet-20241022" || modelEl.value === "llama3.2") {
+            modelEl.value = "gemini-2.0-flash";
+        }
+        if (keyEl) keyEl.placeholder = "Nhập Gemini API Key chính thức (bắt đầu bằng AIzaSy...)";
     } else if (prov === "openai") {
         modelEl.value = "gpt-4o-mini";
         if (keyEl) keyEl.placeholder = "Nhập OpenAI API Key (sk-...)";

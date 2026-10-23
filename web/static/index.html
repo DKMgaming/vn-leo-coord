@@ -2304,7 +2304,17 @@
 
                 <div>
                     <label style="display: block; margin-bottom: 4px; color: #cbd5e1; font-weight: 500;">Tên Mô hình (Model Name):</label>
-                    <input type="text" id="cfg-llm-model" value="gemini-1.5-flash" style="width: 100%; padding: 8px 10px; background: #1e293b; color: #f8fafc; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 6px;" placeholder="Ví dụ: gemini-1.5-flash">
+                    <input type="text" id="cfg-llm-model" list="llm-model-suggestions" value="gemini-2.0-flash" style="width: 100%; padding: 8px 10px; background: #1e293b; color: #f8fafc; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 6px;" placeholder="Ví dụ: gemini-2.0-flash, gemini-1.5-flash, gemini-3.1-flash-lite">
+                    <datalist id="llm-model-suggestions">
+                        <option value="gemini-2.0-flash">Google Gemini 2.0 Flash (Khuyên dùng - Cực nhanh)</option>
+                        <option value="gemini-1.5-flash">Google Gemini 1.5 Flash (Ổn định)</option>
+                        <option value="gemini-2.5-flash">Google Gemini 2.5 Flash</option>
+                        <option value="gemini-3.1-flash-lite">Google Gemini 3.1 Flash Lite</option>
+                        <option value="gpt-4o-mini">OpenAI GPT-4o Mini</option>
+                        <option value="gpt-4o">OpenAI GPT-4o</option>
+                        <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
+                        <option value="llama3.2">Ollama Llama 3.2</option>
+                    </datalist>
                 </div>
 
                 <div>
@@ -2313,7 +2323,9 @@
                         <input type="password" id="cfg-llm-key" style="flex: 1; padding: 8px 10px; background: #1e293b; color: #f8fafc; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 6px;" placeholder="Nhập API key: AIzaSy... hoặc sk-...">
                         <button type="button" class="btn-text-action" onclick="toggleApiKeyVisibility()" style="padding: 0 12px;">👁️</button>
                     </div>
-                    <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 4px;">Khóa API được lưu an toàn trong trình duyệt (Local Storage) của bạn.</div>
+                    <div style="font-size: 0.74rem; color: #38bdf8; margin-top: 5px; line-height: 1.4;">
+                        💡 <strong>Lưu ý về Google API Key:</strong> Khóa API chính thức luôn bắt đầu bằng <code>AIzaSy...</code> (Lấy miễn phí tại nút <strong>"Get API key"</strong> trên <a href="https://aistudio.google.com/apikey" target="_blank" style="color: #60a5fa; text-decoration: underline;">Google AI Studio</a>). Tránh dán chuỗi token phiên <code>AQ...</code> trên thanh URL/DevTools.
+                    </div>
                 </div>
 
                 <div id="llm-test-result-box" style="display: none; padding: 10px 12px; border-radius: 6px; font-size: 0.8rem;"></div>
