@@ -492,6 +492,13 @@ def get_br_ific_scan():
     return scan_br_ific_notices()
 
 
+@app.post("/api/br-ific/sync")
+def sync_br_ific_endpoint():
+    """Kích hoạt đồng bộ công báo BR IFIC mới nhất từ cổng thông tin ITU Space Systems."""
+    from leo_coord.br_ific import sync_br_ific_notices_online
+    return sync_br_ific_notices_online()
+
+
 @app.get("/api/spacecom/draft-comment/{notice_id}")
 def get_spacecom_draft_comment(notice_id: str):
     """Tạo dự thảo hồ sơ phản đối kỹ thuật theo chuẩn ITU SpaceCom."""

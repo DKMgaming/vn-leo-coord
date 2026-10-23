@@ -556,7 +556,12 @@
                             <div class="detail-box full-width">
                                 <div class="box-title-row">
                                     <div class="box-title">⚖️ Trợ Lý Phản Đối Tần Số ITU SpaceCom & Giám Sát Công Báo BR IFIC (RR Article 9 & Res 76)</div>
-                                    <span class="badge-tag" style="background: rgba(239, 68, 68, 0.2); color: #ef4444;" id="brific-status-badge">🚨 ĐANG QUÉT CÔNG BÁO BR IFIC...</span>
+                                    <div style="display: flex; gap: 8px; align-items: center;">
+                                        <button type="button" class="btn-text-action" onclick="syncBrIficUI()" id="btn-sync-brific" style="padding: 3px 10px; font-size: 0.75rem; background: rgba(56, 189, 248, 0.2); color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);" title="Chu kỳ phát hành công báo chính thức của ITU: 2 tuần / lần">
+                                            🔄 Đồng Bộ Trực Tuyến
+                                        </button>
+                                        <span class="badge-tag" style="background: rgba(239, 68, 68, 0.2); color: #ef4444;" id="brific-status-badge">🚨 ĐANG QUÉT CÔNG BÁO BR IFIC...</span>
+                                    </div>
                                 </div>
 
                                 <!-- Cards summary -->

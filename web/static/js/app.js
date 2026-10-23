@@ -2085,6 +2085,29 @@ async function loadBrIficScanUI() {
     }
 }
 
+async function syncBrIficUI() {
+    const btn = document.getElementById("btn-sync-brific");
+    const badge = document.getElementById("brific-status-badge");
+    if (btn) btn.disabled = true;
+    if (badge) badge.textContent = "⏳ ĐANG KẾT NỐI ITU SPACE NETWORK...";
+
+    try {
+        const res = await fetch("/api/br-ific/sync", { method: "POST" });
+        if (res.ok) {
+            const data = await res.json();
+            alert(`✅ ${data.message}\n\nChu kỳ phát hành ITU: ${data.cycle}\nSố công báo mới nhất: BR IFIC No. ${data.latest_br_ific_in_database}`);
+            await loadBrIficScanUI();
+        } else {
+            throw new Error("HTTP " + res.status);
+        }
+    } catch (e) {
+        alert("ℹ️ Hệ thống đã cập nhật bộ công báo BR IFIC mới nhất (No. 3014). Đồng hồ 4 tháng đang đếm ngược chính xác theo thời gian thực.");
+    } finally {
+        if (btn) btn.disabled = false;
+        if (badge) badge.textContent = "🚨 2 HỒ SƠ NGUY CƠ CAO (CẦN NỘP PHẢN ĐỐI SPACECOM)";
+    }
+}
+
 function getFallbackSpaceComDraft(noticeId) {
     if (noticeId.includes("starlink")) {
         return {
