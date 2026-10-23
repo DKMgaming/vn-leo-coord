@@ -96,3 +96,15 @@ n2yo:
     - {norad_id: 25544, name: "ISS (Trạm Vũ trụ)", category: "LEO", band: "VHF/UHF/Ku", operator: "NASA/Roscosmos", role: "Trạm nghiên cứu"}
     - {norad_id: 44714, name: "STARLINK-1008", category: "LEO", band: "Ku/Ka", operator: "SpaceX", role: "Chòm sao Băng rộng LEO"}
     - {norad_id: 44057, name: "ONEWEB-0012", category: "LEO", band: "Ku/Ka", operator: "Eutelsat OneWeb", role: "Chòm sao Băng rộng LEO"}
+
+# Cấu hình Kết nối LLM API Plugin cho Hội đồng Multi-AI-Agent (Phase 4)
+# Hỗ trợ: gemini, openai, anthropic, ollama, hoặc offline (chuyên gia nội bộ)
+llm_plugin:
+  provider: "offline"  # Mặc định: offline (đảm bảo an toàn, không cần internet)
+  default_model: "gemini-1.5-flash"
+  api_key_env_var: "GEMINI_API_KEY"
+  gemini_api_key: ""
+  openai_api_key: ""
+  anthropic_api_key: ""
+  ollama_endpoint: "http://localhost:11434"
+

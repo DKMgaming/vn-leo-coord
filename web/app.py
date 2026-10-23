@@ -693,6 +693,18 @@ def export_multi_agent_dossier_markdown(filing_id: str):
     return PlainTextResponse(content=md, media_type="text/markdown; charset=utf-8")
 
 
+@app.post("/api/multi-agent/test-key")
+def test_llm_key_endpoint(payload: Dict[str, Any]):
+    """Kiểm tra tính hợp lệ và độ trễ phản hồi của API Key LLM."""
+    from leo_coord.multi_agent import test_llm_connection
+    provider = payload.get("provider", "gemini")
+    api_key = payload.get("api_key", "").strip()
+    model = payload.get("model")
+    if not api_key:
+        raise HTTPException(status_code=400, detail="Vui lòng cung cấp API Key để kiểm tra.")
+    return test_llm_connection(provider=provider, api_key=api_key, model=model)
+
+
 # ================= N2YO REAL-TIME SATELLITE TRACKING & COORDINATION =================
 
 @app.get("/api/real-satellites/tracked")

@@ -369,3 +369,136 @@ class MultiAgentCouncil:
             executive_summary_en=exec_en,
             deliberations=deliberations,
         )
+
+
+# ================= LLM API PLUGIN CALLER (ONLINE MODE) =================
+
+def call_llm_api(
+    provider: str,
+    api_key: str,
+    prompt: str,
+    system_instruction: str = "",
+    model: Optional[str] = None,
+    timeout_s: float = 12.0
+) -> Dict[str, Any]:
+    """
+    Gọi API trực tiếp tới các nhà cung cấp mô hình ngôn ngữ lớn (LLM).
+    Hỗ trợ: Google Gemini, OpenAI ChatGPT, Anthropic Claude, và Ollama Local.
+    """
+    import urllib.request
+    import json
+    import time
+
+    provider = (provider or "gemini").lower().strip()
+    start_t = time.time()
+
+    try:
+        if provider == "gemini":
+            model_name = model or "gemini-1.5-flash"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+            payload = {
+                "contents": [{"parts": [{"text": prompt}]}]
+            }
+            if system_instruction:
+                payload["systemInstruction"] = {"parts": [{"text": system_instruction}]}
+
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                text = data["candidates"][0]["content"]["parts"][0]["text"]
+                latency_ms = int((time.time() - start_t) * 1000)
+                return {"status": "success", "provider": "gemini", "model": model_name, "text": text, "latency_ms": latency_ms}
+
+        elif provider == "openai":
+            model_name = model or "gpt-4o-mini"
+            url = "https://api.openai.com/v1/chat/completions"
+            messages = []
+            if system_instruction:
+                messages.append({"role": "system", "content": system_instruction})
+            messages.append({"role": "user", "content": prompt})
+
+            payload = {"model": model_name, "messages": messages, "max_tokens": 800}
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                text = data["choices"][0]["message"]["content"]
+                latency_ms = int((time.time() - start_t) * 1000)
+                return {"status": "success", "provider": "openai", "model": model_name, "text": text, "latency_ms": latency_ms}
+
+        elif provider == "anthropic":
+            model_name = model or "claude-3-5-sonnet-20241022"
+            url = "https://api.anthropic.com/v1/messages"
+            payload = {
+                "model": model_name,
+                "max_tokens": 800,
+                "messages": [{"role": "user", "content": prompt}]
+            }
+            if system_instruction:
+                payload["system"] = system_instruction
+
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={
+                    "Content-Type": "application/json",
+                    "x-api-key": api_key,
+                    "anthropic-version": "2023-06-01"
+                },
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                text = data["content"][0]["text"]
+                latency_ms = int((time.time() - start_t) * 1000)
+                return {"status": "success", "provider": "anthropic", "model": model_name, "text": text, "latency_ms": latency_ms}
+
+        elif provider == "ollama":
+            model_name = model or "llama3.2"
+            base_url = api_key if (api_key and api_key.startswith("http")) else "http://localhost:11434"
+            url = f"{base_url.rstrip('/')}/api/chat"
+            messages = []
+            if system_instruction:
+                messages.append({"role": "system", "content": system_instruction})
+            messages.append({"role": "user", "content": prompt})
+
+            payload = {"model": model_name, "messages": messages, "stream": False}
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                text = data["message"]["content"]
+                latency_ms = int((time.time() - start_t) * 1000)
+                return {"status": "success", "provider": "ollama", "model": model_name, "text": text, "latency_ms": latency_ms}
+
+        else:
+            return {"status": "error", "message": f"Nhà cung cấp '{provider}' không được hỗ trợ."}
+
+    except Exception as e:
+        latency_ms = int((time.time() - start_t) * 1000)
+        return {
+            "status": "error",
+            "provider": provider,
+            "message": str(e),
+            "latency_ms": latency_ms
+        }
+
+
+def test_llm_connection(provider: str, api_key: str, model: Optional[str] = None) -> Dict[str, Any]:
+    """Kiểm tra tính hợp lệ và tốc độ phản hồi của API key."""
+    prompt = "Xác nhận kết nối: Bạn là trợ lý thẩm định tần số vệ tinh của Cục Tần số Vô tuyến điện Việt Nam. Trả lời ngắn gọn: 'KẾT NỐI THÀNH CÔNG'."
+    return call_llm_api(provider=provider, api_key=api_key, prompt=prompt, model=model, timeout_s=8.0)
+

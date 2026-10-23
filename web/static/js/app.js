@@ -2547,6 +2547,139 @@ function downloadSpaceCapXmlSelected() {
     window.open(url, "_blank");
 }
 
+/* ================= LLM API PLUGIN MODAL CONTROLS ================= */
+
+function openLlmSettingsModal() {
+    const modal = document.getElementById("llm-config-modal");
+    if (!modal) return;
+
+    // Load saved settings from localStorage
+    const saved = getStoredLlmConfig();
+    const provEl = document.getElementById("cfg-llm-provider");
+    const modelEl = document.getElementById("cfg-llm-model");
+    const keyEl = document.getElementById("cfg-llm-key");
+    const resBox = document.getElementById("llm-test-result-box");
+
+    if (provEl && saved.provider) provEl.value = saved.provider;
+    if (modelEl && saved.model) modelEl.value = saved.model;
+    if (keyEl && saved.apiKey) keyEl.value = saved.apiKey;
+    if (resBox) resBox.style.display = "none";
+
+    modal.style.display = "flex";
+}
+
+function closeLlmSettingsModal() {
+    const modal = document.getElementById("llm-config-modal");
+    if (modal) modal.style.display = "none";
+}
+
+function toggleApiKeyVisibility() {
+    const keyEl = document.getElementById("cfg-llm-key");
+    if (!keyEl) return;
+    keyEl.type = keyEl.type === "password" ? "text" : "password";
+}
+
+function onLlmProviderChange() {
+    const prov = document.getElementById("cfg-llm-provider").value;
+    const modelEl = document.getElementById("cfg-llm-model");
+    const keyEl = document.getElementById("cfg-llm-key");
+    if (!modelEl) return;
+
+    if (prov === "gemini") {
+        modelEl.value = "gemini-1.5-flash";
+        if (keyEl) keyEl.placeholder = "Nhập Gemini API Key (AIzaSy...)";
+    } else if (prov === "openai") {
+        modelEl.value = "gpt-4o-mini";
+        if (keyEl) keyEl.placeholder = "Nhập OpenAI API Key (sk-...)";
+    } else if (prov === "anthropic") {
+        modelEl.value = "claude-3-5-sonnet-20241022";
+        if (keyEl) keyEl.placeholder = "Nhập Anthropic API Key (sk-ant-...)";
+    } else if (prov === "ollama") {
+        modelEl.value = "llama3.2";
+        if (keyEl) keyEl.placeholder = "URL máy chủ Ollama (mặc định: http://localhost:11434)";
+    }
+}
+
+function getStoredLlmConfig() {
+    try {
+        const str = localStorage.getItem("leo_coord_llm_config");
+        if (str) return JSON.parse(str);
+    } catch (e) {
+        console.warn("Lỗi đọc cấu hình LLM từ localStorage:", e);
+    }
+    return { provider: "gemini", model: "gemini-1.5-flash", apiKey: "" };
+}
+
+function saveLlmConfigUI() {
+    const prov = document.getElementById("cfg-llm-provider").value;
+    const model = document.getElementById("cfg-llm-model").value;
+    const apiKey = document.getElementById("cfg-llm-key").value.trim();
+
+    const config = { provider: prov, model: model, apiKey: apiKey };
+    localStorage.setItem("leo_coord_llm_config", JSON.stringify(config));
+
+    const statusBadge = document.getElementById("multi-agent-status-badge");
+    if (statusBadge) {
+        if (apiKey) {
+            statusBadge.textContent = `🟢 ONLINE (${prov.toUpperCase()} API KẾT NỐI)`;
+            statusBadge.style.background = "rgba(16, 185, 129, 0.2)";
+            statusBadge.style.color = "#34d399";
+        } else {
+            statusBadge.textContent = "🤖 4 TÁC NHÂN AI ĐANG TRỰC TUYẾN (OFFLINE)";
+        }
+    }
+
+    alert(`✅ Đã lưu cấu hình LLM (${prov.toUpperCase()}) thành công!`);
+    closeLlmSettingsModal();
+}
+
+async function testLlmKeyUI() {
+    const prov = document.getElementById("cfg-llm-provider").value;
+    const model = document.getElementById("cfg-llm-model").value;
+    const apiKey = document.getElementById("cfg-llm-key").value.trim();
+    const resBox = document.getElementById("llm-test-result-box");
+    const btn = document.getElementById("btn-test-llm-key");
+
+    if (!apiKey) {
+        alert("Vui lòng nhập API Key trước khi kiểm tra!");
+        return;
+    }
+
+    if (resBox) {
+        resBox.style.display = "block";
+        resBox.style.background = "rgba(56, 189, 248, 0.15)";
+        resBox.style.color = "#38bdf8";
+        resBox.innerHTML = "⏳ Đang gửi yêu cầu kiểm tra ping tới " + prov.toUpperCase() + "...";
+    }
+    if (btn) btn.disabled = true;
+
+    try {
+        const res = await fetch("/api/multi-agent/test-key", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ provider: prov, model: model, api_key: apiKey })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.status === "success") {
+            resBox.style.background = "rgba(16, 185, 129, 0.2)";
+            resBox.style.color = "#34d399";
+            resBox.innerHTML = `✅ <strong>KẾT NỐI THÀNH CÔNG!</strong> (Độ trễ: ${data.latency_ms} ms)<br><span style="font-size:0.75rem;">Phản hồi từ ${data.model}: "${escapeHtml(data.text)}"</span>`;
+        } else {
+            resBox.style.background = "rgba(239, 68, 68, 0.2)";
+            resBox.style.color = "#ef4444";
+            resBox.innerHTML = `❌ <strong>KẾT NỐI THẤT BẠI:</strong> ${escapeHtml(data.message || data.detail || "Không xác định")}`;
+        }
+    } catch (e) {
+        resBox.style.background = "rgba(239, 68, 68, 0.2)";
+        resBox.style.color = "#ef4444";
+        resBox.innerHTML = `❌ <strong>LỖI:</strong> ${escapeHtml(e.message)}`;
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
+
 
 
 

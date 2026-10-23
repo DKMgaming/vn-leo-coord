@@ -656,6 +656,9 @@
                                     <button type="button" class="btn-text-action" onclick="downloadSpaceCapXmlSelected()" style="padding: 6px 12px;">
                                         📄 Tải Tệp AP4 SpaceCap XML
                                     </button>
+                                    <button type="button" class="btn-text-action" onclick="openLlmSettingsModal()" style="padding: 6px 12px; background: rgba(56, 189, 248, 0.2); color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);">
+                                        ⚙️ Cấu Hình LLM API Plugin
+                                    </button>
                                 </div>
 
                                 <!-- Council Verdict Banner -->
@@ -2274,5 +2277,52 @@
         };
     })();
     </script>
+
+    <!-- LLM Plugin Config Modal -->
+    <div id="llm-config-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 999999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+        <div style="background: #0f172a; border: 1px solid rgba(147, 51, 234, 0.5); border-radius: 12px; max-width: 520px; width: 92%; padding: 22px; box-shadow: 0 25px 35px -5px rgba(0, 0, 0, 0.7);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;">
+                <div style="font-weight: bold; font-size: 1.1rem; color: #c084fc;">⚙️ Cấu Hình LLM API Plugin (Online Mode)</div>
+                <button type="button" onclick="closeLlmSettingsModal()" style="background: none; border: none; color: #94a3b8; font-size: 1.3rem; cursor: pointer;">✕</button>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem;">
+                <div>
+                    <label style="display: block; margin-bottom: 4px; color: #cbd5e1; font-weight: 500;">Nhà cung cấp Mô hình (Provider):</label>
+                    <select id="cfg-llm-provider" onchange="onLlmProviderChange()" style="width: 100%; padding: 8px 10px; background: #1e293b; color: #f8fafc; border: 1px solid rgba(147, 51, 234, 0.4); border-radius: 6px;">
+                        <option value="gemini">Google Gemini (Khuyên dùng - Nhanh & Miễn phí)</option>
+                        <option value="openai">OpenAI (ChatGPT / GPT-4o / GPT-4o-mini)</option>
+                        <option value="anthropic">Anthropic (Claude 3.5 Sonnet)</option>
+                        <option value="ollama">Ollama Local LLM (Chạy trên máy chủ riêng)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label style="display: block; margin-bottom: 4px; color: #cbd5e1; font-weight: 500;">Tên Mô hình (Model Name):</label>
+                    <input type="text" id="cfg-llm-model" value="gemini-1.5-flash" style="width: 100%; padding: 8px 10px; background: #1e293b; color: #f8fafc; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 6px;" placeholder="Ví dụ: gemini-1.5-flash">
+                </div>
+
+                <div>
+                    <label style="display: block; margin-bottom: 4px; color: #cbd5e1; font-weight: 500;">Khóa API (API Key):</label>
+                    <div style="display: flex; gap: 6px;">
+                        <input type="password" id="cfg-llm-key" style="flex: 1; padding: 8px 10px; background: #1e293b; color: #f8fafc; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 6px;" placeholder="Nhập API key: AIzaSy... hoặc sk-...">
+                        <button type="button" class="btn-text-action" onclick="toggleApiKeyVisibility()" style="padding: 0 12px;">👁️</button>
+                    </div>
+                    <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 4px;">Khóa API được lưu an toàn trong trình duyệt (Local Storage) của bạn.</div>
+                </div>
+
+                <div id="llm-test-result-box" style="display: none; padding: 10px 12px; border-radius: 6px; font-size: 0.8rem;"></div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px;">
+                    <button type="button" class="btn-text-action" onclick="testLlmKeyUI()" id="btn-test-llm-key" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);">
+                        🔍 Kiểm Tra Kết Nối
+                    </button>
+                    <button type="button" class="btn-text-action" onclick="saveLlmConfigUI()" style="background: #9333ea; color: #fff; font-weight: bold; padding: 6px 14px;">
+                        💾 Lưu Cấu Hình
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
