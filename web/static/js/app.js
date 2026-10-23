@@ -550,7 +550,14 @@ function formatFileSize(bytes) {
 }
 
 function escapeHtml(text) {
-    if (!text) return "";
+    if (text === null || text === undefined) return "";
+    if (typeof text !== "string") {
+        try {
+            text = typeof text === "object" ? JSON.stringify(text) : String(text);
+        } catch (_) {
+            text = String(text);
+        }
+    }
     return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
@@ -2667,7 +2674,7 @@ function onLlmProviderChange() {
 
     if (prov === "gemini") {
         if (!modelEl.value || modelEl.value === "gpt-4o-mini" || modelEl.value === "claude-3-5-sonnet-20241022" || modelEl.value === "llama3.2") {
-            modelEl.value = "gemini-2.0-flash";
+            modelEl.value = "gemini-3.1-flash-lite";
         }
         if (keyEl) keyEl.placeholder = "Nhập Gemini API Key chính thức (bắt đầu bằng AIzaSy...)";
     } else if (prov === "openai") {
@@ -2689,7 +2696,7 @@ function getStoredLlmConfig() {
     } catch (e) {
         console.warn("Lỗi đọc cấu hình LLM từ localStorage:", e);
     }
-    return { provider: "gemini", model: "gemini-1.5-flash", apiKey: "" };
+    return { provider: "gemini", model: "gemini-3.1-flash-lite", apiKey: "" };
 }
 
 function saveLlmConfigUI() {
@@ -2731,7 +2738,7 @@ async function testLlmKeyUI() {
         resBox.style.display = "block";
         resBox.style.background = "rgba(56, 189, 248, 0.15)";
         resBox.style.color = "#38bdf8";
-        resBox.innerHTML = "⏳ Đang gửi yêu cầu kiểm tra ping tới " + prov.toUpperCase() + "...";
+        resBox.innerHTML = "⏳ Đang gửi yêu cầu kiểm tra ping tới " + prov.toUpperCase() + "... (khoảng 3-10 giây)";
     }
     if (btn) btn.disabled = true;
 
@@ -2746,16 +2753,25 @@ async function testLlmKeyUI() {
         if (res.ok && data.status === "success") {
             resBox.style.background = "rgba(16, 185, 129, 0.2)";
             resBox.style.color = "#34d399";
-            resBox.innerHTML = `✅ <strong>KẾT NỐI THÀNH CÔNG!</strong> (Độ trễ: ${data.latency_ms} ms)<br><span style="font-size:0.75rem;">Phản hồi từ ${data.model}: "${escapeHtml(data.text)}"</span>`;
+            resBox.innerHTML = `✅ <strong>KẾT NỐI THÀNH CÔNG!</strong> (Độ trễ: ${data.latency_ms} ms)<br><span style="font-size:0.75rem;">Phản hồi từ ${escapeHtml(data.model)}: "${escapeHtml(data.text)}"</span>`;
         } else {
+            let errMsg = data.message;
+            if (!errMsg && data.detail) {
+                errMsg = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
+            }
+            if (!errMsg) {
+                errMsg = res.status === 404
+                    ? "Dịch vụ web trên server chưa tải phiên bản mới hoặc chưa khởi động lại (HTTP 404). Vui lòng chạy lệnh khởi động lại trên server."
+                    : `Lỗi HTTP ${res.status}: Không xác định`;
+            }
             resBox.style.background = "rgba(239, 68, 68, 0.2)";
             resBox.style.color = "#ef4444";
-            resBox.innerHTML = `❌ <strong>KẾT NỐI THẤT BẠI:</strong> ${escapeHtml(data.message || data.detail || "Không xác định")}`;
+            resBox.innerHTML = `❌ <strong>KẾT NỐI THẤT BẠI:</strong> ${escapeHtml(errMsg)}`;
         }
     } catch (e) {
         resBox.style.background = "rgba(239, 68, 68, 0.2)";
         resBox.style.color = "#ef4444";
-        resBox.innerHTML = `❌ <strong>LỖI:</strong> ${escapeHtml(e.message)}`;
+        resBox.innerHTML = `❌ <strong>LỖI:</strong> ${escapeHtml(e.message || String(e))}`;
     } finally {
         if (btn) btn.disabled = false;
     }

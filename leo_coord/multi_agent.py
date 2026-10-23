@@ -379,7 +379,7 @@ def call_llm_api(
     prompt: str,
     system_instruction: str = "",
     model: Optional[str] = None,
-    timeout_s: float = 12.0
+    timeout_s: float = 20.0
 ) -> Dict[str, Any]:
     """
     Gọi API trực tiếp tới các nhà cung cấp mô hình ngôn ngữ lớn (LLM).
@@ -394,7 +394,7 @@ def call_llm_api(
 
     try:
         if provider == "gemini":
-            model_name = (model or "gemini-1.5-flash").strip()
+            model_name = (model or "gemini-3.1-flash-lite").strip()
             # Hỗ trợ cả OAuth token/Session token (AQ., ya29.) và API key chuẩn (AIzaSy...)
             if api_key.startswith("AQ.") or api_key.startswith("ya29."):
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
@@ -540,5 +540,5 @@ def call_llm_api(
 def test_llm_connection(provider: str, api_key: str, model: Optional[str] = None) -> Dict[str, Any]:
     """Kiểm tra tính hợp lệ và tốc độ phản hồi của API key."""
     prompt = "Xác nhận kết nối: Bạn là trợ lý thẩm định tần số vệ tinh của Cục Tần số Vô tuyến điện Việt Nam. Trả lời ngắn gọn: 'KẾT NỐI THÀNH CÔNG'."
-    return call_llm_api(provider=provider, api_key=api_key, prompt=prompt, model=model, timeout_s=8.0)
+    return call_llm_api(provider=provider, api_key=api_key, prompt=prompt, model=model, timeout_s=20.0)
 
