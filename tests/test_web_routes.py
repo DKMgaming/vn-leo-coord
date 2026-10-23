@@ -115,3 +115,32 @@ def test_epfd_s1503_simulation_endpoint():
     assert "cdf_curve" in res
 
 
+def test_phase4_endpoints_registered():
+    route_paths = [route.path for route in app.routes]
+    assert "/api/spacecap/samples" in route_paths
+    assert "/api/spacecap/parse" in route_paths
+    assert "/api/spacecap/download-xml/{filing_id}" in route_paths
+    assert "/api/multi-agent/convene" in route_paths
+    assert "/api/multi-agent/export-markdown/{filing_id}" in route_paths
+
+
+def test_spacecap_samples_endpoint():
+    from web.app import get_spacecap_samples_endpoint
+    res = get_spacecap_samples_endpoint()
+    assert res["total"] >= 3
+    assert len(res["filings"]) >= 3
+    first = res["filings"][0]
+    assert "validation" in first
+    assert first["validation"]["is_complete_ap4"] is True
+
+
+def test_multi_agent_convene_endpoint():
+    from web.app import convene_multi_agent_council_endpoint
+    res = convene_multi_agent_council_endpoint({"filing_id": "starlink-gen2-ap4"})
+    assert res["satellite_name"] == "STARLINK-GEN2-C-1"
+    assert res["overall_verdict"] == "CONDITIONAL_APPROVAL_WITH_COORDINATION"
+    assert len(res["deliberations"]) == 4
+    assert len(res["vietnam_pilot_conditions"]) >= 4
+
+
+

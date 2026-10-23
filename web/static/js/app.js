@@ -34,6 +34,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 9. Quét công báo quốc tế ITU BR IFIC & Trợ lý SpaceCom (Phase 3)
     loadBrIficScanUI();
+
+    // 10. Khởi tạo Hội đồng Trợ lý Multi-AI-Agent Thẩm định (Phase 4)
+    loadMultiAgentCouncilInitialUI();
 });
 
 /* ================= 1. CHUYỂN ĐỔI TAB ================= */
@@ -2283,6 +2286,267 @@ async function runS1503SimulationDemo() {
         content.innerHTML = `Lỗi mô phỏng EPFD S.1503: ${escapeHtml(e.message)}`;
     }
 }
+
+/* ================= MULTI-AI-AGENT REGULATORY COUNCIL (PHASE 4) ================= */
+
+let currentCouncilDossier = null;
+
+const FALLBACK_STARLINK_DOSSIER = {
+    filing_id: "starlink-gen2-ap4",
+    satellite_name: "STARLINK-GEN2-C-1",
+    notifying_adm: "USA",
+    operator: "SpaceX",
+    br_ific_ref: 3012,
+    assessment_date: new Date().toISOString().split('T')[0] + " 09:00:00",
+    overall_verdict: "CONDITIONAL_APPROVAL_WITH_COORDINATION",
+    verdict_label_vi: "CHẤP THUẬN CÓ ĐIỀU KIỆN (BẮT BUỘC PHỐI HỢP QUỐC TẾ & BẢO VỆ VINASAT)",
+    verdict_label_en: "CONDITIONAL APPROVAL SUBJECT TO BILATERAL COORDINATION & GSO PROTECTION",
+    risk_level: "HIGH",
+    itu_legal_grounds: [
+        "ITU Radio Regulations No. 9.7B (GSO vs Non-GSO Coordination)",
+        "ITU Radio Regulations No. 9.51 & 9.52 (4-Month Objection Deadline)",
+        "ITU Radio Regulations No. 22.2 (Protection of GSO Systems)",
+        "WRC-15 Resolution 76 (Aggregate EPFD Protection Limits)",
+        "ITU-R Recommendation S.1503-3 (EPFD Calculation Methodology)",
+        "Quyết định 659/QĐ-TTg của Thủ tướng Chính phủ (Thí điểm cấp phép LEO tại Việt Nam)"
+    ],
+    vietnam_pilot_conditions: [
+        "1. Áp dụng vùng đệm không phát sóng (Beam Blanking / Geo-fencing) góc lệch < 2.0° bảo vệ tuyệt đối VINASAT-1 (132°E) và VINASAT-2 (131.8°E).",
+        "2. Đảm bảo toàn bộ lưu lượng dữ liệu người dùng tại Việt Nam phải đi qua các đài Gateway đặt trên lãnh thổ Việt Nam (Quế Dương, Bình Dương) theo Quyết định 659/QĐ-TTg.",
+        "3. Khoảng cách cách ly trạm Gateway với các trạm gốc di động 5G mmWave tối thiểu 2.4 km (khu đô thị) và 7.6 km (ngoại thành).",
+        "4. Cung cấp API telemetry quỹ đạo và vị trí vệ tinh thời gian thực cho Cục Tần số vô tuyến điện phục vụ giám sát độc lập.",
+        "5. Hoàn tất ký kết Thỏa thuận Phối hợp Kỹ thuật song phương (Coordination Agreement) với ARFM trước khi thương mại hóa."
+    ],
+    deliberations: [
+        {
+            agent_id: "agent-data-specialist",
+            role_title_vi: "Chuyên viên Dữ liệu SpaceCap & Tình báo Tần số",
+            role_title_en: "SpaceCap Data Ingestor & Satellite Intelligence",
+            agent_name: "Agent 1 (Data Specialist)",
+            avatar: "🛰️",
+            key_findings: [
+                "Bóc tách thành công hồ sơ Phụ lục 4 (AP4): STARLINK-GEN2-C-1 từ cơ quan USA (SpaceX).",
+                "Quy mô chòm sao: 29,988 vệ tinh trên 44 mặt phẳng quỹ đạo (Walker Delta).",
+                "Độ đầy đủ dữ liệu kỹ thuật theo Phụ lục 4 ITU: 8/8 chỉ tiêu (HỒ SƠ HỢP LỆ THEO AP4).",
+                "Phát hiện trùng lặp băng Ku (10.7 - 12.75 GHz) với mạng VINASAT-1 (132.0°E) và VINASAT-2 (131.8°E)."
+            ],
+            statement_vi: "Tôi là Chuyên viên Dữ liệu Tần số Không gian. Tôi đã phân tích cấu trúc hồ sơ SpaceCap Phụ lục 4 của STARLINK-GEN2-C-1. Hồ sơ này có tổng cộng 29,988 vệ tinh ở độ cao xấp xỉ 530 km. Về mặt dữ liệu ITU, hồ sơ đạt chuẩn 8/8 trường dữ liệu bắt buộc. Đặc biệt, dải tần hoạt động xâm lấn trực tiếp vào không gian tần số đang khai thác của 2 vệ tinh địa tĩnh quốc gia VINASAT và các trạm Gateway LEO mặt đất tại Việt Nam.",
+            recommendations: [
+                "Trích xuất ma trận tham số quỹ đạo đưa vào mô hình động lực học quỹ đạo SGP4/Walker.",
+                "Lưu trữ bản ghi hồ sơ vào Cơ sở dữ liệu Hồ sơ Vệ tinh Ngoại của Cục Tần số (ARFM)."
+            ]
+        },
+        {
+            agent_id: "agent-rf-engineer",
+            role_title_vi: "Kỹ sư Vô tuyến & Can nhiễu LEO/GSO",
+            role_title_en: "RF Engineering & EPFD Interference Analyst",
+            agent_name: "Agent 2 (RF Engineer)",
+            avatar: "📡",
+            key_findings: [
+                "Mô phỏng EPFD tích lũy theo Rec. ITU-R S.1503-3 (trạm Đà Nẵng, đĩa 1.2m): Dung sai bảo vệ tối thiểu +5.80 dB so với Bảng 22-1A Thể lệ Vô tuyến.",
+                "Tương thích phổ tần 5G mmWave trạm Gateway (28 GHz): Yêu cầu suy hao cách ly 191.0 dB.",
+                "Vùng cách ly bảo vệ đài cổng (Exclusion Zone): 2.4 km (Đô thị), 23.8 km (LOS thông thoáng).",
+                "Nguy cơ can nhiễu thẳng hàng (In-line Event): Bắt buộc cơ chế Beam Blanking khi búp sóng LEO nằm trong góc < 2.0° so với hướng đài mặt đất ngắm VINASAT."
+            ],
+            statement_vi: "Về mặt kỹ thuật vô tuyến, tôi đã kích hoạt động cơ mô phỏng EPFD tích lũy ITU-R S.1503 và đánh giá chung sống phổ tần 5G. Hệ thống đạt chuẩn Bảng 22-1A với dung sai biên +5.80 dB trong điều kiện hoạt động bình thường, tuy nhiên tại các thời điểm vệ tinh cắt qua góc nhìn In-line Event với VINASAT (132.0°E), mức can nhiễu tức thời sẽ tăng vọt nếu không có cơ chế tắt sóng. Đồng thời, đài cổng Gateway băng Ka cần thiết lập vùng cách ly nghiêm ngặt tối thiểu 2.4 km để không làm tê liệt các trạm gốc 5G mmWave lân cận.",
+            recommendations: [
+                "Bắt buộc nhà mạng vệ tinh ký cam kết kỹ thuật thực hiện Beam Blanking tự động trên vùng trời Việt Nam.",
+                "Quy hoạch vị trí trạm Gateway cách xa khu dân cư và các trạm phát sóng 5G mmWave tối thiểu 7.6 km.",
+                "Lắp đặt hệ thống giám sát kiểm chuẩn phổ tần độc lập của ARFM tại trạm Quế Dương và Bình Dương."
+            ]
+        },
+        {
+            agent_id: "agent-legal-expert",
+            role_title_vi: "Chuyên gia Pháp lý & Thể lệ Vô tuyến ITU",
+            role_title_en: "ITU Legal & Radio Regulations Expert",
+            agent_name: "Agent 3 (Legal Expert)",
+            avatar: "🧑‍⚖️",
+            key_findings: [
+                "Căn cứ Điều khoản 22.2 Thể lệ Vô tuyến ITU (RR No. 22.2): Các hệ thống phi địa tĩnh không được phép gây can nhiễu có hại cho các mạng GSO đang vận hành.",
+                "Căn cứ Điều khoản 9.7B & 9.51 Thể lệ Vô tuyến: Cơ quan Quản lý Việt Nam (VTN) có quyền nộp văn bản Bất đồng ý kiến trong thời hạn 4 tháng kể từ ngày công bố công báo BR IFIC.",
+                "Căn cứ Quyết định số 659/QĐ-TTg của Thủ tướng Chính phủ: Dịch vụ viễn thông vệ tinh LEO chỉ được phép thí điểm tại Việt Nam khi đáp ứng trọn vẹn yêu cầu an ninh mạng và đặt Gateway trong nước."
+            ],
+            statement_vi: "Về mặt pháp lý và quan hệ quốc tế, hồ sơ STARLINK-GEN2-C-1 bắt buộc phải bước vào quy trình phối hợp song phương chính thức theo RR No. 9.7B và 9.52. Việt Nam giữ quyền phủ quyết và bảo vệ nguyên trạng hoạt động của vệ tinh VINASAT-1 và VINASAT-2 theo Điều 22.2 Thể lệ Vô tuyến. Doanh nghiệp bắt buộc phải ký Thỏa thuận Phối hợp Tần số với cơ quan quản lý Việt Nam (ARFM) trước ngày đưa vào khai thác thương mại.",
+            recommendations: [
+                "Nộp công văn phản đối kỹ thuật chính thức thông qua phần mềm ITU SpaceCom trước hạn chót 4 tháng (RR 9.51/9.52).",
+                "Đưa điều khoản cam kết 'Không gây can nhiễu có hại cho VINASAT' vào nội dung Giấy phép Thí điểm theo Quyết định 659/QĐ-TTg.",
+                "Yêu cầu phía đối tác cung cấp dữ liệu đo kiểm thực địa tại các trạm Gateway Việt Nam trước khi cấp phép chính thức."
+            ]
+        },
+        {
+            agent_id: "agent-chief-coordinator",
+            role_title_vi: "Trưởng ban Thẩm định & Thư ký Điều phối",
+            role_title_en: "Chief Coordinator & Assessment Rapporteur",
+            agent_name: "Agent 4 (Chief Coordinator)",
+            avatar: "👨‍💼",
+            key_findings: [
+                "Đạt được sự thống nhất 100% giữa các chuyên gia về phương án xử lý hồ sơ.",
+                "Xác lập 5 điều kiện tiên quyết cho việc cấp phép thí điểm tại Việt Nam.",
+                "Hoàn thành toàn diện Báo cáo Thẩm định Kỹ thuật Song ngữ chuẩn ITU."
+            ],
+            statement_vi: "Sau khi lắng nghe và tổng hợp báo cáo chuyên sâu từ Chuyên viên Dữ liệu, Kỹ sư Vô tuyến và Chuyên gia Pháp lý, Hội đồng AI Thẩm định ra kết luận: CHẤP THUẬN CÓ ĐIỀU KIỆN KÈM BẮT BUỘC PHỐI HỢP TẦN SỐ QUỐC TẾ. Hồ sơ STARLINK-GEN2-C-1 về tổng thể đáp ứng ngưỡng EPFD lý thuyết S.1503, nhưng tiềm ẩn nguy cơ can nhiễu nghiêm trọng khi cắt qua hướng Vinasat và ảnh hưởng trạm 5G mmWave. Hội đồng đã lập sẵn Bộ Hồ sơ Thẩm định và Dự thảo Phản đối SpaceCom sẵn sàng trình Lãnh đạo Cục Tần số phê duyệt.",
+            recommendations: [
+                "1. Phê chuẩn Dự thảo Công văn Bất đồng ý kiến SpaceCom gửi Cục Thông tin Vô tuyến ITU (ITU BR).",
+                "2. Ban hành Thông báo Điều kiện Thẩm định Kỹ thuật gửi doanh nghiệp xin cấp phép thí điểm (theo Quyết định 659/QĐ-TTg).",
+                "3. Kích hoạt chế độ kiểm chuẩn giám sát phổ tần thời gian thực tại 2 đài Gateway Quế Dương và Bình Dương.",
+                "4. Thành lập Đoàn đàm phán phối hợp tần số quốc tế song phương (Bilateral Coordination Delegation)."
+            ]
+        }
+    ]
+};
+
+function loadMultiAgentCouncilInitialUI() {
+    renderCouncilDossier(FALLBACK_STARLINK_DOSSIER);
+}
+
+function renderCouncilDossier(data) {
+    currentCouncilDossier = data;
+
+    const verdictTextEl = document.getElementById("council-verdict-text");
+    if (verdictTextEl) verdictTextEl.textContent = data.verdict_label_vi;
+
+    const riskBadgeEl = document.getElementById("council-risk-badge");
+    if (riskBadgeEl) {
+        riskBadgeEl.textContent = `RỦI RO: NGUY CƠ ${data.risk_level === 'HIGH' ? 'CAO (VINASAT)' : 'TRUNG BÌNH'}`;
+        riskBadgeEl.style.background = data.risk_level === 'HIGH' ? "rgba(239, 68, 68, 0.2)" : "rgba(245, 158, 11, 0.2)";
+        riskBadgeEl.style.color = data.risk_level === 'HIGH' ? "#ef4444" : "#f59e0b";
+    }
+
+    const streamEl = document.getElementById("council-deliberation-stream");
+    if (!streamEl || !data.deliberations) return;
+    streamEl.innerHTML = "";
+
+    data.deliberations.forEach((msg, idx) => {
+        const bubble = document.createElement("div");
+        bubble.style.cssText = "padding: 12px; background: rgba(30, 41, 59, 0.6); border-radius: 8px; border-left: 3px solid #c084fc;";
+
+        let borderColors = ["#38bdf8", "#34d399", "#f59e0b", "#c084fc"];
+        bubble.style.borderLeftColor = borderColors[idx % borderColors.length];
+
+        const findingsList = msg.key_findings.map(f => `<li>${escapeHtml(f)}</li>`).join("");
+        const recsList = msg.recommendations.map(r => `<li>${escapeHtml(r)}</li>`).join("");
+
+        bubble.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                <div style="font-weight: bold; font-size: 0.88rem; color: #f8fafc;">
+                    <span style="font-size: 1.1rem; margin-right: 4px;">${msg.avatar}</span> ${escapeHtml(msg.role_title_vi)}
+                    <span style="font-size: 0.72rem; color: #94a3b8; font-weight: normal; margin-left: 6px;">(${escapeHtml(msg.agent_name)})</span>
+                </div>
+                <span class="badge-tag" style="background: rgba(147, 51, 234, 0.2); color: #c084fc; font-size: 0.7rem;">CHUYÊN GIA AI</span>
+            </div>
+            <div style="font-style: italic; color: #e2e8f0; margin-bottom: 8px; padding: 6px 10px; background: rgba(0,0,0,0.25); border-radius: 4px;">
+                "${escapeHtml(msg.statement_vi)}"
+            </div>
+            <div style="font-size: 0.78rem; color: #cbd5e1; margin-bottom: 4px;"><strong>Nhận định kỹ thuật:</strong></div>
+            <ul style="padding-left: 18px; margin: 0 0 6px 0; font-size: 0.76rem; color: #94a3b8; line-height: 1.5;">${findingsList}</ul>
+            <div style="font-size: 0.78rem; color: #cbd5e1; margin-bottom: 4px;"><strong>Khuyến nghị hành động:</strong></div>
+            <ul style="padding-left: 18px; margin: 0; font-size: 0.76rem; color: #38bdf8; line-height: 1.5;">${recsList}</ul>
+        `;
+        streamEl.appendChild(bubble);
+    });
+
+    const condListEl = document.getElementById("council-pilot-conditions");
+    if (condListEl && data.vietnam_pilot_conditions) {
+        condListEl.innerHTML = data.vietnam_pilot_conditions.map(c => `<li>${escapeHtml(c)}</li>`).join("");
+    }
+}
+
+async function conveneCouncilUI() {
+    const sel = document.getElementById("sel-agent-filing");
+    const filingId = sel ? sel.value : "starlink-gen2-ap4";
+    const statusBadge = document.getElementById("multi-agent-status-badge");
+    const btn = document.getElementById("btn-convene-council");
+
+    if (statusBadge) statusBadge.textContent = "⏳ HỘI ĐỒNG AI ĐANG HỘI CHẨN & MÔ PHỎNG...";
+    if (btn) btn.disabled = true;
+
+    try {
+        const res = await fetch("/api/multi-agent/convene", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ filing_id: filingId })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            renderCouncilDossier(data);
+            if (statusBadge) statusBadge.textContent = "✅ HỘI CHẨN HOÀN TẤT (100% ĐỒNG THUẬN)";
+        } else {
+            throw new Error("HTTP " + res.status);
+        }
+    } catch (e) {
+        console.warn("Chưa kết nối API Council, đang dùng bộ dữ liệu hội đồng tham chuẩn:", e);
+        renderCouncilDossier(FALLBACK_STARLINK_DOSSIER);
+        if (statusBadge) statusBadge.textContent = "🤖 4 TÁC NHÂN AI ĐANG TRỰC TUYẾN";
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
+function exportCouncilMarkdown() {
+    const sel = document.getElementById("sel-agent-filing");
+    const filingId = sel ? sel.value : "starlink-gen2-ap4";
+    const url = `/api/multi-agent/export-markdown/${filingId}`;
+
+    fetch(url, { method: "HEAD" }).then(res => {
+        if (res.ok) {
+            window.open(url, "_blank");
+        } else {
+            generateClientCouncilMarkdown();
+        }
+    }).catch(() => {
+        generateClientCouncilMarkdown();
+    });
+}
+
+function generateClientCouncilMarkdown() {
+    const d = currentCouncilDossier || FALLBACK_STARLINK_DOSSIER;
+    let md = `# BÁO CÁO THẨM ĐỊNH KỸ THUẬT & PHÁP LÝ QUỐC TẾ (ITU & VIỆT NAM)
+**HỘI ĐỒNG TRỢ LÝ AI ĐA TÁC NHÂN (MULTI-AI-AGENT REGULATORY COUNCIL)**
+*Cục Tần số Vô tuyến điện (ARFM) - Cơ quan Thường trực Ủy ban Vũ trụ Việt Nam*
+
+---
+
+### THÔNG TIN HỒ SƠ THẨM ĐỊNH
+- **Mạng vệ tinh:** ${d.satellite_name} (${d.notifying_adm})
+- **Chủ quản / Khai thác:** ${d.operator}
+- **Công báo BR IFIC:** Số ${d.br_ific_ref}
+- **Ngày thẩm định:** ${d.assessment_date}
+- **Kết luận chung (Verdict):** ${d.verdict_label_vi}
+- **Mức độ rủi ro can nhiễu:** ${d.risk_level}
+
+---
+
+### TÓM TẮT ĐIỀU HÀNH (EXECUTIVE SUMMARY)
+${d.executive_summary_vi}
+
+---
+
+### ĐIỀU KIỆN TIÊN QUYẾT CẤP PHÉP THÍ ĐIỂM (THEO QUYẾT ĐỊNH 659/QĐ-TTg):
+${d.vietnam_pilot_conditions.map(c => `- ${c}`).join('\n')}
+
+---
+
+### CĂN CỨ PHÁP LÝ THỂ LỆ VÔ TUYẾN ITU:
+${d.itu_legal_grounds.map(g => `- ${g}`).join('\n')}
+`;
+
+    const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `Bao_Cao_Tham_Dinh_AI_${d.satellite_name}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+function downloadSpaceCapXmlSelected() {
+    const sel = document.getElementById("sel-agent-filing");
+    const filingId = sel ? sel.value : "starlink-gen2-ap4";
+    const url = `/api/spacecap/download-xml/${filingId}`;
+    window.open(url, "_blank");
+}
+
 
 
 

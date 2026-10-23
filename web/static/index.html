@@ -633,6 +633,113 @@
 
                             </div>
 
+                            <!-- Box 8: Hội Đồng Trợ Lý Multi-AI-Agent Thẩm Định Cấp Phép & Phối Hợp Quốc Tế (Phase 4) -->
+                            <div class="detail-box full-width" style="border: 1px solid rgba(147, 51, 234, 0.4); background: rgba(15, 23, 42, 0.9);">
+                                <div class="box-title-row">
+                                    <div class="box-title" style="color: #c084fc;">🏛️ Hội Đồng Trợ Lý Multi-AI-Agent Thẩm Định Cấp Phép & Phối Hợp Quốc Tế (Phase 4)</div>
+                                    <span class="badge-tag" style="background: rgba(168, 85, 247, 0.2); color: #c084fc;" id="multi-agent-status-badge">🤖 4 TÁC NHÂN AI ĐANG TRỰC TUYẾN</span>
+                                </div>
+
+                                <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; padding: 10px; background: rgba(0, 0, 0, 0.3); border-radius: 8px;">
+                                    <label style="font-size: 0.85rem; color: #cbd5e1; font-weight: bold;">Chọn Hồ sơ Mạng Vệ tinh Thẩm định:</label>
+                                    <select id="sel-agent-filing" style="padding: 6px 12px; background: #1e293b; color: #f8fafc; border: 1px solid rgba(147, 51, 234, 0.4); border-radius: 6px; font-size: 0.85rem;">
+                                        <option value="starlink-gen2-ap4">STARLINK-GEN2-C-1 (Hoa Kỳ / SpaceX - 29,988 vệ tinh)</option>
+                                        <option value="guowang-gw-a59-ap4">GW-A59 Guowang (Trung Quốc / China SatNet - 12,992 vệ tinh)</option>
+                                        <option value="oneweb-phase2-ap4">ONEWEB-PHASE2 (Vương quốc Anh / Eutelsat OneWeb - 648 vệ tinh)</option>
+                                    </select>
+                                    <button type="button" class="btn-text-action" id="btn-convene-council" style="background: rgba(147, 51, 234, 0.3); color: #c084fc; border-color: rgba(147, 51, 234, 0.6); padding: 6px 14px; font-weight: bold;" onclick="conveneCouncilUI()">
+                                        🚀 Triệu Tập Hội Đồng AI Thẩm Định
+                                    </button>
+                                    <button type="button" class="btn-text-action" onclick="exportCouncilMarkdown()" style="padding: 6px 12px;">
+                                        📥 Xuất Báo Cáo Song Ngữ (MD)
+                                    </button>
+                                    <button type="button" class="btn-text-action" onclick="downloadSpaceCapXmlSelected()" style="padding: 6px 12px;">
+                                        📄 Tải Tệp AP4 SpaceCap XML
+                                    </button>
+                                </div>
+
+                                <!-- Council Verdict Banner -->
+                                <div id="council-verdict-banner" style="margin-top: 14px; padding: 12px 16px; border-radius: 8px; background: rgba(234, 179, 8, 0.15); border: 1px solid rgba(234, 179, 8, 0.4); display: flex; align-items: center; justify-content: space-between;">
+                                    <div>
+                                        <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: #fbbf24; font-weight: bold;">KẾT LUẬN THẨM ĐỊNH TẬP THỂ (COUNCIL VERDICT)</div>
+                                        <div id="council-verdict-text" style="font-size: 0.95rem; font-weight: bold; color: #f8fafc; margin-top: 2px;">
+                                            CHẤP THUẬN CÓ ĐIỀU KIỆN (BẮT BUỘC PHỐI HỢP QUỐC TẾ & BẢO VỆ VINASAT)
+                                        </div>
+                                    </div>
+                                    <span class="badge-tag" style="background: rgba(239, 68, 68, 0.2); color: #ef4444; font-size: 0.8rem; padding: 4px 10px;" id="council-risk-badge">
+                                        RỦI RO: NGUY CƠ CAO (VINASAT)
+                                    </span>
+                                </div>
+
+                                <!-- 4 Agents Grid Cards -->
+                                <div class="antenna-specs-grid" style="margin-top: 14px;" id="council-agents-grid">
+                                    <!-- Agent 1: Data Specialist -->
+                                    <div class="antenna-card" style="border-top: 3px solid #38bdf8;">
+                                        <div class="antenna-title">🛰️ Agent 1: SpaceCap Data Ingestor</div>
+                                        <div class="antenna-desc" id="ag1-title">Chuyên viên Dữ liệu SpaceCap & Tình báo Tần số</div>
+                                        <div class="antenna-stat"><span>Quy mô:</span> <strong id="ag1-sats">29,988 vệ tinh</strong></div>
+                                        <div class="antenna-stat"><span>Mặt phẳng quỹ đạo:</span> <strong id="ag1-planes">44 mặt phẳng</strong></div>
+                                        <div class="antenna-stat"><span>Độ đầy đủ AP4:</span> <strong class="text-green" id="ag1-ap4">100% (Đạt chuẩn)</strong></div>
+                                        <div class="antenna-stat"><span>Xâm lấn Vinasat:</span> <strong class="text-red" id="ag1-overlap">Trùng Ku/Ka</strong></div>
+                                    </div>
+
+                                    <!-- Agent 2: RF Engineer -->
+                                    <div class="antenna-card" style="border-top: 3px solid #34d399;">
+                                        <div class="antenna-title">📡 Agent 2: RF & EPFD Interference</div>
+                                        <div class="antenna-desc" id="ag2-title">Kỹ sư Vô tuyến & Can nhiễu LEO/GSO</div>
+                                        <div class="antenna-stat"><span>Dung sai EPFD S.1503:</span> <strong class="text-green" id="ag2-margin">+5.80 dB (Đạt)</strong></div>
+                                        <div class="antenna-stat"><span>Suy hao cách ly 5G:</span> <strong class="text-orange" id="ag2-loss">191.0 dB</strong></div>
+                                        <div class="antenna-stat"><span>Vùng cách ly Gateway:</span> <strong id="ag2-dist">2.4 km đô thị</strong></div>
+                                        <div class="antenna-stat"><span>In-line Blanking:</span> <strong class="text-red" id="ag2-blanking">Bắt buộc &lt; 2.0°</strong></div>
+                                    </div>
+
+                                    <!-- Agent 3: Legal Expert -->
+                                    <div class="antenna-card" style="border-top: 3px solid #f59e0b;">
+                                        <div class="antenna-title">🧑‍⚖️ Agent 3: ITU Legal Expert</div>
+                                        <div class="antenna-desc" id="ag3-title">Chuyên gia Pháp lý & Thể lệ Vô tuyến ITU</div>
+                                        <div class="antenna-stat"><span>Căn cứ bất khả xâm phạm:</span> <strong>RR No. 22.2 (GSO)</strong></div>
+                                        <div class="antenna-stat"><span>Thủ tục bắt buộc:</span> <strong>RR No. 9.7B & 9.52</strong></div>
+                                        <div class="antenna-stat"><span>Hạn chót SpaceCom:</span> <strong class="text-red">4 Tháng (122 ngày)</strong></div>
+                                        <div class="antenna-stat"><span>Đề án Thí điểm VN:</span> <strong>QĐ 659/QĐ-TTg</strong></div>
+                                    </div>
+
+                                    <!-- Agent 4: Chief Coordinator -->
+                                    <div class="antenna-card" style="border-top: 3px solid #c084fc;">
+                                        <div class="antenna-title">👨‍💼 Agent 4: Chief Coordinator</div>
+                                        <div class="antenna-desc" id="ag4-title">Trưởng ban Thẩm định & Thư ký Điều phối</div>
+                                        <div class="antenna-stat"><span>Đồng thuận Hội đồng:</span> <strong class="text-green" id="ag4-consensus">100% Đồng thuận</strong></div>
+                                        <div class="antenna-stat"><span>Điều kiện cấp phép:</span> <strong id="ag4-conds">5 Điều kiện tiên quyết</strong></div>
+                                        <div class="antenna-stat"><span>Chiến lược đàm phán:</span> <strong>Song phương ITU</strong></div>
+                                        <div class="antenna-stat"><span>Tình trạng hồ sơ:</span> <strong class="text-green">Sẵn sàng trình Lãnh đạo</strong></div>
+                                    </div>
+                                </div>
+
+                                <!-- Agent Statements Carousel / Accordion -->
+                                <div style="margin-top: 14px; padding: 12px; background: rgba(0,0,0,0.3); border-radius: 8px;">
+                                    <div style="font-weight: bold; color: #cbd5e1; font-size: 0.85rem; margin-bottom: 8px;">
+                                        💬 Ý KIẾN CHUYÊN MÔN & PHÁT BIỂU CỦA CÁC TÁC NHÂN AI:
+                                    </div>
+                                    <div id="council-deliberation-stream" style="display: flex; flex-direction: column; gap: 10px; font-size: 0.82rem; line-height: 1.5; color: #cbd5e1;">
+                                        <!-- Will be rendered via JS -->
+                                    </div>
+                                </div>
+
+                                <!-- Vietnam Pilot Conditions (QĐ 659/QĐ-TTg) -->
+                                <div style="margin-top: 14px; padding: 12px; background: rgba(30, 41, 59, 0.7); border-radius: 8px; border-left: 3px solid #38bdf8;">
+                                    <div style="font-weight: bold; color: #38bdf8; font-size: 0.85rem; margin-bottom: 6px;">
+                                        🇻🇳 5 ĐIỀU KIỆN TIÊN QUYẾT CẤP PHÉP THÍ ĐIỂM TẠI VIỆT NAM (THEO QUYẾT ĐỊNH 659/QĐ-TTg):
+                                    </div>
+                                    <ul id="council-pilot-conditions" style="padding-left: 20px; margin: 0; font-size: 0.8rem; color: #cbd5e1; line-height: 1.6;">
+                                        <li>1. Áp dụng vùng đệm không phát sóng (Beam Blanking / Geo-fencing) góc lệch &lt; 2.0° bảo vệ tuyệt đối VINASAT-1 (132°E) và VINASAT-2 (131.8°E).</li>
+                                        <li>2. Đảm bảo toàn bộ lưu lượng dữ liệu người dùng tại Việt Nam phải đi qua các đài Gateway đặt trên lãnh thổ Việt Nam (Quế Dương, Bình Dương).</li>
+                                        <li>3. Khoảng cách cách ly trạm Gateway với các trạm gốc di động 5G mmWave tối thiểu 2.4 km (đô thị) và 7.6 km (ngoại thành).</li>
+                                        <li>4. Cung cấp API telemetry quỹ đạo thời gian thực cho Cục Tần số phục vụ giám sát độc lập.</li>
+                                        <li>5. Ký kết Thỏa thuận Phối hợp Kỹ thuật song phương (Coordination Agreement) với ARFM trước khi thương mại hóa.</li>
+                                    </ul>
+                                </div>
+
+                            </div>
+
                         </div>
 
                         <!-- Report Action -->

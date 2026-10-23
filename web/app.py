@@ -552,6 +552,147 @@ def get_s1503_simulation(
     return res
 
 
+# ================= ITU APPENDIX 4 (SPACECAP) & MULTI-AI-AGENT REGULATORY COUNCIL (PHASE 4) =================
+
+@app.get("/api/spacecap/samples")
+def get_spacecap_samples_endpoint():
+    """Lấy danh sách các hồ sơ mẫu theo chuẩn ITU RR Phụ lục 4 (SpaceCap Format)."""
+    from leo_coord.spacecap import load_spacecap_samples, validate_appendix4_completeness
+    samples = load_spacecap_samples()
+    res = []
+    for s in samples:
+        v = validate_appendix4_completeness(s)
+        d = s.to_dict()
+        d["validation"] = v
+        res.append(d)
+    return {"total": len(res), "filings": res}
+
+
+@app.post("/api/spacecap/parse")
+def parse_spacecap_endpoint(payload: Dict[str, Any]):
+    """Bóc tách và kiểm tra tính hợp lệ của hồ sơ Phụ lục 4 SpaceCap tùy chỉnh."""
+    from leo_coord.spacecap import parse_appendix4_json, validate_appendix4_completeness
+    try:
+        filing = parse_appendix4_json(payload)
+        val = validate_appendix4_completeness(filing)
+        res = filing.to_dict()
+        res["validation"] = val
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Lỗi phân tích cú pháp Phụ lục 4: {str(e)}")
+
+
+@app.get("/api/spacecap/download-xml/{filing_id}")
+def download_spacecap_xml_endpoint(filing_id: str):
+    """Xuất hồ sơ mạng vệ tinh theo chuẩn XML ITU SpaceCap v2.0."""
+    from fastapi.responses import Response
+    from leo_coord.spacecap import load_spacecap_samples, export_appendix4_xml
+    samples = load_spacecap_samples()
+    filing = next((s for s in samples if s.id == filing_id), None)
+    if not filing:
+        raise HTTPException(status_code=404, detail=f"Không tìm thấy hồ sơ {filing_id}")
+    xml_str = export_appendix4_xml(filing)
+    return Response(
+        content=xml_str,
+        media_type="application/xml",
+        headers={"Content-Disposition": f'attachment; filename="SpaceCap_AP4_{filing.name}.xml"'}
+    )
+
+
+@app.post("/api/multi-agent/convene")
+def convene_multi_agent_council_endpoint(payload: Dict[str, Any]):
+    """
+    Triệu tập Hội đồng Trợ lý AI Đa tác nhân Thẩm định Cấp phép & Phối hợp Quốc tế.
+    Payload: {"filing_id": "starlink-gen2-ap4"} hoặc dữ liệu hồ sơ AP4 tùy chỉnh.
+    """
+    from leo_coord.spacecap import load_spacecap_samples, parse_appendix4_json
+    from leo_coord.multi_agent import MultiAgentCouncil
+
+    filing_id = payload.get("filing_id")
+    if filing_id:
+        samples = load_spacecap_samples()
+        filing = next((s for s in samples if s.id == filing_id), None)
+        if not filing:
+            raise HTTPException(status_code=404, detail=f"Không tìm thấy hồ sơ mẫu {filing_id}")
+    elif "name" in payload or "orbit" in payload:
+        filing = parse_appendix4_json(payload)
+    else:
+        # Default to Starlink Gen2 if none specified
+        samples = load_spacecap_samples()
+        filing = samples[0]
+
+    council = MultiAgentCouncil(filing)
+    dossier = council.convene_council()
+    return dossier.to_dict()
+
+
+@app.get("/api/multi-agent/export-markdown/{filing_id}")
+def export_multi_agent_dossier_markdown(filing_id: str):
+    """Xuất toàn văn Báo cáo Thẩm định Kỹ thuật & Pháp lý Song ngữ định dạng Markdown."""
+    from fastapi.responses import PlainTextResponse
+    from leo_coord.spacecap import load_spacecap_samples
+    from leo_coord.multi_agent import MultiAgentCouncil
+
+    samples = load_spacecap_samples()
+    filing = next((s for s in samples if s.id == filing_id), None)
+    if not filing:
+        raise HTTPException(status_code=404, detail=f"Không tìm thấy hồ sơ {filing_id}")
+
+    council = MultiAgentCouncil(filing)
+    dossier = council.convene_council()
+
+    md = f"""# BÁO CÁO THẨM ĐỊNH KỸ THUẬT & PHÁP LÝ QUỐC TẾ (ITU & VIỆT NAM)
+**HỘI ĐỒNG TRỢ LÝ AI ĐA TÁC NHÂN (MULTI-AI-AGENT REGULATORY COUNCIL)**
+*Cục Tần số Vô tuyến điện (ARFM) - Cơ quan Thường trực Ủy ban Vũ trụ Việt Nam*
+
+---
+
+### THÔNG TIN HỒ SƠ THẨM ĐỊNH
+- **Mạng vệ tinh:** {dossier.satellite_name} ({dossier.notifying_adm})
+- **Chủ quản / Khai thác:** {dossier.operator}
+- **Công báo BR IFIC:** Số {dossier.br_ific_ref}
+- **Ngày thẩm định:** {dossier.assessment_date}
+- **Kết luận chung (Verdict):** {dossier.verdict_label_vi}
+- **Mức độ rủi ro can nhiễu:** {dossier.risk_level}
+
+---
+
+### TÓM TẮT ĐIỀU HÀNH (EXECUTIVE SUMMARY)
+{dossier.executive_summary_vi}
+
+#### ENGLISH EXECUTIVE SUMMARY FOR ITU BILATERAL ENGAGEMENT:
+{dossier.executive_summary_en}
+
+---
+
+### ĐIỀU KIỆN TIÊN QUYẾT CẤP PHÉP THÍ ĐIỂM (THEO QUYẾT ĐỊNH 659/QĐ-TTg):
+{chr(10).join(f"- {c}" for c in dossier.vietnam_pilot_conditions)}
+
+---
+
+### CĂN CỨ PHÁP LÝ THỂ LỆ VÔ TUYẾN ITU:
+{chr(10).join(f"- {g}" for g in dossier.itu_legal_grounds)}
+
+---
+
+### DIỄN BIẾN PHIÊN HỌP HỘI ĐỒNG TRỢ LÝ AI ĐA TÁC NHÂN
+"""
+    for msg in dossier.deliberations:
+        md += f"""
+#### {msg['avatar']} {msg['role_title_vi']} ({msg['agent_name']})
+**Nhận định kỹ thuật:**
+{chr(10).join(f"- {f}" for f in msg['key_findings'])}
+
+**Phát biểu:**
+> *"{msg['statement_vi']}"*
+
+**Khuyến nghị hành động:**
+{chr(10).join(f"- {r}" for r in msg['recommendations'])}
+"""
+
+    return PlainTextResponse(content=md, media_type="text/markdown; charset=utf-8")
+
+
 # ================= N2YO REAL-TIME SATELLITE TRACKING & COORDINATION =================
 
 @app.get("/api/real-satellites/tracked")

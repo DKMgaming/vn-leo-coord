@@ -1,0 +1,145 @@
+# ==============================================================================
+# BỘ DỮ LIỆU MẪU HỒ SƠ PHỤ LỤC 4 (ITU RR APPENDIX 4 / SPACECAP FORMAT)
+# Tiêu chuẩn: ITU Radio Regulations Appendix 4 (Annex 2B - Non-GSO FSS & Earth Stations)
+# ==============================================================================
+
+filings:
+  - id: "starlink-gen2-ap4"
+    name: "STARLINK-GEN2-C-1"
+    notifying_adm: "USA"
+    operator: "Space Exploration Technologies Corp. (SpaceX)"
+    br_ific_ref: 3012
+    special_section: "CR/C/6120"
+    filing_type: "NON-GSO FSS"
+    orbit:
+      constellation_type: "Walker Delta"
+      total_satellites: 29988
+      planes:
+        - plane_id: 1
+          altitude_km: 530.0
+          inclination_deg: 53.0
+          satellites_per_plane: 580
+          num_planes: 24
+        - plane_id: 2
+          altitude_km: 525.0
+          inclination_deg: 43.0
+          satellites_per_plane: 400
+          num_planes: 20
+      orbital_period_min: 95.2
+    frequency_assignments:
+      - band_name: "Ku-band Downlink (Space-to-Earth)"
+        freq_min_ghz: 10.7
+        freq_max_ghz: 12.75
+        polarization: "Circular"
+        service: "FSS"
+        max_pfd_dbw_m2_4khz: -146.0
+        allocated_to_vietnam_services: ["VINASAT-1", "VINASAT-2", "Direct-to-Home TV"]
+      - band_name: "Ka-band Gateway Downlink"
+        freq_min_ghz: 17.7
+        freq_max_ghz: 19.7
+        polarization: "Circular"
+        service: "FSS"
+        max_pfd_dbw_m2_1mhz: -115.0
+        allocated_to_vietnam_services: ["Gateway Quế Dương", "Gateway Bình Dương"]
+      - band_name: "Ka-band Gateway Uplink"
+        freq_min_ghz: 27.5
+        freq_max_ghz: 29.5
+        polarization: "Circular"
+        service: "FSS"
+        max_eirp_dbw: 84.5
+        coexistence_issue: "5G mmWave Band n258 (26.5 - 27.5 GHz)"
+    antenna_patterns:
+      space_station: "ITU-R S.1428-1 (Phased array with active steering)"
+      earth_station: "ITU-R S.580-6 / User Terminal 0.6m & Gateway 1.5m-3.0m"
+    service_area:
+      vietnam_covered: true
+      coordinates_bbox: [8.0, 102.0, 23.5, 110.0]
+    applicable_itu_provisions:
+      - "RR No. 9.7B (Coordination of non-GSO vs GSO)"
+      - "RR No. 22.2 (Protection of GSO from unacceptable interference)"
+      - "Resolution 76 (WRC-15 Aggregate EPFDdown limits)"
+      - "Quyết định 659/QĐ-TTg (Thí điểm cấp phép LEO tại Việt Nam)"
+
+  - id: "guowang-gw-a59-ap4"
+    name: "GW-A59"
+    notifying_adm: "CHN"
+    operator: "China Satellite Network Group Co., Ltd."
+    br_ific_ref: 3010
+    special_section: "CR/C/6088"
+    filing_type: "NON-GSO FSS"
+    orbit:
+      constellation_type: "Walker Star"
+      total_satellites: 12992
+      planes:
+        - plane_id: 1
+          altitude_km: 600.0
+          inclination_deg: 85.0
+          satellites_per_plane: 480
+          num_planes: 16
+        - plane_id: 2
+          altitude_km: 500.0
+          inclination_deg: 50.0
+          satellites_per_plane: 300
+          num_planes: 18
+      orbital_period_min: 96.7
+    frequency_assignments:
+      - band_name: "Ka-band User Downlink"
+        freq_min_ghz: 18.1
+        freq_max_ghz: 18.6
+        polarization: "Circular"
+        service: "FSS"
+        max_pfd_dbw_m2_1mhz: -118.0
+        allocated_to_vietnam_services: ["VINASAT-1 Ka-band Payload"]
+      - band_name: "Ka-band Gateway Feeder"
+        freq_min_ghz: 28.5
+        freq_max_ghz: 30.0
+        polarization: "Circular"
+        service: "FSS"
+        max_eirp_dbw: 82.0
+        coexistence_issue: "Cross-border coordination with CHN border stations"
+    antenna_patterns:
+      space_station: "ITU-R S.1428-1"
+      earth_station: "ITU-R S.580-6"
+    service_area:
+      vietnam_covered: true
+      coordinates_bbox: [8.5, 102.1, 23.4, 109.8]
+    applicable_itu_provisions:
+      - "RR No. 9.7B"
+      - "RR No. 9.51"
+      - "RR No. 9.52"
+      - "RR No. 22.2"
+
+  - id: "oneweb-phase2-ap4"
+    name: "ONEWEB-PHASE2"
+    notifying_adm: "GBR"
+    operator: "Eutelsat OneWeb"
+    br_ific_ref: 3014
+    special_section: "CR/D/1420"
+    filing_type: "NON-GSO FSS"
+    orbit:
+      constellation_type: "Polar Walker"
+      total_satellites: 648
+      planes:
+        - plane_id: 1
+          altitude_km: 1200.0
+          inclination_deg: 87.9
+          satellites_per_plane: 36
+          num_planes: 18
+      orbital_period_min: 109.4
+    frequency_assignments:
+      - band_name: "Ku-band User Downlink"
+        freq_min_ghz: 10.7
+        freq_max_ghz: 12.7
+        polarization: "Circular"
+        service: "FSS"
+        max_pfd_dbw_m2_4khz: -150.0
+        allocated_to_vietnam_services: ["FSS"]
+    antenna_patterns:
+      space_station: "ITU-R S.1428-1"
+      earth_station: "ITU-R S.580-6"
+    service_area:
+      vietnam_covered: true
+      coordinates_bbox: [8.0, 102.0, 23.5, 110.0]
+    applicable_itu_provisions:
+      - "RR No. 9.7B"
+      - "Resolution 35 (Milestone compliance)"
