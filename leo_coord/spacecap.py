@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 import yaml
 
+UPLOADED_FILINGS_DIR = Path(__file__).resolve().parent.parent / "data" / "uploads" / "filings"
+
 
 @dataclass
 class OrbitalPlane:
@@ -129,10 +131,10 @@ def load_spacecap_samples(file_path: Optional[str | Path] = None) -> List[Append
 
 
 def parse_appendix4_json(json_content: str | Dict[str, Any]) -> Appendix4Filing:
-    """Bóc tách hồ sơ Phụ lục 4 từ chuỗi JSON hoặc Dict."""
+    """Bóc tách hồ sơ Phụ lục 4 từ chuỗi JSON hoặc Dict (hỗ trợ cả schema YAML gốc và dataclass asdict)."""
     data = json.loads(json_content) if isinstance(json_content, str) else json_content
     orbit = data.get("orbit", {})
-    planes_raw = orbit.get("planes", [])
+    planes_raw = orbit.get("planes") or data.get("planes", [])
     planes = [
         OrbitalPlane(
             plane_id=p.get("plane_id", i + 1),
@@ -160,6 +162,10 @@ def parse_appendix4_json(json_content: str | Dict[str, Any]) -> Appendix4Filing:
         for f in data.get("frequency_assignments", [])
     ]
 
+    total_sats = data.get("total_satellites") or orbit.get("total_satellites")
+    if total_sats is None:
+        total_sats = sum(p.satellites_per_plane * p.num_planes for p in planes)
+
     return Appendix4Filing(
         id=data.get("id", "custom-filing"),
         name=data.get("name", "CUSTOM-FILING"),
@@ -168,15 +174,300 @@ def parse_appendix4_json(json_content: str | Dict[str, Any]) -> Appendix4Filing:
         br_ific_ref=int(data.get("br_ific_ref", 0)),
         special_section=data.get("special_section", "CR/C/0000"),
         filing_type=data.get("filing_type", "NON-GSO FSS"),
-        total_satellites=int(orbit.get("total_satellites", sum(p.satellites_per_plane * p.num_planes for p in planes))),
-        constellation_type=orbit.get("constellation_type", "Walker Delta"),
-        orbital_period_min=float(orbit.get("orbital_period_min", 95.0)),
+        total_satellites=int(total_sats),
+        constellation_type=data.get("constellation_type") or orbit.get("constellation_type", "Walker Delta"),
+        orbital_period_min=float(data.get("orbital_period_min") or orbit.get("orbital_period_min", 95.0)),
         planes=planes,
         frequency_assignments=freqs,
         antenna_patterns=data.get("antenna_patterns", {}),
         service_area=data.get("service_area", {}),
         applicable_itu_provisions=data.get("applicable_itu_provisions", []),
     )
+
+
+def parse_appendix4_xml(xml_content: str, filename: str = "") -> Appendix4Filing:
+    """
+    Bóc tách hồ sơ mạng vệ tinh Phụ lục 4 từ tệp XML chuẩn ITU SpaceCap hoặc BR IFIC.
+    Hỗ trợ cả namespace, tag viết hoa/viết thường và cấu trúc phân cấp linh hoạt.
+    """
+    root = ET.fromstring(xml_content)
+
+    def _strip_ns(tag: str) -> str:
+        return tag.split("}", 1)[1].lower() if "}" in tag else tag.lower()
+
+    def _find_val(*tags: str, default: str = "") -> str:
+        targets = [t.lower() for t in tags]
+        for elem in root.iter():
+            if _strip_ns(elem.tag) in targets and elem.text and elem.text.strip():
+                return elem.text.strip()
+        return default
+
+    # 1. Trích xuất thông tin định danh
+    name = _find_val("satellite_name", "sat_name", "name", "network_name", "notice_name", default="SATELLITE-NETWORK")
+    adm = _find_val("notifying_administration", "notifying_adm", "adm", "country", default="UNK")
+    operator = _find_val("operator", "org", "operating_agency", default="Unknown Operator")
+
+    br_ific_raw = _find_val("br_ific_number", "br_ific_no", "br_ific_ref", "ific_no", default="3015")
+    try:
+        br_ific_ref = int(float(br_ific_raw))
+    except ValueError:
+        br_ific_ref = 3015
+
+    special_section = _find_val("special_section", "sp_sec", "special_sec", default="CR/C/0000")
+    filing_type = root.attrib.get("filing_type") or _find_val("filing_type", "orbit_type", default="NON-GSO FSS")
+    constellation_type = _find_val("constellation_type", "constellation", default="Walker Delta")
+
+    # 2. Trích xuất quỹ đạo và các mặt phẳng (Orbital Planes)
+    planes: List[OrbitalPlane] = []
+    plane_idx = 1
+    for elem in root.iter():
+        if _strip_ns(elem.tag) in ("plane", "orbital_plane"):
+            alt = 550.0
+            inc = 53.0
+            sats_per = 10
+            n_pl = 1
+            for child in elem:
+                c_tag = _strip_ns(child.tag)
+                text = (child.text or "").strip()
+                if not text:
+                    continue
+                try:
+                    if c_tag in ("altitude_km", "alt_km", "altitude", "semi_major_axis"):
+                        alt = float(text)
+                    elif c_tag in ("inclination_deg", "inc_deg", "inclination"):
+                        inc = float(text)
+                    elif c_tag in ("satellites_per_plane", "sats_per_plane", "sat_count"):
+                        sats_per = int(float(text))
+                    elif c_tag in ("num_planes", "number_of_planes", "planes"):
+                        n_pl = int(float(text))
+                except ValueError:
+                    pass
+            planes.append(OrbitalPlane(
+                plane_id=plane_idx,
+                altitude_km=alt,
+                inclination_deg=inc,
+                satellites_per_plane=sats_per,
+                num_planes=n_pl,
+            ))
+            plane_idx += 1
+
+    # Nếu không tìm thấy thẻ <plane>, thử tìm altitude/inclination trên root hoặc <orbit>
+    if not planes:
+        alt_val = float(_find_val("altitude_km", "alt_km", "altitude", default="550.0"))
+        inc_val = float(_find_val("inclination_deg", "inc_deg", "inclination", default="53.0"))
+        sats_total_val = int(float(_find_val("total_satellites", "n_satellites", "satellites", default="100")))
+        num_pl = max(1, min(72, int(sats_total_val ** 0.5)))
+        sats_per = max(1, sats_total_val // num_pl)
+        planes.append(OrbitalPlane(
+            plane_id=1,
+            altitude_km=alt_val,
+            inclination_deg=inc_val,
+            satellites_per_plane=sats_per,
+            num_planes=num_pl,
+        ))
+
+    # Tính tổng số vệ tinh
+    total_sats_str = _find_val("total_satellites", "n_satellites", "total_sats", default="")
+    if total_sats_str:
+        try:
+            total_satellites = int(float(total_sats_str))
+        except ValueError:
+            total_satellites = sum(p.satellites_per_plane * p.num_planes for p in planes)
+    else:
+        total_satellites = sum(p.satellites_per_plane * p.num_planes for p in planes)
+
+    # 3. Trích xuất phân bổ tần số (Frequency Assignments)
+    assignments: List[FrequencyAssignment] = []
+    for elem in root.iter():
+        if _strip_ns(elem.tag) in ("assignment", "frequency", "freq_assignment", "frequency_band"):
+            b_name = "Ku-band"
+            f_min = 10.7
+            f_max = 12.75
+            svc = "FSS"
+            pol = "Circular"
+            pfd_4k = None
+            pfd_1m = None
+            eirp = None
+            for child in elem:
+                c_tag = _strip_ns(child.tag)
+                text = (child.text or "").strip()
+                if not text:
+                    continue
+                try:
+                    if c_tag in ("band_name", "band", "name"):
+                        b_name = text
+                    elif c_tag in ("freq_min_ghz", "freq_min", "f_min", "frequency_min"):
+                        f_min = float(text)
+                    elif c_tag in ("freq_max_ghz", "freq_max", "f_max", "frequency_max"):
+                        f_max = float(text)
+                    elif c_tag in ("service", "radio_service"):
+                        svc = text
+                    elif c_tag in ("polarization", "pol"):
+                        pol = text
+                    elif c_tag in ("max_pfd_4khz", "max_pfd_dbw_m2_4khz", "pfd_4khz"):
+                        pfd_4k = float(text)
+                    elif c_tag in ("max_pfd_1mhz", "max_pfd_dbw_m2_1mhz", "pfd_1mhz"):
+                        pfd_1m = float(text)
+                    elif c_tag in ("max_eirp_dbw", "eirp_dbw", "eirp"):
+                        eirp = float(text)
+                except ValueError:
+                    pass
+
+            allocated_vn: List[str] = []
+            if (f_min <= 4.2 and f_max >= 3.4) or (f_min <= 12.75 and f_max >= 10.95):
+                allocated_vn.extend(["VINASAT-1", "VINASAT-2"])
+            if (f_min <= 20.2 and f_max >= 17.7) or (f_min <= 30.0 and f_max >= 27.5):
+                allocated_vn.extend(["Trạm Gateway Quế Dương", "Trạm Gateway Bình Dương"])
+
+            assignments.append(FrequencyAssignment(
+                band_name=b_name,
+                freq_min_ghz=f_min,
+                freq_max_ghz=f_max,
+                polarization=pol,
+                service=svc,
+                max_pfd_dbw_m2_4khz=pfd_4k if pfd_4k is not None else (-146.0 if f_min < 15.0 else None),
+                max_pfd_dbw_m2_1mhz=pfd_1m if pfd_1m is not None else (-115.0 if f_min >= 15.0 else None),
+                max_eirp_dbw=eirp,
+                allocated_to_vietnam_services=allocated_vn,
+                coexistence_issue="Xung đột dải tần với mạng vệ tinh & trạm cổng Việt Nam" if allocated_vn else None,
+            ))
+
+    if not assignments:
+        # Default Ku/Ka assignments
+        assignments = [
+            FrequencyAssignment(
+                band_name="Ku-band (space-to-Earth)",
+                freq_min_ghz=10.7,
+                freq_max_ghz=12.75,
+                polarization="Circular",
+                service="FSS",
+                max_pfd_dbw_m2_4khz=-146.0,
+                allocated_to_vietnam_services=["VINASAT-1", "VINASAT-2"],
+                coexistence_issue="Xung đột dải tần với mạng vệ tinh & trạm cổng Việt Nam",
+            ),
+            FrequencyAssignment(
+                band_name="Ka-band (Earth-to-space)",
+                freq_min_ghz=27.5,
+                freq_max_ghz=30.0,
+                polarization="Circular",
+                service="FSS",
+                max_pfd_dbw_m2_1mhz=-115.0,
+                allocated_to_vietnam_services=["Trạm Gateway Quế Dương", "Trạm Gateway Bình Dương"],
+                coexistence_issue="Xung đột dải tần với mạng vệ tinh & trạm cổng Việt Nam",
+            ),
+        ]
+
+    # 4. Service area & Vietnam coverage
+    vn_cov_str = _find_val("vietnam_covered", "covers_vietnam", "vietnam", default="true").lower()
+    covers_vn = vn_cov_str not in ("false", "0", "no")
+    arc_str = _find_val("inside_coordination_arc_6deg", "inside_arc", default="true").lower()
+    inside_arc = arc_str not in ("false", "0", "no")
+    closest_deg = float(_find_val("closest_approach_to_vinasat_deg", "closest_approach_deg", default="1.8"))
+
+    # ID chuẩn hóa
+    clean_id = (name.replace(" ", "-").replace("/", "-").upper())
+    filing_id = f"UPLOAD-{clean_id}"
+
+    service_area = {
+        "vietnam_covered": covers_vn,
+        "inside_coordination_arc_6deg": inside_arc,
+        "closest_approach_to_vinasat_deg": closest_deg,
+        "description": _find_val("description", default=f"Vùng phủ sóng thực tế tệp tải lên: {name}"),
+        "is_user_uploaded": True,
+        "source_filename": filename,
+    }
+
+    provisions = ["RR No. 9.7B", "RR No. 9.11A", "RR No. 22.2", "Resolution 76"]
+    if covers_vn:
+        provisions.append("Quyết định 659/QĐ-TTg (Thí điểm cấp phép LEO tại Việt Nam)")
+
+    return Appendix4Filing(
+        id=filing_id,
+        name=name,
+        notifying_adm=adm,
+        operator=operator,
+        br_ific_ref=br_ific_ref,
+        special_section=special_section,
+        filing_type=filing_type,
+        total_satellites=total_satellites,
+        constellation_type=constellation_type,
+        orbital_period_min=round(90.0 + (planes[0].altitude_km / 100.0), 1),
+        planes=planes,
+        frequency_assignments=assignments,
+        antenna_patterns={
+            "space_station": "ITU-R S.1428-1 (Phased Array)",
+            "earth_station": "ITU-R S.580-6 (Parabolic / Flat Panel)"
+        },
+        service_area=service_area,
+        applicable_itu_provisions=provisions,
+    )
+
+
+def parse_appendix4_any(content: str, filename: str = "") -> Appendix4Filing:
+    """
+    Tự động nhận diện định dạng (XML, JSON, YAML) và bóc tách thành đối tượng Appendix4Filing.
+    """
+    stripped = content.strip()
+    ext = Path(filename).suffix.lower() if filename else ""
+
+    if ext == ".xml" or stripped.startswith("<"):
+        return parse_appendix4_xml(content, filename=filename)
+
+    if ext in (".json",) or stripped.startswith("{") or stripped.startswith("["):
+        try:
+            data = json.loads(content)
+            filing = parse_appendix4_json(data)
+            if not filing.id.startswith("UPLOAD-"):
+                filing.id = f"UPLOAD-{filing.id}"
+            filing.service_area["is_user_uploaded"] = True
+            filing.service_area["source_filename"] = filename
+            return filing
+        except Exception:
+            pass
+
+    # Try YAML
+    try:
+        data = yaml.safe_load(content)
+        if isinstance(data, dict):
+            # Nếu file yaml chứa wrapper "filings" (như spacecap_samples.yaml)
+            if "filings" in data and isinstance(data["filings"], list) and len(data["filings"]) > 0:
+                data = data["filings"][0]
+            filing = parse_appendix4_json(data)
+            if not filing.id.startswith("UPLOAD-"):
+                filing.id = f"UPLOAD-{filing.id}"
+            filing.service_area["is_user_uploaded"] = True
+            filing.service_area["source_filename"] = filename
+            return filing
+    except Exception:
+        pass
+
+    raise ValueError(f"Không thể nhận diện định dạng tệp hồ sơ '{filename}'. Vui lòng tải lên tệp XML (SpaceCap), JSON hoặc YAML hợp lệ.")
+
+
+def save_uploaded_filing(filing: Appendix4Filing) -> Path:
+    """Lưu hồ sơ đã tải lên vào thư mục data/uploads/filings dạng JSON."""
+    UPLOADED_FILINGS_DIR.mkdir(parents=True, exist_ok=True)
+    file_path = UPLOADED_FILINGS_DIR / f"{filing.id}.json"
+    data = asdict(filing)
+    file_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    return file_path
+
+
+def load_uploaded_filings() -> List[Appendix4Filing]:
+    """Tải tất cả các hồ sơ người dùng đã upload từ thư mục uploads."""
+    if not UPLOADED_FILINGS_DIR.exists():
+        return []
+
+    filings: List[Appendix4Filing] = []
+    json_files = sorted(UPLOADED_FILINGS_DIR.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+    for p in json_files:
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+            filing = parse_appendix4_json(data)
+            filings.append(filing)
+        except Exception:
+            continue
+    return filings
 
 
 def validate_appendix4_completeness(filing: Appendix4Filing) -> Dict[str, Any]:
@@ -359,34 +650,49 @@ def load_itu_br_ific_filings() -> List[Appendix4Filing]:
 def get_all_available_filings() -> List[Appendix4Filing]:
     """
     Tải danh sách tất cả các hồ sơ khả dụng cho Hội đồng AI Thẩm định.
-    Ưu tiên 100% hồ sơ thực tế từ Công báo Quốc tế ITU BR IFIC (Realtime),
-    kèm theo các hồ sơ phụ trợ mẫu nếu có.
+    Ưu tiên cao nhất: Các hồ sơ thực tế do người dùng tải lên (Uploaded Filings),
+    kế tiếp: Hồ sơ thời gian thực từ Công báo Quốc tế ITU BR IFIC (Realtime),
+    kèm theo: Các hồ sơ mẫu phụ trợ.
     """
+    uploaded = load_uploaded_filings()
+    seen_ids = {f.id for f in uploaded}
+    combined = list(uploaded)
+
     itu_filings = load_itu_br_ific_filings()
-    seen_ids = {f.id for f in itu_filings}
+    for f in itu_filings:
+        if f.id not in seen_ids:
+            seen_ids.add(f.id)
+            combined.append(f)
+
     samples = load_spacecap_samples()
-    combined = list(itu_filings)
     for s in samples:
-        if s.id not in seen_ids and not any(f.name.lower() in s.name.lower() for f in itu_filings):
+        if s.id not in seen_ids and not any(f.name.lower() in s.name.lower() for f in combined):
             combined.append(s)
+
     return combined
 
 
 def get_filing_by_id(filing_id: str) -> Optional[Appendix4Filing]:
-    """Tìm hồ sơ theo ID từ toàn bộ nguồn dữ liệu ITU BR IFIC và mẫu SpaceCap."""
-    # 1. Tìm chính xác ID trong ITU BR IFIC
+    """Tìm hồ sơ theo ID từ toàn bộ nguồn: Hồ sơ người dùng tải lên, ITU BR IFIC và mẫu SpaceCap."""
+    # 1. Tìm trong hồ sơ người dùng tải lên (Uploaded Filings)
+    uploaded = load_uploaded_filings()
+    for u in uploaded:
+        if u.id == filing_id or u.name == filing_id:
+            return u
+
+    # 2. Tìm chính xác ID trong ITU BR IFIC
     itu_filings = load_itu_br_ific_filings()
     for f in itu_filings:
         if f.id == filing_id or f.name == filing_id:
             return f
 
-    # 2. Tìm chính xác ID trong mẫu SpaceCap
+    # 3. Tìm chính xác ID trong mẫu SpaceCap
     samples = load_spacecap_samples()
     for s in samples:
         if s.id == filing_id or s.name == filing_id:
             return s
 
-    # 3. Ánh xạ alias nếu có
+    # 4. Ánh xạ alias nếu có
     alias_map = {
         "starlink-gen2-ap4": "USASAT-NGSO-3-MOD",
         "guowang-gw-a59-ap4": "CHNSAT-NGSO-1",

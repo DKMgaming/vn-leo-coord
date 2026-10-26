@@ -160,4 +160,63 @@ def test_multi_agent_sync_itu_endpoint():
     assert "latest_br_ific_in_database" in res["sync_info"]
 
 
+def test_spacecap_upload_endpoint():
+    import asyncio
+    import io
+    from starlette.datastructures import UploadFile
+    from web.app import upload_spacecap_filing, get_multi_agent_filings_endpoint
+
+    xml_content = """<?xml version="1.0" encoding="utf-8"?>
+    <spacecap_filing xmlns="http://www.itu.int/ITU-R/spacecap" version="2.0">
+      <header>
+        <satellite_name>UPLOAD-TEST-SAT</satellite_name>
+        <notifying_administration>VTN</notifying_administration>
+        <operator>VNPT Space</operator>
+        <br_ific_number>3022</br_ific_number>
+      </header>
+      <orbit>
+        <constellation_type>Walker Delta</constellation_type>
+        <total_satellites>60</total_satellites>
+        <orbital_planes>
+          <plane id="1">
+            <altitude_km>550.0</altitude_km>
+            <inclination_deg>53.0</inclination_deg>
+            <satellites_per_plane>10</satellites_per_plane>
+            <num_planes>6</num_planes>
+          </plane>
+        </orbital_planes>
+      </orbit>
+      <frequency_assignments>
+        <assignment>
+          <band_name>Ku-band</band_name>
+          <freq_min_ghz>10.7</freq_min_ghz>
+          <freq_max_ghz>12.75</freq_max_ghz>
+          <service>FSS</service>
+          <max_pfd_4khz>-146.0</max_pfd_4khz>
+        </assignment>
+      </frequency_assignments>
+    </spacecap_filing>
+    """
+    upload_file = UploadFile(filename="upload_test.xml", file=io.BytesIO(xml_content.encode("utf-8")))
+    res = asyncio.run(upload_spacecap_filing(upload_file))
+
+    assert res["status"] == "success"
+    assert res["filing"]["name"] == "UPLOAD-TEST-SAT"
+    assert res["filing"]["total_satellites"] == 60
+    assert res["filing"]["is_complete_ap4"] is True
+
+    # Check that it appears in filings list with ⭐ [HỒ SƠ TẢI LÊN]
+    res_list = get_multi_agent_filings_endpoint()
+    uploaded_item = next((f for f in res_list["filings"] if f["id"] == res["filing"]["id"]), None)
+    assert uploaded_item is not None
+    assert uploaded_item["is_user_uploaded"] is True
+    assert "⭐ [HỒ SƠ TẢI LÊN]" in uploaded_item["display_label"]
+
+    from leo_coord.spacecap import UPLOADED_FILINGS_DIR
+    test_json = UPLOADED_FILINGS_DIR / f"{res['filing']['id']}.json"
+    if test_json.exists():
+        test_json.unlink()
+
+
+
 

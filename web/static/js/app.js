@@ -2430,7 +2430,7 @@ function loadMultiAgentCouncilInitialUI() {
     loadMultiAgentFilingsUI();
 }
 
-async function loadMultiAgentFilingsUI() {
+async function loadMultiAgentFilingsUI(targetFilingId = null) {
     const sel = document.getElementById("sel-agent-filing");
     if (!sel) return;
 
@@ -2438,7 +2438,7 @@ async function loadMultiAgentFilingsUI() {
         const res = await fetch("/api/multi-agent/filings");
         if (res.ok) {
             const data = await res.json();
-            const currentVal = sel.value;
+            const currentVal = targetFilingId || sel.value;
             sel.innerHTML = "";
             (data.filings || []).forEach(f => {
                 const opt = document.createElement("option");
@@ -2446,7 +2446,7 @@ async function loadMultiAgentFilingsUI() {
                 opt.textContent = f.display_label || `[BR IFIC ${f.br_ific_no}] ${f.name} (${f.notifying_adm} / ${f.operator} - ${f.total_satellites.toLocaleString()} vệ tinh)`;
                 sel.appendChild(opt);
             });
-            // Giữ lại lựa chọn hiện tại nếu có trong danh sách
+            // Giữ lại lựa chọn hiện tại hoặc targetFilingId nếu có trong danh sách
             if (currentVal && Array.from(sel.options).some(o => o.value === currentVal)) {
                 sel.value = currentVal;
             } else if (sel.options.length > 0) {
@@ -2454,13 +2454,57 @@ async function loadMultiAgentFilingsUI() {
             }
             const badge = document.getElementById("filing-itu-badge");
             if (badge) {
-                badge.innerHTML = `🟢 Đã nạp <strong>${data.total}</strong> hồ sơ ITU BR IFIC thời gian thực (Cập nhật: ${new Date().toLocaleTimeString()})`;
+                badge.innerHTML = `🟢 Đã nạp <strong>${data.total}</strong> hồ sơ ITU BR IFIC & tải lên (Cập nhật: ${new Date().toLocaleTimeString()})`;
             }
             // Tự động triệu tập thẩm định cho hồ sơ đang được chọn
             conveneCouncilUI();
         }
     } catch (e) {
         console.warn("Không thể tải danh sách hồ sơ ITU BR IFIC từ API, giữ nguyên danh mục có sẵn:", e);
+    }
+}
+
+async function handleSpaceCapUpload(event) {
+    const input = event.target;
+    if (!input.files || input.files.length === 0) return;
+    const file = input.files[0];
+
+    const statusBadge = document.getElementById("multi-agent-status-badge");
+    const filingBadge = document.getElementById("filing-itu-badge");
+    if (statusBadge) statusBadge.textContent = "⏳ ĐANG BÓC TÁCH TỆP HỒ SƠ ITU SPACECAP...";
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+        const res = await fetch("/api/spacecap/upload", {
+            method: "POST",
+            body: formData
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || `Lỗi tải lên (${res.status})`);
+        }
+
+        const data = await res.json();
+        const f = data.filing;
+
+        // Cập nhật lại dropdown danh sách hồ sơ và chọn ngay hồ sơ vừa tải lên
+        await loadMultiAgentFilingsUI(f.id);
+
+        if (filingBadge) {
+            filingBadge.innerHTML = `⭐ Đã nạp hồ sơ tải lên: <strong>${escapeHtml(f.name)}</strong> (${f.notifying_adm} / ${f.total_satellites.toLocaleString()} vệ tinh) — <span class="text-green">${f.status_label}</span>`;
+        }
+
+        alert(`✅ ${data.message}\n\n🛰️ Tên mạng: ${f.name}\n🏳️ Cơ quan: ${f.notifying_adm} (${f.operator})\n🔢 Quy mô: ${f.total_satellites.toLocaleString()} vệ tinh | ${f.planes_count} mặt phẳng quỹ đạo\n📡 Băng tần: ${f.frequency_bands_count} dải tần hoạt động\n📋 Đầy đủ AP4: ${data.completeness.passed_checks}/${data.completeness.total_checks} tiêu chí (${f.status_label})\n\nHội đồng AI đang tiến hành thẩm định kỹ thuật và pháp lý ngay lập tức!`);
+
+    } catch (e) {
+        console.error("Lỗi tải lên hồ sơ SpaceCap:", e);
+        alert(`❌ Không thể bóc tách tệp hồ sơ: ${e.message}`);
+        if (statusBadge) statusBadge.textContent = "⚠️ LỖI BÓC TÁCH TỆP HỒ SƠ";
+    } finally {
+        input.value = "";
     }
 }
 

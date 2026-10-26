@@ -589,6 +589,60 @@ def parse_spacecap_endpoint(payload: Dict[str, Any]):
         raise HTTPException(status_code=400, detail=f"Lỗi phân tích cú pháp Phụ lục 4: {str(e)}")
 
 
+@app.post("/api/spacecap/upload")
+async def upload_spacecap_filing(file: UploadFile = File(...)):
+    """
+    Tải lên và bóc tách tệp hồ sơ mạng vệ tinh thực tế theo chuẩn ITU SpaceCap XML, JSON hoặc YAML.
+    Tự động thẩm định tính đầy đủ theo Phụ lục 4 Thể lệ Vô tuyến và đăng ký vào Hội đồng AI.
+    """
+    from leo_coord.spacecap import (
+        parse_appendix4_any,
+        save_uploaded_filing,
+        validate_appendix4_completeness,
+    )
+
+    allowed_exts = {".xml", ".json", ".yaml", ".yml"}
+    filename = file.filename or "unknown.xml"
+    ext = Path(filename).suffix.lower()
+    if ext not in allowed_exts:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Định dạng tệp không được hỗ trợ ({ext}). Chỉ chấp nhận tệp ITU SpaceCap XML (.xml), JSON (.json) hoặc YAML (.yaml, .yml)"
+        )
+
+    try:
+        raw_bytes = await file.read()
+        try:
+            content = raw_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            content = raw_bytes.decode("latin-1")
+
+        filing = parse_appendix4_any(content, filename=filename)
+        save_uploaded_filing(filing)
+        completeness = validate_appendix4_completeness(filing)
+
+        return {
+            "status": "success",
+            "message": f"Đã bóc tách và nạp thành công hồ sơ '{filing.name}' ({filename})!",
+            "filing": {
+                "id": filing.id,
+                "name": filing.name,
+                "notifying_adm": filing.notifying_adm,
+                "operator": filing.operator,
+                "br_ific_ref": filing.br_ific_ref,
+                "special_section": filing.special_section,
+                "total_satellites": filing.total_satellites,
+                "planes_count": len(filing.planes),
+                "frequency_bands_count": len(filing.frequency_assignments),
+                "is_complete_ap4": completeness["is_complete_ap4"],
+                "status_label": completeness["status_label"],
+            },
+            "completeness": completeness,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Lỗi bóc tách tệp hồ sơ: {str(e)}")
+
+
 @app.get("/api/spacecap/download-xml/{filing_id}")
 def download_spacecap_xml_endpoint(filing_id: str):
     """Xuất hồ sơ mạng vệ tinh theo chuẩn XML ITU SpaceCap v2.0."""
@@ -609,7 +663,7 @@ def download_spacecap_xml_endpoint(filing_id: str):
 def get_multi_agent_filings_endpoint():
     """
     Lấy danh sách hồ sơ mạng vệ tinh từ Công báo Quốc tế ITU BR IFIC (Realtime)
-    phục vụ cho việc chọn hồ sơ thẩm định của Hội đồng Multi-AI-Agent.
+    và các hồ sơ do người dùng tải lên phục vụ cho việc chọn hồ sơ thẩm định của Hội đồng Multi-AI-Agent.
     """
     from leo_coord.spacecap import get_all_available_filings
     filings = get_all_available_filings()
@@ -633,6 +687,14 @@ def get_multi_agent_filings_endpoint():
             risk_badge = "🟢 AN TOÀN (MIỄN TRỪ PHỐI HỢP)"
             risk_level = "LOW"
 
+        is_user_uploaded = bool(sa.get("is_user_uploaded", False))
+        if is_user_uploaded:
+            display_label = f"⭐ [HỒ SƠ TẢI LÊN] {f.name} ({f.notifying_adm} / {f.operator} - {f.total_satellites:,} vệ tinh) - {risk_badge}"
+        elif sa.get("is_real_itu_br_ific"):
+            display_label = f"[BR IFIC {f.br_ific_ref}] {f.name} ({f.notifying_adm} / {f.operator} - {f.total_satellites:,} vệ tinh) - {risk_badge}"
+        else:
+            display_label = f"[MẪU AP4] {f.name} ({f.notifying_adm} / {f.operator} - {f.total_satellites:,} vệ tinh) - {risk_badge}"
+
         items.append({
             "id": f.id,
             "name": f.name,
@@ -648,12 +710,13 @@ def get_multi_agent_filings_endpoint():
             "risk_level": risk_level,
             "risk_badge": risk_badge,
             "is_real_itu_br_ific": sa.get("is_real_itu_br_ific", False),
-            "display_label": f"[BR IFIC {f.br_ific_ref}] {f.name} ({f.notifying_adm} / {f.operator} - {f.total_satellites:,} vệ tinh) - {risk_badge}"
+            "is_user_uploaded": is_user_uploaded,
+            "display_label": display_label
         })
 
     return {
         "status": "success",
-        "source": "ITU Radiocommunication Bureau — BR IFIC (Space Services)",
+        "source": "ITU Radiocommunication Bureau — BR IFIC & SpaceCap Ingestor",
         "total": len(items),
         "filings": items,
     }

@@ -16,3 +16,8 @@ out/*.html
 .DS_Store
 .idea/
 .vscode/
+
+# Tệp hồ sơ do người dùng tải lên
+data/uploads/filings/*.json
+!data/uploads/filings/.gitkeep
+
