@@ -68,3 +68,26 @@ def test_convene_multi_agent_council_itu_realtime_high_risk():
     assert "CHẤP THUẬN CÓ ĐIỀU KIỆN" in dossier.verdict_label_vi
     assert len(dossier.vietnam_pilot_conditions) >= 5
 
+
+def test_convene_multi_agent_council_chnsat_guowang():
+    from leo_coord.spacecap import get_filing_by_id
+    from web.app import convene_multi_agent_council_endpoint
+    chnsat = get_filing_by_id("CHNSAT-NGSO-1")
+    assert chnsat is not None
+    assert chnsat.br_ific_ref == 3015
+
+    # Test directly through convene endpoint
+    res = convene_multi_agent_council_endpoint({"filing_id": "CHNSAT-NGSO-1"})
+    assert res["satellite_name"] == "CHNSAT-NGSO-1 (Guowang GW-A59)"
+    assert res["operator"] == "China Satellite Network Group"
+    assert res["notifying_adm"] == "CHN"
+    assert res["br_ific_ref"] == 3015
+    assert len(res["deliberations"]) == 4
+
+    # Verify agent messages subscripting works
+    dossier = MultiAgentCouncil(chnsat).convene_council()
+    assert dossier["satellite_name"] == "CHNSAT-NGSO-1 (Guowang GW-A59)"
+    for msg in dossier.deliberations:
+        assert msg["avatar"] is not None
+        assert "CHNSAT-NGSO-1" in msg["statement_vi"]
+

@@ -2456,6 +2456,8 @@ async function loadMultiAgentFilingsUI() {
             if (badge) {
                 badge.innerHTML = `🟢 Đã nạp <strong>${data.total}</strong> hồ sơ ITU BR IFIC thời gian thực (Cập nhật: ${new Date().toLocaleTimeString()})`;
             }
+            // Tự động triệu tập thẩm định cho hồ sơ đang được chọn
+            conveneCouncilUI();
         }
     } catch (e) {
         console.warn("Không thể tải danh sách hồ sơ ITU BR IFIC từ API, giữ nguyên danh mục có sẵn:", e);
@@ -2478,8 +2480,6 @@ async function syncItuFilingsForCouncil() {
                 await loadBrIficScanUI();
             }
             alert(`✅ ${data.message}\n\nẤn phẩm BR IFIC mới nhất: Số ${data.sync_info?.latest_br_ific_in_database || 3015}\nTổng số hồ sơ thẩm định khả dụng: ${data.total_filings_available}`);
-            // Tự động triệu tập thẩm định cho hồ sơ đang chọn
-            conveneCouncilUI();
         } else {
             throw new Error("HTTP " + res.status);
         }
@@ -2593,7 +2593,7 @@ function renderCouncilDossier(data) {
                 </div>
                 <span class="badge-tag" style="background: rgba(147, 51, 234, 0.2); color: #c084fc; font-size: 0.7rem;">CHUYÊN GIA AI</span>
             </div>
-            <div style="font-style: italic; color: #e2e8f0; margin-bottom: 8px; padding: 6px 10px; background: rgba(0,0,0,0.25); border-radius: 4px;">
+            <div style="font-style: italic; color: #e2e8f0; margin-bottom: 8px; padding: 6px 10px; background: rgba(0,0,0,0.25); border-radius: 4px; white-space: pre-wrap;">
                 "${escapeHtml(msg.statement_vi)}"
             </div>
             <div style="font-size: 0.78rem; color: #cbd5e1; margin-bottom: 4px;"><strong>Nhận định kỹ thuật:</strong></div>
@@ -2612,7 +2612,7 @@ function renderCouncilDossier(data) {
 
 async function conveneCouncilUI() {
     const sel = document.getElementById("sel-agent-filing");
-    const filingId = sel ? sel.value : "starlink-gen2-ap4";
+    const filingId = sel ? sel.value : "USASAT-NGSO-3-MOD";
     const statusBadge = document.getElementById("multi-agent-status-badge");
     const btn = document.getElementById("btn-convene-council");
     const streamEl = document.getElementById("council-deliberation-stream");
@@ -2649,14 +2649,21 @@ async function conveneCouncilUI() {
         if (res.ok) {
             const data = await res.json();
             renderCouncilDossier(data);
-            if (statusBadge) statusBadge.textContent = "✅ HỘI CHẨN HOÀN TẤT (100% ĐỒNG THUẬN)";
+            if (statusBadge) {
+                if (data.llm_used) {
+                    statusBadge.textContent = `🤖 HỘI CHẨN HOÀN TẤT (LLM ONLINE: ${data.llm_model || 'Gemini'})`;
+                } else {
+                    statusBadge.textContent = "✅ HỘI CHẨN HOÀN TẤT (100% ĐỒNG THUẬN - ITU ALGORITHMIC)";
+                }
+            }
         } else {
-            throw new Error("HTTP " + res.status);
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(`HTTP ${res.status}: ${errData.detail || 'Lỗi xử lý máy chủ'}`);
         }
     } catch (e) {
-        console.warn("Chưa kết nối API Council, đang dùng bộ dữ liệu hội đồng tham chuẩn:", e);
-        renderCouncilDossier(FALLBACK_STARLINK_DOSSIER);
-        if (statusBadge) statusBadge.textContent = "🤖 4 TÁC NHÂN AI ĐANG TRỰC TUYẾN";
+        console.error("Lỗi triệu tập hội đồng:", e);
+        if (statusBadge) statusBadge.textContent = `⚠️ LỖI: ${e.message}`;
+        alert(`Không thể triệu tập Hội đồng thẩm định: ${e.message}`);
     } finally {
         if (btn) btn.disabled = false;
     }

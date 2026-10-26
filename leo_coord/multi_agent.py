@@ -32,6 +32,9 @@ class AgentMessage:
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
 
+    def __getitem__(self, item: str) -> Any:
+        return getattr(self, item)
+
 
 @dataclass
 class CouncilDossier:
@@ -51,16 +54,22 @@ class CouncilDossier:
     executive_summary_vi: str
     executive_summary_en: str
     deliberations: List[AgentMessage] = field(default_factory=list)
+    llm_used: bool = False
+    llm_model: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
+
+    def __getitem__(self, item: str) -> Any:
+        return getattr(self, item)
 
 
 class MultiAgentCouncil:
     """Hội đồng Trợ lý AI Đa tác nhân Thẩm định Vệ tinh Quốc tế."""
 
-    def __init__(self, filing: Appendix4Filing):
+    def __init__(self, filing: Appendix4Filing, llm_config: Optional[Dict[str, Any]] = None):
         self.filing = filing
+        self.llm_config = llm_config or {}
         self.now_iso = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         sa = filing.service_area if isinstance(filing.service_area, dict) else {}
@@ -225,7 +234,7 @@ class MultiAgentCouncil:
                 "Nguy cơ can nhiễu thẳng hàng (In-line Event): Bắt buộc cơ chế Beam Blanking khi búp sóng LEO nằm trong góc < 2.0° so với hướng đài mặt đất ngắm VINASAT.",
             ]
             statement_vi = (
-                f"Về mặt kỹ thuật vô tuyến, tôi đã kích hoạt động cơ mô phỏng EPFD tích lũy ITU-R S.1503 và đánh giá chung sống phổ tần 5G. "
+                f"Về mặt kỹ thuật vô tuyến, tôi đã kích hoạt động cơ mô phỏng EPFD tích lũy ITU-R S.1503 và đánh giá chung sống phổ tần 5G cho mạng {self.filing.name} (BR IFIC No. {self.br_ific_no}). "
                 f"Hệ thống đạt chuẩn Bảng 22-1A với dung sai biên +{epfd_res['min_margin_db']} dB trong điều kiện hoạt động bình thường, "
                 f"tuy nhiên tại các thời điểm vệ tinh cắt qua góc nhìn In-line Event với VINASAT (132.0°E), mức can nhiễu tức thời sẽ tăng vọt nếu không có cơ chế tắt sóng. "
                 f"Đồng thời, đài cổng Gateway băng Ka cần thiết lập vùng cách ly nghiêm ngặt tối thiểu {coex_5g['separation_distance_km']['urban']} km "
@@ -472,6 +481,49 @@ class MultiAgentCouncil:
                 f"with Vietnam's five national pilot licensing prerequisites under Prime Minister Decision No. 659/QD-TTg to safeguard sovereign GSO orbital rights."
             )
 
+        llm_used = False
+        llm_model = None
+
+        api_key = (self.llm_config.get("apiKey") or self.llm_config.get("api_key") or "").strip()
+        provider = (self.llm_config.get("provider") or "gemini").lower().strip()
+        req_model = self.llm_config.get("model") or ("gemini-3.1-flash-lite" if provider == "gemini" else None)
+
+        if api_key:
+            try:
+                llm_prompt = (
+                    f"Bạn là Thư ký kiêm Trưởng ban Hội đồng Thẩm định Vệ tinh Quốc tế (Multi-AI-Agent Regulatory Council) "
+                    f"thuộc Cục Tần số Vô tuyến điện Việt Nam (ARFM).\n"
+                    f"Hãy đưa ra kết luận điều hành thẩm định chuyên sâu, đanh thép bằng tiếng Việt đối với hồ sơ vệ tinh sau:\n"
+                    f"- Mạng vệ tinh: {self.filing.name}\n"
+                    f"- Cơ quan thông báo: {self.filing.notifying_adm} | Chủ quản: {self.filing.operator}\n"
+                    f"- Công báo ITU BR IFIC số: {self.br_ific_no} (Mục đặc biệt: {self.special_sec})\n"
+                    f"- Quy mô: {self.filing.total_satellites:,} vệ tinh\n"
+                    f"- Vùng phủ sóng chiếu xuống Việt Nam: {'CÓ' if self.covers_vn else 'KHÔNG'}\n"
+                    f"- Cung cách ly VINASAT-1/2: {self.closest_approach_deg}° ({'NẰM TRONG CUNG PHỐI HỢP 6° RR 9.7B' if self.inside_arc else 'NGOÀI CUNG PHỐI HỢP > 6°'})\n\n"
+                    f"Yêu cầu:\n"
+                    f"1. Phân tích tác động can nhiễu đến mạng vệ tinh quốc gia VINASAT theo Điều 22.2 Thể lệ Vô tuyến ITU.\n"
+                    f"2. Nêu rõ điều kiện cấp phép thí điểm dịch vụ LEO tại Việt Nam theo Quyết định 659/QĐ-TTg của Thủ tướng Chính phủ (Gateway nội địa, Beam Blanking).\n"
+                    f"3. Khuyến nghị thời hạn nộp công văn phản đối kỹ thuật SpaceCom trước 4 tháng (RR 9.51/9.52).\n"
+                    f"Viết ngắn gọn, chuyên nghiệp, súc tích (khoảng 3 đoạn)."
+                )
+                system_inst = "Bạn là Trưởng ban Thẩm định Vệ tinh Quốc tế của Cục Tần số Vô tuyến điện Việt Nam. Trả lời bằng tiếng Việt chuyên nghiệp, trích dẫn chính xác Thể lệ Vô tuyến ITU và Quyết định 659/QĐ-TTg."
+                llm_res = call_llm_api(
+                    provider=provider,
+                    api_key=api_key,
+                    prompt=llm_prompt,
+                    system_instruction=system_inst,
+                    model=req_model,
+                    timeout_s=15.0
+                )
+                if llm_res.get("status") == "success" and llm_res.get("text"):
+                    online_text = llm_res["text"].strip()
+                    exec_vi = online_text
+                    chief_msg.statement_vi = f"[Ý kiến Hội đồng AI Online - Mô hình {llm_res.get('model', req_model)}]:\n\n{online_text}"
+                    llm_used = True
+                    llm_model = llm_res.get("model", req_model)
+            except Exception:
+                pass
+
         return CouncilDossier(
             filing_id=self.filing.id,
             satellite_name=self.filing.name,
@@ -496,6 +548,8 @@ class MultiAgentCouncil:
             executive_summary_vi=exec_vi,
             executive_summary_en=exec_en,
             deliberations=deliberations,
+            llm_used=llm_used,
+            llm_model=llm_model,
         )
 
 

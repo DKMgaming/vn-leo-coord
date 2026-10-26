@@ -13,7 +13,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Optional, List
 
-from fastapi import FastAPI, File, Form, UploadFile, HTTPException
+from fastapi import FastAPI, File, Form, UploadFile, HTTPException, Request, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -678,14 +678,15 @@ def sync_multi_agent_itu_endpoint():
 
 
 @app.post("/api/multi-agent/convene")
-def convene_multi_agent_council_endpoint(payload: Dict[str, Any]):
+def convene_multi_agent_council_endpoint(payload: Optional[Dict[str, Any]] = Body(default_factory=dict)):
     """
     Triệu tập Hội đồng Trợ lý AI Đa tác nhân Thẩm định Cấp phép & Phối hợp Quốc tế.
-    Payload: {"filing_id": "USASAT-NGSO-3-MOD"} hoặc dữ liệu hồ sơ AP4 tùy chỉnh.
+    Payload: {"filing_id": "CHNSAT-NGSO-1", "llm_config": {...}} hoặc dữ liệu hồ sơ AP4 tùy chỉnh.
     """
     from leo_coord.spacecap import get_filing_by_id, parse_appendix4_json, get_all_available_filings
     from leo_coord.multi_agent import MultiAgentCouncil
 
+    payload = payload or {}
     filing_id = payload.get("filing_id")
     if filing_id:
         filing = get_filing_by_id(filing_id)
@@ -698,7 +699,8 @@ def convene_multi_agent_council_endpoint(payload: Dict[str, Any]):
         all_f = get_all_available_filings()
         filing = all_f[0]
 
-    council = MultiAgentCouncil(filing)
+    llm_cfg = payload.get("llm_config")
+    council = MultiAgentCouncil(filing, llm_config=llm_cfg)
     dossier = council.convene_council()
     return dossier.to_dict()
 
@@ -770,11 +772,12 @@ def export_multi_agent_dossier_markdown(filing_id: str):
 
 
 @app.post("/api/multi-agent/test-key")
-def test_llm_key_endpoint(payload: Dict[str, Any]):
+def test_llm_key_endpoint(payload: Optional[Dict[str, Any]] = Body(default_factory=dict)):
     """Kiểm tra tính hợp lệ và độ trễ phản hồi của API Key LLM."""
     from leo_coord.multi_agent import test_llm_connection
+    payload = payload or {}
     provider = payload.get("provider", "gemini")
-    api_key = payload.get("api_key", "").strip()
+    api_key = (payload.get("api_key") or payload.get("apiKey") or "").strip()
     model = payload.get("model")
     if not api_key:
         raise HTTPException(status_code=400, detail="Vui lòng cung cấp API Key để kiểm tra.")

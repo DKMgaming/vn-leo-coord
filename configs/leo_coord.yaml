@@ -100,8 +100,8 @@ n2yo:
 # Cấu hình Kết nối LLM API Plugin cho Hội đồng Multi-AI-Agent (Phase 4)
 # Hỗ trợ: gemini, openai, anthropic, ollama, hoặc offline (chuyên gia nội bộ)
 llm_plugin:
-  provider: "offline"  # Mặc định: offline (đảm bảo an toàn, không cần internet)
-  default_model: "gemini-1.5-flash"
+  provider: "offline"  # Mặc định: offline (người dùng nhập key trên UI hoặc qua biến môi trường)
+  default_model: "gemini-3.1-flash-lite"
   api_key_env_var: "GEMINI_API_KEY"
   gemini_api_key: ""
   openai_api_key: ""
