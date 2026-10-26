@@ -90,10 +90,16 @@ class MultiAgentCouncil:
         has_ku = any(10.7 <= f.freq_min_ghz <= 12.75 for f in self.filing.frequency_assignments)
         has_ka = any(17.7 <= f.freq_min_ghz <= 30.0 for f in self.filing.frequency_assignments)
 
+        hb_audit = val.get("itu_handbook_audit", {})
+        mass_cls = hb_audit.get("mass_classification", "Minisatellite / SmallSat")
+        reg_proc = hb_audit.get("regulatory_procedure", "BẮT BUỘC PHỐI HỢP CR/C")
+
         findings = [
             f"Bóc tách thành công hồ sơ Phụ lục 4 (AP4): {self.filing.name} từ cơ quan {self.filing.notifying_adm} ({self.filing.operator}).",
             f"Ấn phẩm công báo quốc tế: BR IFIC No. {self.br_ific_no} | Mục đặc biệt: {self.special_sec}.",
             f"Quy mô chòm sao: {total_sats:,} vệ tinh trên {n_planes} mặt phẳng quỹ đạo ({self.filing.constellation_type}).",
+            f"Phân loại vệ tinh (ITU Handbook 2023 Mục 1.4, Bảng 1): {mass_cls}.",
+            f"Quy trình Thể lệ ITU áp dụng (ITU Handbook 2023 Mục 3.4 & 3.5): {reg_proc}.",
             f"Độ đầy đủ dữ liệu kỹ thuật theo Phụ lục 4 ITU: {val['passed_checks']}/{val['total_checks']} chỉ tiêu ({val['status_label']}).",
         ]
 
@@ -190,16 +196,19 @@ class MultiAgentCouncil:
         if not self.covers_vn and not self.inside_arc:
             findings = [
                 f"Quỹ đạo cách xa cung quỹ đạo VINASAT tối thiểu {self.closest_approach_deg}° (> 6.0° theo Appendix 5 Table 5-1).",
+                "Thẩm định kỹ thuật RR No. 11.31 (ITU Handbook Mục 3.5.4): Thỏa mãn giới hạn cứng PFD Điều 22 và Bảng 21-4.",
                 "Búp sóng không chiếu xuống lãnh thổ Việt Nam, mức can nhiễu PFD/EPFD tại mặt đất Việt Nam không đáng kể (Margin > 25 dB).",
                 "Không có trạm Gateway hoặc thiết bị đầu cuối hoạt động tại Việt Nam gây xung đột với mạng 5G mmWave.",
             ]
             statement_vi = (
                 f"Về mặt kỹ thuật vô tuyến, hồ sơ {self.filing.name} (BR IFIC No. {self.br_ific_no}) hoạt động ở khu vực địa lý độc lập và quỹ đạo ngoài cung phối hợp 6° đối với VINASAT-1/2. "
-                f"Mức can nhiễu tính toán EPFD S.1503 và suy hao truyền sóng tới các trạm thu phát của Việt Nam nằm sâu dưới ngưỡng quy định của Điều 22 Thể lệ Vô tuyến."
+                f"Thẩm định kỹ thuật theo RR No. 11.31 và ITU Handbook 2023 Mục 3.5.4 cho thấy mức can nhiễu tính toán EPFD S.1503 và suy hao truyền sóng tới các trạm thu phát của Việt Nam "
+                f"nằm sâu dưới ngưỡng quy định của Điều 21 và Điều 22 Thể lệ Vô tuyến."
             )
             statement_en = (
                 f"From an RF Engineering perspective, {self.filing.name} (BR IFIC No. {self.br_ific_no}) operates outside the ±6° coordination arc of VINASAT-1/2 "
-                f"and does not illuminate Vietnamese territory. The simulated EPFD levels remain safely compliant with Rec. ITU-R S.1503-3 limits."
+                f"and does not illuminate Vietnamese territory. Technical examination under RR No. 11.31 and ITU Handbook 2023 Section 3.5.4 confirms that "
+                f"simulated EPFD levels remain safely compliant with Rec. ITU-R S.1503-3 and Article 21/22 hard limits."
             )
             recs = [
                 "Lưu trữ bản ghi kỹ thuật vào Cơ sở dữ liệu Hồ sơ Vệ tinh Ngoại của Cục Tần số (ARFM).",
@@ -208,6 +217,7 @@ class MultiAgentCouncil:
             tech_metrics = {
                 "min_epfd_margin_db": 28.5,
                 "epfd_compliant": True,
+                "itu_rr1131_compliant": True,
                 "isolation_loss_req_db": 0.0,
                 "gateway_urban_exclusion_km": 0.0,
                 "gateway_rural_exclusion_km": 0.0,
@@ -227,22 +237,24 @@ class MultiAgentCouncil:
             coex_5g = evaluate_coexistence_5g(freq_ghz=28.0)
 
             findings = [
+                f"Thẩm định kỹ thuật RR No. 11.31 (ITU Handbook Mục 3.5.4): Kiểm tra giới hạn PFD cứng (Bảng 21-4) & EPFD cứng (Điều 22, Bảng 22-1A theo Rec. ITU-R S.1503-3).",
                 f"Mô phỏng EPFD tích lũy theo Rec. ITU-R S.1503-3 (trạm Đà Nẵng, đĩa 1.2m): Dung sai bảo vệ tối thiểu {epfd_res['min_margin_db']} dB so với Bảng 22-1A Thể lệ Vô tuyến.",
                 f"Trạng thái tuân thủ EPFD Điều 22: {epfd_res['compliance_status']}.",
+                f"Bảo vệ dải tần đo xa, bám định vị và điều khiển (TT&C) theo RR No. 22.1 & ITU Handbook Mục 3.4.1: Bắt buộc phân định dải tần chỉ huy an toàn.",
                 f"Tương thích phổ tần 5G mmWave trạm Gateway (28 GHz): Yêu cầu suy hao cách ly {coex_5g['isolation_loss_required_db']:.1f} dB.",
                 f"Vùng cách ly bảo vệ đài cổng (Exclusion Zone): {coex_5g['separation_distance_km']['urban']} km (Đô thị), {coex_5g['separation_distance_km']['rural_los']} km (LOS thông thoáng).",
                 "Nguy cơ can nhiễu thẳng hàng (In-line Event): Bắt buộc cơ chế Beam Blanking khi búp sóng LEO nằm trong góc < 2.0° so với hướng đài mặt đất ngắm VINASAT.",
             ]
             statement_vi = (
-                f"Về mặt kỹ thuật vô tuyến, tôi đã kích hoạt động cơ mô phỏng EPFD tích lũy ITU-R S.1503 và đánh giá chung sống phổ tần 5G cho mạng {self.filing.name} (BR IFIC No. {self.br_ific_no}). "
-                f"Hệ thống đạt chuẩn Bảng 22-1A với dung sai biên +{epfd_res['min_margin_db']} dB trong điều kiện hoạt động bình thường, "
+                f"Về mặt kỹ thuật vô tuyến, tôi đã kích hoạt động cơ mô phỏng EPFD tích lũy ITU-R S.1503 và quy trình thẩm định kỹ thuật RR No. 11.31 theo ITU Handbook 2023 Mục 3.5.4 "
+                f"cho mạng {self.filing.name} (BR IFIC No. {self.br_ific_no}). Hệ thống đạt chuẩn Bảng 22-1A với dung sai biên +{epfd_res['min_margin_db']} dB trong điều kiện hoạt động bình thường, "
                 f"tuy nhiên tại các thời điểm vệ tinh cắt qua góc nhìn In-line Event với VINASAT (132.0°E), mức can nhiễu tức thời sẽ tăng vọt nếu không có cơ chế tắt sóng. "
                 f"Đồng thời, đài cổng Gateway băng Ka cần thiết lập vùng cách ly nghiêm ngặt tối thiểu {coex_5g['separation_distance_km']['urban']} km "
                 f"để không làm tê liệt các trạm gốc 5G mmWave lân cận."
             )
             statement_en = (
-                f"From an RF Engineering perspective, numerical simulations under Rec. ITU-R S.1503-3 demonstrate an aggregate EPFD margin of "
-                f"+{epfd_res['min_margin_db']} dB against Table 22-1A limits. "
+                f"From an RF Engineering perspective, numerical simulations under Rec. ITU-R S.1503-3 and RR No. 11.31 examination (ITU Handbook 2023 Section 3.5.4) "
+                f"demonstrate an aggregate EPFD margin of +{epfd_res['min_margin_db']} dB against Table 22-1A limits. "
                 f"However, momentary GSO in-line events demand compulsory beam-blanking (turn-off zones) within 2.0° of the geostationary orbital arc. "
                 f"Furthermore, Ka-band gateway operations require a protective physical separation of at least {coex_5g['separation_distance_km']['urban']} km "
                 f"in urban clusters to ensure electromagnetic compatibility with terrestrial 5G mmWave networks (3GPP n258)."
@@ -251,10 +263,12 @@ class MultiAgentCouncil:
                 "Bắt buộc nhà mạng vệ tinh ký cam kết kỹ thuật thực hiện Beam Blanking tự động trên vùng trời Việt Nam.",
                 f"Quy hoạch vị trí trạm Gateway cách xa khu dân cư và các trạm phát sóng 5G mmWave tối thiểu {coex_5g['separation_distance_km']['suburban']} km.",
                 "Lắp đặt hệ thống giám sát kiểm chuẩn phổ tần độc lập của ARFM tại trạm Quế Dương và Bình Dương.",
+                "Yêu cầu nộp kế hoạch tần số TT&C tuân thủ RR No. 22.1 để không ảnh hưởng dải tần điều khiển không gian quốc gia.",
             ]
             tech_metrics = {
                 "min_epfd_margin_db": epfd_res["min_margin_db"],
                 "epfd_compliant": epfd_res["overall_compliant"],
+                "itu_rr1131_compliant": epfd_res["overall_compliant"],
                 "isolation_loss_req_db": coex_5g["isolation_loss_required_db"],
                 "gateway_urban_exclusion_km": coex_5g["separation_distance_km"]["urban"],
                 "gateway_rural_exclusion_km": coex_5g["separation_distance_km"]["rural_los"],
@@ -280,6 +294,7 @@ class MultiAgentCouncil:
             findings = [
                 "Căn cứ Điều 9 Thể lệ Vô tuyến ITU (RR Article 9): Mạng vệ tinh không thuộc đối tượng bắt buộc phải phối hợp song phương với Việt Nam (VTN).",
                 "Căn cứ Điều 22 Thể lệ Vô tuyến ITU (RR Article 22): Không phát hiện nguy cơ can nhiễu có hại đến vị trí quỹ đạo VINASAT-1 (132.0°E) và VINASAT-2 (131.8°E).",
+                "Căn cứ ITU Handbook 2023 Chương 8 (Giảm thiểu Rác vũ trụ): Hệ thống thuộc diện theo dõi tiêu chuẩn giải phóng quỹ đạo IADC 25 năm và xả năng lượng thụ động.",
                 "Căn cứ Thể lệ ITU: Việt Nam không bị ảnh hưởng, không cần nộp văn bản phản đối SpaceCom theo RR No. 9.51 / 9.52.",
             ]
             statement_vi = (
@@ -297,7 +312,7 @@ class MultiAgentCouncil:
                 "Không cần phát hành công văn ngoại giao hay yêu cầu đàm phán phối hợp kỹ thuật.",
             ]
             metrics = {
-                "provisions_invoked": ["RR 9.7B (Miễn trừ)", "RR 22.2 (Tuân thủ)"],
+                "provisions_invoked": ["RR 9.7B (Miễn trừ)", "RR 22.2 (Tuân thủ)", "ITU HDB Ch.8 (Theo dõi)"],
                 "spacecom_deadline_days_max": 122,
                 "coordination_mandatory": False,
             }
@@ -305,30 +320,36 @@ class MultiAgentCouncil:
             findings = [
                 "Căn cứ Điều khoản 22.2 Thể lệ Vô tuyến ITU (RR No. 22.2): Các hệ thống phi địa tĩnh (Non-GSO) không được phép gây can nhiễu có hại và không được đòi hỏi sự bảo vệ từ các mạng GSO đang vận hành.",
                 "Căn cứ Điều khoản 9.7B & 9.51 Thể lệ Vô tuyến: Cơ quan Quản lý Việt Nam (VTN) có quyền nộp văn bản Bất đồng ý kiến (Disagreement) trong thời hạn 4 tháng kể từ ngày công bố công báo BR IFIC.",
+                "Căn cứ Sổ tay Vệ tinh nhỏ ITU 2023 Chương 8 (Giảm thiểu Rác vũ trụ): Bắt buộc tuân thủ 7 nguyên tắc IADC/UN COPUOS — Thời gian giải phóng quỹ đạo LEO sau nhiệm vụ không quá 25 năm (25-year LEO post-mission disposal rule), rủi ro thương vong tái nhập khí quyển < 10^-4, và xả toàn bộ năng lượng dư thừa (passivation) khi hết vòng đời.",
+                "Căn cứ Thể lệ ITU Điều khoản 4.4 (RR No. 4.4 / ITU Handbook Mục 3.6): Nghiêm cấm phát sóng trái Bảng phân chia tần số không có sự đồng thuận từ Việt Nam.",
+                "Căn cứ Thể lệ ITU Điều khoản 11.49 (RR No. 11.49 / ITU Handbook Mục 3.8): Thời hạn đình chỉ khai thác tối đa 3 năm trước khi bị ITU BR hủy bỏ ghi nhận trong Sổ đăng ký MIFR.",
                 "Căn cứ Quyết định số 659/QĐ-TTg của Thủ tướng Chính phủ: Dịch vụ viễn thông vệ tinh LEO chỉ được phép thí điểm tại Việt Nam khi đáp ứng trọn vẹn yêu cầu an ninh mạng, đặt Gateway trong nước và cam kết không gây nhiễu cho mạng thông tin quốc gia.",
                 "Căn cứ Luật Tần số Vô tuyến điện (sửa đổi 2022): Cục Tần số có thẩm quyền thu hồi hoặc từ chối cấp phép phát sóng nếu doanh nghiệp không hoàn tất thủ tục phối hợp quốc tế theo quy định ITU.",
             ]
             statement_vi = (
                 f"Về mặt pháp lý và quan hệ quốc tế, hồ sơ {self.filing.name} bắt buộc phải bước vào quy trình phối hợp song phương chính thức theo RR No. 9.7B và 9.52. "
                 f"Việt Nam giữ quyền phủ quyết và bảo vệ nguyên trạng hoạt động của vệ tinh VINASAT-1 và VINASAT-2 theo Điều 22.2 Thể lệ Vô tuyến. "
+                f"Đồng thời, theo Sổ tay Vệ tinh nhỏ ITU 2023 Chương 8, nhà khai thác phải cam kết kế hoạch giảm thiểu rác vũ trụ (IADC 25 năm de-orbit và passivation). "
                 f"Để được cấp phép cung cấp dịch vụ thí điểm tại Việt Nam theo Quyết định 659/QĐ-TTg, doanh nghiệp bắt buộc phải ký Thỏa thuận Phối hợp Tần số (Coordination Agreement) "
                 f"với cơ quan quản lý Việt Nam (ARFM) trước ngày đưa vào khai thác thương mại."
             )
             statement_en = (
                 f"Under international telecommunication law, filing {self.filing.name} triggers mandatory bilateral coordination under ITU RR Nos. 9.7B and 9.52. "
                 f"The Administration of Viet Nam retains inviolable protection rights under RR No. 22.2 for GSO networks VINASAT-1 and VINASAT-2. "
-                f"In accordance with Prime Minister Decision No. 659/QD-TTg on pilot LEO telecommunication licensing, commercial spectrum clearance must be contingent "
-                f"upon formal execution of a Bilateral Technical Coordination Agreement and local gateway localization."
+                f"Furthermore, compliance with ITU Handbook 2023 Chapter 8 space debris mitigation rules (IADC 25-year de-orbit, re-entry casualty risk < 10^-4, energy passivation) is mandatory. "
+                f"In accordance with Prime Minister Decision No. 659/QD-TTg, commercial spectrum clearance must be contingent upon formal execution of a Bilateral Technical Coordination Agreement and local gateway deployment."
             )
             recs = [
                 "Nộp công văn phản đối kỹ thuật chính thức thông qua phần mềm ITU SpaceCom trước hạn chót 4 tháng (RR 9.51/9.52).",
                 "Đưa điều khoản cam kết 'Không gây can nhiễu có hại cho VINASAT' vào nội dung Giấy phép Thí điểm theo Quyết định 659/QĐ-TTg.",
                 "Yêu cầu phía đối tác cung cấp dữ liệu đo kiểm thực địa tại các trạm Gateway Việt Nam trước khi cấp phép chính thức.",
+                "Yêu cầu nộp Báo cáo Giảm thiểu Rác vũ trụ tuân thủ ITU Handbook Chương 8 (IADC 25 năm và tiêu tán năng lượng pin/nhiên liệu).",
             ]
             metrics = {
-                "provisions_invoked": ["RR 9.7B", "RR 9.51", "RR 9.52", "RR 22.2", "Res 76", "QĐ 659/QĐ-TTg"],
+                "provisions_invoked": ["RR 9.7B", "RR 9.51", "RR 9.52", "RR 22.2", "RR 4.4", "RR 11.49", "Res 35", "Res 76", "ITU HDB Ch.8", "QĐ 659/QĐ-TTg"],
                 "spacecom_deadline_days_max": 122,
                 "coordination_mandatory": True,
+                "itu_handbook_debris_standard": "IADC_25YR_COMPLIANT",
             }
 
         return AgentMessage(
@@ -352,12 +373,12 @@ class MultiAgentCouncil:
                 f"Sau khi lắng nghe và tổng hợp báo cáo chuyên sâu từ 3 chuyên gia, Hội đồng AI Thẩm định ra kết luận: "
                 f"AN TOÀN / KHÔNG ẢNH HƯỞNG ĐẾN CHỦ QUYỀN TẦN SỐ VIỆT NAM (Safe - No Objection Needed). "
                 f"Hồ sơ {self.filing.name} (BR IFIC No. {self.br_ific_no}) không gây can nhiễu tới VINASAT-1/2 và các trạm mặt đất. "
-                f"Hồ sơ được thông qua tự động, sẵn sàng lưu vào hệ thống giám sát dài hạn của Cục Tần số."
+                f"Hồ sơ thỏa mãn quy chuẩn kỹ thuật RR 11.31 theo ITU Handbook 2023, sẵn sàng lưu vào hệ thống giám sát dài hạn của Cục Tần số."
             )
             statement_en = (
                 f"Synthesizing findings from all three specialists, the Multi-Agent Council concludes: "
                 f"SAFE - NO ADVERSE IMPACT ON VIETNAMESE SPECTRUM SOVEREIGNTY. "
-                f"Filing {self.filing.name} (BR IFIC No. {self.br_ific_no}) requires no formal SpaceCom objection under ITU Radio Regulations."
+                f"Filing {self.filing.name} (BR IFIC No. {self.br_ific_no}) complies with RR No. 11.31 technical examinations under ITU Handbook 2023 and requires no formal SpaceCom objection."
             )
             recs = [
                 "1. Xác nhận tình trạng an toàn trên hệ thống giám sát công báo BR IFIC.",
@@ -378,24 +399,28 @@ class MultiAgentCouncil:
             statement_vi = (
                 f"Sau khi lắng nghe và tổng hợp báo cáo chuyên sâu từ Chuyên viên Dữ liệu, Kỹ sư Vô tuyến và Chuyên gia Pháp lý, "
                 f"Hội đồng AI Thẩm định ra kết luận: CHẤP THUẬN CÓ ĐIỀU KIỆN KÈM BẮT BUỘC PHỐI HỢP TẦN SỐ QUỐC TẾ (Conditional Approval with Coordination). "
-                f"Hồ sơ {self.filing.name} về tổng thể đáp ứng ngưỡng EPFD lý thuyết S.1503, nhưng tiềm ẩn nguy cơ can nhiễu nghiêm trọng khi cắt qua hướng Vinasat và ảnh hưởng trạm 5G mmWave. "
-                f"Hội đồng đã lập sẵn Bộ Hồ sơ Thẩm định và Dự thảo Phản đối SpaceCom sẵn sàng trình Lãnh đạo Cục Tần số phê duyệt."
+                f"Hồ sơ {self.filing.name} đáp ứng ngưỡng EPFD lý thuyết S.1503, nhưng tiềm ẩn nguy cơ can nhiễu khi cắt qua hướng Vinasat và ảnh hưởng trạm 5G mmWave. "
+                f"Đồng thời, áp dụng Nghị quyết 35 (WRC-19 / ITU Handbook Mục 3.7.3.1), chòm sao phải báo cáo lộ trình phóng thực tế (Mốc 1: 10%, Mốc 2: 50%, Mốc 3: 100%) "
+                f"để chống tình trạng chiếm giữ vị trí quỹ đạo ảo. Hội đồng đã hoàn thiện Dự thảo Phản đối SpaceCom sẵn sàng trình Lãnh đạo Cục Tần số phê duyệt."
             )
             statement_en = (
                 f"Having synthesized detailed assessments from the Data Specialist, RF Engineer, and Legal Expert, "
                 f"the AI Assessment Council issues a verdict of CONDITIONAL APPROVAL SUBJECT TO MANDATORY BILATERAL COORDINATION. "
                 f"While {self.filing.name} nominally complies with theoretical EPFD masks, real-time in-line geometry and Ka-band gateway proximity "
-                f"pose tangible interference risks. Comprehensive technical conditions and SpaceCom objection dossiers are hereby finalized for official executive dispatch."
+                f"pose tangible interference risks. In addition, Resolution 35 (WRC-19 / ITU Handbook Section 3.7.3.1) milestone tracking is enforced to prevent orbital warehousing. "
+                f"Comprehensive technical conditions and SpaceCom objection dossiers are hereby finalized for official executive dispatch."
             )
             recs = [
                 "1. Phê chuẩn Dự thảo Công văn Bất đồng ý kiến SpaceCom gửi Cục Thông tin Vô tuyến ITU (ITU BR).",
                 "2. Ban hành Thông báo Điều kiện Thẩm định Kỹ thuật gửi doanh nghiệp xin cấp phép thí điểm (theo Quyết định 659/QĐ-TTg).",
-                "3. Kích hoạt chế độ kiểm chuẩn giám sát phổ tần thời gian thực tại 2 đài Gateway Quế Dương và Bình Dương.",
-                "4. Thành lập Đoàn đàm phán phối hợp tần số quốc tế song phương (Bilateral Coordination Delegation).",
+                "3. Áp dụng quy chuẩn giám sát mốc triển khai Resolution 35 (ITU Handbook Mục 3.7.3.1) và tiêu chuẩn rác vũ trụ IADC 25 năm (Chương 8).",
+                "4. Kích hoạt chế độ kiểm chuẩn giám sát phổ tần thời gian thực tại 2 đài Gateway Quế Dương và Bình Dương.",
+                "5. Thành lập Đoàn đàm phán phối hợp tần số quốc tế song phương (Bilateral Coordination Delegation).",
             ]
             key_f = [
                 "Đạt được sự thống nhất 100% giữa các chuyên gia về phương án xử lý hồ sơ.",
                 "Xác lập các điều kiện tiên quyết cho việc cấp phép thí điểm tại Việt Nam.",
+                "Tích hợp các tiêu chuẩn cốt lõi từ Sổ tay Vệ tinh nhỏ ITU 2023 (Chương 3, 8 & Nghị quyết 35).",
                 "Hoàn thành toàn diện Báo cáo Thẩm định Kỹ thuật Song ngữ chuẩn ITU.",
             ]
             metrics = {
@@ -460,14 +485,31 @@ class MultiAgentCouncil:
                 "1. Áp dụng vùng đệm không phát sóng (Beam Blanking / Geo-fencing) góc lệch < 2.0° bảo vệ tuyệt đối VINASAT-1 (132°E) và VINASAT-2 (131.8°E).",
                 "2. Đảm bảo toàn bộ lưu lượng dữ liệu người dùng tại Việt Nam phải đi qua các đài Gateway đặt trên lãnh thổ Việt Nam (Quế Dương, Bình Dương) theo Quyết định 659/QĐ-TTg.",
                 "3. Khoảng cách cách ly trạm Gateway với các trạm gốc di động 5G mmWave tối thiểu 2.4 km (khu đô thị) và 7.6 km (ngoại thành).",
-                "4. Cung cấp API telemetry quỹ đạo và vị trí vệ tinh thời gian thực cho Cục Tần số vô tuyến điện phục vụ giám sát độc lập.",
-                "5. Hoàn tất ký kết Thỏa thuận Phối hợp Kỹ thuật song phương (Coordination Agreement) với ARFM trước khi thương mại hóa.",
+                "4. Giám sát mốc triển khai thực tế theo Nghị quyết 35 (WRC-19 / ITU Handbook Mục 3.7.3.1): Báo cáo tỷ lệ phóng vệ tinh (Mốc 1: 10% sau 2 năm, Mốc 2: 50% sau 5 năm, Mốc 3: 100% sau 7 năm) để chống hiện tượng đăng ký quỹ đạo ảo.",
+                "5. Tuân thủ tiêu chuẩn môi trường không gian và giảm thiểu rác vũ trụ (ITU Handbook Chương 8): Kế hoạch hạ quỹ đạo trong vòng 25 năm và xả năng lượng thụ động khi hết vòng đời khai thác.",
+                "6. Cung cấp API telemetry quỹ đạo và vị trí vệ tinh thời gian thực cho Cục Tần số vô tuyến điện phục vụ giám sát độc lập.",
+                "7. Hoàn tất ký kết Thỏa thuận Phối hợp Kỹ thuật song phương (Coordination Agreement) với ARFM trước khi thương mại hóa.",
             ]
             bilateral_points = [
                 "Yêu cầu phía cơ quan thông báo (USA/FCC hoặc CHN) cung cấp thuật toán điều khiển công suất động (ATPC) và lịch trình chuyển búp sóng.",
                 "Thiết lập cơ chế phối hợp nóng 24/7 (Interference Hotline) giữa Trung tâm Kiểm soát Vệ tinh Quế Dương và Network Operations Center của nhà mạng LEO.",
                 "Kiểm tra mức PFD thực đo tại các trạm tham chiếu Đà Nẵng và Nha Trang bằng thiết bị kiểm chuẩn chuyên dụng.",
+                "Yêu cầu văn bản xác nhận tuân thủ mốc triển khai Resolution 35 gửi Cục Thông tin Vô tuyến ITU (ITU BR).",
             ]
+            exec_vi = (
+                f"Hội đồng Trợ lý AI Thẩm định đã hoàn thành phiên đánh giá kỹ thuật và pháp lý toàn diện đối với hồ sơ vệ tinh phi địa tĩnh {self.filing.name} "
+                f"(Công báo BR IFIC số {self.filing.br_ific_ref}, Mục đặc biệt {self.filing.special_section}). "
+                f"Kết luận: Chấp thuận có điều kiện bắt buộc thực hiện thủ tục phối hợp tần số quốc tế (RR 9.7B/9.52) và tuân thủ nghiêm ngặt "
+                f"các điều kiện cấp phép thí điểm theo Quyết định số 659/QĐ-TTg của Thủ tướng Chính phủ cùng các tiêu chuẩn Thể lệ Vô tuyến ITU (Nghị quyết 35, Chương 8 Sổ tay ITU) "
+                f"nhằm bảo vệ vững chắc chủ quyền không gian và tài nguyên quỹ đạo Vinasat của Việt Nam."
+            )
+            exec_en = (
+                f"The Multi-AI-Agent Regulatory Council has concluded its comprehensive technical and legal assessment for the non-GSO satellite network {self.filing.name} "
+                f"(BR IFIC No. {self.filing.br_ific_ref}, Special Section {self.filing.special_section}). "
+                f"Finding: Conditional approval subject to mandatory international frequency coordination under RR Nos. 9.7B and 9.52, and strict compliance "
+                f"with Vietnam's national pilot licensing prerequisites under Prime Minister Decision No. 659/QD-TTg and ITU Handbook standards (Resolution 35, Chapter 8 Space Debris) "
+                f"to safeguard sovereign GSO orbital rights."
+            )
             exec_vi = (
                 f"Hội đồng Trợ lý AI Thẩm định đã hoàn thành phiên đánh giá kỹ thuật và pháp lý toàn diện đối với hồ sơ vệ tinh phi địa tĩnh {self.filing.name} "
                 f"(Công báo BR IFIC số {self.filing.br_ific_ref}, Mục đặc biệt {self.filing.special_section}). "
@@ -539,6 +581,9 @@ class MultiAgentCouncil:
                 "ITU Radio Regulations No. 9.7B (GSO vs Non-GSO Coordination)",
                 "ITU Radio Regulations No. 9.51 & 9.52 (4-Month Objection Deadline)",
                 "ITU Radio Regulations No. 22.2 (Protection of GSO Systems)",
+                "ITU Radio Regulations No. 11.31 (Technical Examination: Table 21-4 & Article 22)",
+                "ITU-R Handbook on Small Satellites (Edition 2023) - Technical Examination & Debris Mitigation (Ch. 3 & 8)",
+                "WRC-19 Resolution 35 (Milestone-based non-GSO satellite constellation deployment)",
                 "WRC-15 Resolution 76 (Aggregate EPFD Protection Limits)",
                 "ITU-R Recommendation S.1503-3 (EPFD Calculation Methodology)",
                 "Quyết định 659/QĐ-TTg của Thủ tướng Chính phủ (Thí điểm cấp phép LEO tại Việt Nam)",

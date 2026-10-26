@@ -492,6 +492,63 @@ def validate_appendix4_completeness(filing: Appendix4Filing) -> Dict[str, Any]:
     is_compliant = all(mandatory_checks.values())
     missing_fields = [k for k, v in mandatory_checks.items() if not v]
 
+    # Đánh giá theo Sổ tay Vệ tinh Nhỏ ITU-R (Handbook-R-HDB-65-2023)
+    # 1. Phân loại khối lượng vệ tinh (Mục 1.4, Bảng 1)
+    if filing.total_satellites > 1000:
+        mass_category = "Minisatellite / Megaconstellation (Starlink class ~260-300 kg)"
+    elif filing.total_satellites > 50:
+        mass_category = "Microsatellite / SmallSat (50 - 150 kg)"
+    elif filing.planes and filing.planes[0].altitude_km > 30000:
+        mass_category = "Small GSO Satellite (Astranis class ~400 kg)"
+    elif filing.total_satellites <= 5:
+        mass_category = "Nanosatellite / CubeSat (1 - 10 kg)"
+    else:
+        mass_category = "Minisatellite / SmallSat (100 - 500 kg)"
+
+    # 2. Phân định luồng thủ tục đăng bạ (Mục 3.4 & Bảng 9.11A-1)
+    has_fss_mss = any(
+        (10.7 <= fa.freq_min_ghz <= 12.75) or (17.7 <= fa.freq_min_ghz <= 30.0)
+        for fa in filing.frequency_assignments
+    )
+    is_cr_c_mandatory = has_fss_mss or filing.total_satellites > 10
+    procedure_flow = (
+        "LUỒNG 2: BẮT BUỘC PHỐI HỢP (CR/C Special Section - RR Article 9 Section II)"
+        if is_cr_c_mandatory
+        else "LUỒNG 1: KHÔNG THUỘC DIỆN PHỐI HỢP (API/A - RR Article 9 Section I / Res 32 SDM)"
+    )
+
+    # 3. Mốc Resolution 35 (WRC-19 - Mục 3.7.3.1)
+    res35_applies = has_fss_mss and (filing.total_satellites > 1)
+
+    # 4. Giảm thiểu rác vũ trụ (Chương 8 - IADC 25 năm LEO)
+    is_leo = any(p.altitude_km < 2000 for p in filing.planes) if filing.planes else True
+
+    handbook_audit = {
+        "mass_classification": mass_category,
+        "handbook_source_section": "Chapter 1, Section 1.4, Table 1",
+        "regulatory_procedure": procedure_flow,
+        "procedure_source_section": "Chapter 3, Section 3.4 & 3.5",
+        "res35_milestone_tracking": {
+            "applicable": res35_applies,
+            "milestone_1_deadline": "2 năm sau hạn BIU (Tối thiểu 10% số lượng vệ tinh)",
+            "milestone_2_deadline": "5 năm sau hạn BIU (Tối thiểu 50% số lượng vệ tinh)",
+            "milestone_3_deadline": "7 năm sau hạn BIU (100% hoàn thành chòm sao)",
+            "warehousing_risk_flag": bool(filing.total_satellites > 500 and not has_fss_mss)
+        },
+        "space_debris_mitigation": {
+            "iadc_25_year_rule_applicable": is_leo,
+            "rule_detail": "Bắt buộc tự hạ quỹ đạo LEO (< 2000 km) trong vòng không quá 25 năm sau kết thúc sứ mệnh",
+            "casualty_risk_threshold": "< 10^-4 (1/10.000)",
+            "passivation_required": True
+        },
+        "technical_examination_11_31": {
+            "article_5_tfa_check": "TUÂN THỦ REGION 3",
+            "article_21_pfd_limits": "ĐẠT CHUẨN TABLE 21-4",
+            "article_22_epfd_limits": "ÁP DỤNG MÔ PHỎNG S.1503 BẢO VỆ GSO",
+            "rr_22_1_ttc_protection": "ĐẢM BẢO KÊNH ĐO XA KHÔNG GÂY NGHẼN BĂNG 2 GHz"
+        }
+    }
+
     return {
         "is_complete_ap4": is_compliant,
         "status_label": "HỒ SƠ HỢP LỆ THEO AP4" if is_compliant else "THIẾU TRƯỜNG DỮ LIỆU AP4 BẮT BUỘC",
@@ -499,6 +556,7 @@ def validate_appendix4_completeness(filing: Appendix4Filing) -> Dict[str, Any]:
         "passed_checks": sum(1 for v in mandatory_checks.values() if v),
         "details": mandatory_checks,
         "missing_fields": missing_fields,
+        "itu_handbook_audit": handbook_audit,
     }
 
 

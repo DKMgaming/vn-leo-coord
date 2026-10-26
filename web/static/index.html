@@ -217,7 +217,15 @@
                     <div class="config-card">
                         <div class="card-header">
                             <div class="title">THIẾT LẬP THAM SỐ CHÒM SAO WALKER LEO</div>
-                            <button class="btn-text-action" onclick="loadDefaultConstellation()">Nạp Mẫu Demo</button>
+                            <button class="btn-text-action" onclick="applyHandbookConstellation('demo')">Nạp Mẫu Demo</button>
+                        </div>
+                        <!-- ITU Handbook Benchmark Presets -->
+                        <div class="preset-chips-bar" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; padding:6px 8px; background:rgba(0,180,216,0.06); border-radius:6px; border:1px solid rgba(0,180,216,0.2);">
+                            <span style="font-size:11px; font-weight:600; color:var(--text-muted, #94a3b8); align-self:center;">Chuẩn ITU HDB:</span>
+                            <button type="button" class="btn-chip" onclick="applyHandbookConstellation('starlink')" title="ITU Handbook Bảng 27: Starlink 550km, 53°, Ku-band" style="font-size:11px; padding:3px 8px; border-radius:4px; background:rgba(0,180,216,0.15); color:#00b4d8; border:1px solid rgba(0,180,216,0.3); cursor:pointer;">🛰️ Starlink (Bảng 27)</button>
+                            <button type="button" class="btn-chip" onclick="applyHandbookConstellation('jilin1')" title="ITU Handbook Chương 9: Jilin-1 535km, 97.5° SSO" style="font-size:11px; padding:3px 8px; border-radius:4px; background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3); cursor:pointer;">🛰️ Jilin-1 (Chương 9)</button>
+                            <button type="button" class="btn-chip" onclick="applyHandbookConstellation('oneweb')" title="ITU Handbook Chương 9: OneWeb 1200km, 87.9° Ku-band" style="font-size:11px; padding:3px 8px; border-radius:4px; background:rgba(139,92,246,0.15); color:#a78bfa; border:1px solid rgba(139,92,246,0.3); cursor:pointer;">🛰️ OneWeb (Chương 9)</button>
+                            <button type="button" class="btn-chip" onclick="applyHandbookConstellation('demo')" title="Mẫu Demo Ku-band chuẩn" style="font-size:11px; padding:3px 8px; border-radius:4px; background:rgba(255,255,255,0.08); color:#f1f5f9; border:1px solid rgba(255,255,255,0.15); cursor:pointer;">🔄 Mẫu Demo</button>
                         </div>
                         <div class="config-form-grid">
                             <div class="form-group">

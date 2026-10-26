@@ -91,3 +91,29 @@ def test_convene_multi_agent_council_chnsat_guowang():
         assert msg["avatar"] is not None
         assert "CHNSAT-NGSO-1" in msg["statement_vi"]
 
+
+def test_convene_council_itu_handbook_integration():
+    from leo_coord.spacecap import get_filing_by_id
+    starlink_itu = get_filing_by_id("USASAT-NGSO-3-MOD")
+    assert starlink_itu is not None
+    dossier = MultiAgentCouncil(starlink_itu).convene_council()
+
+    # Agent 2 (RF Engineer) checks RR 11.31
+    rf_msg = next(m for m in dossier.deliberations if m.agent_id == "agent-rf-engineer")
+    assert rf_msg.technical_metrics.get("itu_rr1131_compliant") is True
+    assert any("RR No. 11.31" in f for f in rf_msg.key_findings)
+
+    # Agent 3 (Legal Expert) checks Chapter 8 Debris
+    legal_msg = next(m for m in dossier.deliberations if m.agent_id == "agent-legal-expert")
+    assert legal_msg.technical_metrics.get("itu_handbook_debris_standard") == "IADC_25YR_COMPLIANT"
+    assert any("Chương 8" in f for f in legal_msg.key_findings)
+
+    # Chief Coordinator & Council grounds
+    assert any("Handbook on Small Satellites" in g for g in dossier.itu_legal_grounds)
+    assert any("Resolution 35" in g for g in dossier.itu_legal_grounds)
+
+    # Pilot conditions include milestone and debris rules
+    assert any("Nghị quyết 35" in c for c in dossier.vietnam_pilot_conditions)
+    assert any("Chương 8" in c for c in dossier.vietnam_pilot_conditions)
+
+

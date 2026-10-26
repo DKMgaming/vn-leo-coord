@@ -260,6 +260,62 @@ function initLayersEvents() {
 }
 
 /* ================= 4. ĐÁNH GIÁ CHÒM SAO LEO (TAB 1) ================= */
+const HANDBOOK_CONSTELLATION_PRESETS = {
+    starlink: {
+        name: "STARLINK-HDB27",
+        alt_km: 550.0,
+        inc_deg: 53.0,
+        n_sats: 1584,
+        n_planes: 72,
+        freq_ghz: 11.7,
+        eirp_dbw_per_mhz: 10.0,
+        gso_lon: 105.5,
+    },
+    jilin1: {
+        name: "JILIN-1-HDB-CH9",
+        alt_km: 535.0,
+        inc_deg: 97.5,
+        n_sats: 138,
+        n_planes: 12,
+        freq_ghz: 8.2,
+        eirp_dbw_per_mhz: 8.0,
+        gso_lon: 105.5,
+    },
+    oneweb: {
+        name: "ONEWEB-HDB-CH9",
+        alt_km: 1200.0,
+        inc_deg: 87.9,
+        n_sats: 648,
+        n_planes: 18,
+        freq_ghz: 11.7,
+        eirp_dbw_per_mhz: 12.0,
+        gso_lon: 105.5,
+    },
+    demo: {
+        name: "DEMO_LEO_KU",
+        alt_km: 550.0,
+        inc_deg: 53.0,
+        n_sats: 120,
+        n_planes: 6,
+        freq_ghz: 11.7,
+        eirp_dbw_per_mhz: 10.0,
+        gso_lon: 105.5,
+    }
+};
+
+function applyHandbookConstellation(type) {
+    const preset = HANDBOOK_CONSTELLATION_PRESETS[type] || HANDBOOK_CONSTELLATION_PRESETS.demo;
+    document.getElementById("cfg-name").value = preset.name;
+    document.getElementById("cfg-alt").value = preset.alt_km;
+    document.getElementById("cfg-inc").value = preset.inc_deg;
+    document.getElementById("cfg-sats").value = preset.n_sats;
+    document.getElementById("cfg-planes").value = preset.n_planes;
+    document.getElementById("cfg-freq").value = preset.freq_ghz;
+    document.getElementById("cfg-eirp").value = preset.eirp_dbw_per_mhz;
+    document.getElementById("cfg-gso").value = preset.gso_lon;
+    runAssessment();
+}
+
 async function loadDefaultConstellation() {
     try {
         const res = await fetch("/api/constellation/default");
@@ -275,9 +331,12 @@ async function loadDefaultConstellation() {
                 document.getElementById("cfg-eirp").value = data.downlink.eirp_dbw_per_mhz || 10.0;
             }
             runAssessment();
+        } else {
+            applyHandbookConstellation('demo');
         }
     } catch (e) {
         console.error("Lỗi nạp cấu hình mặc định:", e);
+        applyHandbookConstellation('demo');
     }
 }
 
