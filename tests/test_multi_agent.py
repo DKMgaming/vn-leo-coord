@@ -39,3 +39,32 @@ def test_convene_multi_agent_council_guowang():
     assert dossier.notifying_adm == "CHN"
     assert len(dossier.bilateral_negotiation_points) >= 3
     assert len(dossier.deliberations) == 4
+
+
+def test_convene_multi_agent_council_itu_realtime_safe():
+    from leo_coord.spacecap import get_filing_by_id
+    korsat = get_filing_by_id("KORSAT-NGSO-KA")
+    assert korsat is not None
+    assert korsat.br_ific_ref == 3013
+    council = MultiAgentCouncil(korsat)
+    dossier = council.convene_council()
+
+    assert dossier.overall_verdict == "PASS_NO_OBJECTION_NEEDED"
+    assert dossier.risk_level == "LOW"
+    assert "AN TOÀN" in dossier.verdict_label_vi
+    assert len(dossier.deliberations) == 4
+
+
+def test_convene_multi_agent_council_itu_realtime_high_risk():
+    from leo_coord.spacecap import get_filing_by_id
+    starlink_itu = get_filing_by_id("USASAT-NGSO-3-MOD")
+    assert starlink_itu is not None
+    assert starlink_itu.br_ific_ref == 3014
+    council = MultiAgentCouncil(starlink_itu)
+    dossier = council.convene_council()
+
+    assert dossier.overall_verdict == "CONDITIONAL_APPROVAL_WITH_COORDINATION"
+    assert dossier.risk_level == "HIGH"
+    assert "CHẤP THUẬN CÓ ĐIỀU KIỆN" in dossier.verdict_label_vi
+    assert len(dossier.vietnam_pilot_conditions) >= 5
+

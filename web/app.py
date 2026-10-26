@@ -593,9 +593,8 @@ def parse_spacecap_endpoint(payload: Dict[str, Any]):
 def download_spacecap_xml_endpoint(filing_id: str):
     """Xuất hồ sơ mạng vệ tinh theo chuẩn XML ITU SpaceCap v2.0."""
     from fastapi.responses import Response
-    from leo_coord.spacecap import load_spacecap_samples, export_appendix4_xml
-    samples = load_spacecap_samples()
-    filing = next((s for s in samples if s.id == filing_id), None)
+    from leo_coord.spacecap import get_filing_by_id, export_appendix4_xml
+    filing = get_filing_by_id(filing_id)
     if not filing:
         raise HTTPException(status_code=404, detail=f"Không tìm thấy hồ sơ {filing_id}")
     xml_str = export_appendix4_xml(filing)
@@ -606,27 +605,98 @@ def download_spacecap_xml_endpoint(filing_id: str):
     )
 
 
+@app.get("/api/multi-agent/filings")
+def get_multi_agent_filings_endpoint():
+    """
+    Lấy danh sách hồ sơ mạng vệ tinh từ Công báo Quốc tế ITU BR IFIC (Realtime)
+    phục vụ cho việc chọn hồ sơ thẩm định của Hội đồng Multi-AI-Agent.
+    """
+    from leo_coord.spacecap import get_all_available_filings
+    filings = get_all_available_filings()
+    items = []
+    for f in filings:
+        sa = f.service_area if isinstance(f.service_area, dict) else {}
+        covers_vn = bool(sa.get("vietnam_covered", True))
+        inside_arc = bool(sa.get("inside_coordination_arc_6deg", True))
+        closest_appr = sa.get("closest_approach_to_vinasat_deg", 1.8)
+
+        # Đánh giá rủi ro sơ bộ
+        has_ku = any(10.7 <= b.freq_min_ghz <= 12.75 for b in f.frequency_assignments)
+        has_ka = any(17.7 <= b.freq_min_ghz <= 30.0 for b in f.frequency_assignments)
+        if covers_vn and inside_arc and (has_ku or has_ka):
+            risk_badge = "🔴 NGUY CƠ CAO (CẦN PHỐI HỢP)"
+            risk_level = "HIGH"
+        elif covers_vn or inside_arc or has_ku or has_ka:
+            risk_badge = "🟠 TRUNG BÌNH (CẦN THEO DÕI)"
+            risk_level = "MEDIUM"
+        else:
+            risk_badge = "🟢 AN TOÀN (MIỄN TRỪ PHỐI HỢP)"
+            risk_level = "LOW"
+
+        items.append({
+            "id": f.id,
+            "name": f.name,
+            "notifying_adm": f.notifying_adm,
+            "operator": f.operator,
+            "br_ific_no": f.br_ific_ref,
+            "special_section": f.special_section,
+            "total_satellites": f.total_satellites,
+            "alt_km": f.planes[0].altitude_km if f.planes else 550.0,
+            "service_area_covers_vietnam": covers_vn,
+            "inside_coordination_arc": inside_arc,
+            "closest_approach_deg": closest_appr,
+            "risk_level": risk_level,
+            "risk_badge": risk_badge,
+            "is_real_itu_br_ific": sa.get("is_real_itu_br_ific", False),
+            "display_label": f"[BR IFIC {f.br_ific_ref}] {f.name} ({f.notifying_adm} / {f.operator} - {f.total_satellites:,} vệ tinh) - {risk_badge}"
+        })
+
+    return {
+        "status": "success",
+        "source": "ITU Radiocommunication Bureau — BR IFIC (Space Services)",
+        "total": len(items),
+        "filings": items,
+    }
+
+
+@app.post("/api/multi-agent/sync-itu")
+def sync_multi_agent_itu_endpoint():
+    """
+    Kích hoạt đồng bộ các ấn phẩm công báo ITU BR IFIC mới nhất thời gian thực.
+    Cập nhật thời hạn 4 tháng (RR 9.51/9.52) và làm mới danh sách hồ sơ thẩm định.
+    """
+    from leo_coord.br_ific import sync_br_ific_notices_online
+    from leo_coord.spacecap import get_all_available_filings
+    sync_res = sync_br_ific_notices_online()
+    filings = get_all_available_filings()
+    return {
+        "status": "success",
+        "sync_info": sync_res,
+        "total_filings_available": len(filings),
+        "message": f"Đã đồng bộ dữ liệu thời gian thực từ Công báo ITU BR IFIC (Số mới nhất: {sync_res['latest_br_ific_in_database']})."
+    }
+
+
 @app.post("/api/multi-agent/convene")
 def convene_multi_agent_council_endpoint(payload: Dict[str, Any]):
     """
     Triệu tập Hội đồng Trợ lý AI Đa tác nhân Thẩm định Cấp phép & Phối hợp Quốc tế.
-    Payload: {"filing_id": "starlink-gen2-ap4"} hoặc dữ liệu hồ sơ AP4 tùy chỉnh.
+    Payload: {"filing_id": "USASAT-NGSO-3-MOD"} hoặc dữ liệu hồ sơ AP4 tùy chỉnh.
     """
-    from leo_coord.spacecap import load_spacecap_samples, parse_appendix4_json
+    from leo_coord.spacecap import get_filing_by_id, parse_appendix4_json, get_all_available_filings
     from leo_coord.multi_agent import MultiAgentCouncil
 
     filing_id = payload.get("filing_id")
     if filing_id:
-        samples = load_spacecap_samples()
-        filing = next((s for s in samples if s.id == filing_id), None)
+        filing = get_filing_by_id(filing_id)
         if not filing:
-            raise HTTPException(status_code=404, detail=f"Không tìm thấy hồ sơ mẫu {filing_id}")
+            raise HTTPException(status_code=404, detail=f"Không tìm thấy hồ sơ {filing_id}")
     elif "name" in payload or "orbit" in payload:
         filing = parse_appendix4_json(payload)
     else:
-        # Default to Starlink Gen2 if none specified
-        samples = load_spacecap_samples()
-        filing = samples[0]
+        # Default to first available ITU filing
+        all_f = get_all_available_filings()
+        filing = all_f[0]
 
     council = MultiAgentCouncil(filing)
     dossier = council.convene_council()
@@ -637,11 +707,10 @@ def convene_multi_agent_council_endpoint(payload: Dict[str, Any]):
 def export_multi_agent_dossier_markdown(filing_id: str):
     """Xuất toàn văn Báo cáo Thẩm định Kỹ thuật & Pháp lý Song ngữ định dạng Markdown."""
     from fastapi.responses import PlainTextResponse
-    from leo_coord.spacecap import load_spacecap_samples
+    from leo_coord.spacecap import get_filing_by_id
     from leo_coord.multi_agent import MultiAgentCouncil
 
-    samples = load_spacecap_samples()
-    filing = next((s for s in samples if s.id == filing_id), None)
+    filing = get_filing_by_id(filing_id)
     if not filing:
         raise HTTPException(status_code=404, detail=f"Không tìm thấy hồ sơ {filing_id}")
 

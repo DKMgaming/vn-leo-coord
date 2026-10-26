@@ -143,4 +143,21 @@ def test_multi_agent_convene_endpoint():
     assert len(res["vietnam_pilot_conditions"]) >= 4
 
 
+def test_multi_agent_filings_endpoint():
+    from web.app import get_multi_agent_filings_endpoint
+    res = get_multi_agent_filings_endpoint()
+    assert res["status"] == "success"
+    assert res["total"] >= 6
+    assert any(f["id"] == "USASAT-NGSO-3-MOD" for f in res["filings"])
+    assert any(f["id"] == "KORSAT-NGSO-KA" for f in res["filings"])
+
+
+def test_multi_agent_sync_itu_endpoint():
+    from web.app import sync_multi_agent_itu_endpoint
+    res = sync_multi_agent_itu_endpoint()
+    assert res["status"] == "success"
+    assert res["total_filings_available"] >= 6
+    assert "latest_br_ific_in_database" in res["sync_info"]
+
+
 

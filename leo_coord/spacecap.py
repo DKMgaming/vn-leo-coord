@@ -255,3 +255,148 @@ def export_appendix4_xml(filing: Appendix4Filing) -> str:
 
     ET.indent(root, space="  ")
     return ET.tostring(root, encoding="utf-8", xml_declaration=True).decode("utf-8")
+
+
+def convert_br_ific_notice_to_filing(item: Dict[str, Any]) -> Appendix4Filing:
+    """Chuyển đổi một bản ghi công báo BR IFIC thực tế thành đối tượng Appendix4Filing chuẩn."""
+    notice_id = item.get("id", "ITU-NOTICE")
+    name = item.get("satellite_name", notice_id)
+    notifying_adm = item.get("notifying_adm", "UNK")
+    org = item.get("org", "Unknown Operator")
+    br_ific_no = int(item.get("br_ific_no", 3014))
+    special_section = item.get("special_section", "CR/C")
+    n_sats = int(item.get("n_satellites", 100))
+    alt_km = float(item.get("alt_km", 550.0))
+    inc_deg = float(item.get("inclination_deg", 53.0))
+
+    # Ước tính số mặt phẳng quỹ đạo hợp lý
+    num_planes = max(1, min(72, int(n_sats ** 0.5)))
+    sats_per_plane = max(1, n_sats // num_planes)
+    planes = [
+        OrbitalPlane(
+            plane_id=1,
+            altitude_km=alt_km,
+            inclination_deg=inc_deg,
+            satellites_per_plane=sats_per_plane,
+            num_planes=num_planes,
+        )
+    ]
+
+    freq_assignments: List[FrequencyAssignment] = []
+    for b in item.get("frequency_bands", []):
+        f_range = b.get("freq_range_ghz", [10.7, 12.7])
+        f_min = float(f_range[0])
+        f_max = float(f_range[1])
+        b_name = b.get("band_name", f"{f_min}-{f_max} GHz")
+        direction = b.get("direction", "space-to-Earth")
+
+        allocated_vn: List[str] = []
+        if (f_min <= 4.2 and f_max >= 3.4) or (f_min <= 12.75 and f_max >= 10.95):
+            allocated_vn.extend(["VINASAT-1", "VINASAT-2"])
+        if (f_min <= 20.2 and f_max >= 17.7) or (f_min <= 30.0 and f_max >= 27.5):
+            allocated_vn.extend(["Trạm Gateway Quế Dương", "Trạm Gateway Bình Dương"])
+
+        freq_assignments.append(
+            FrequencyAssignment(
+                band_name=f"{b_name} ({direction})",
+                freq_min_ghz=f_min,
+                freq_max_ghz=f_max,
+                polarization="Circular",
+                service="FSS",
+                max_pfd_dbw_m2_4khz=-146.0 if f_min < 15.0 else None,
+                max_pfd_dbw_m2_1mhz=-115.0 if f_min >= 15.0 else None,
+                allocated_to_vietnam_services=allocated_vn,
+                coexistence_issue="Xung đột dải tần với mạng vệ tinh & trạm cổng Việt Nam" if allocated_vn else None,
+            )
+        )
+
+    provisions = ["RR No. 9.7B", "RR No. 9.11A", "RR No. 22.2", "Resolution 76"]
+    if item.get("service_area_covers_vietnam"):
+        provisions.append("Quyết định 659/QĐ-TTg (Thí điểm cấp phép LEO tại Việt Nam)")
+
+    arc_check = item.get("coordination_arc_check", {})
+    service_area = {
+        "vietnam_covered": bool(item.get("service_area_covers_vietnam", False)),
+        "description": item.get("service_area", "Global"),
+        "closest_approach_to_vinasat_deg": arc_check.get("closest_approach_to_vinasat_deg", 99.0),
+        "inside_coordination_arc_6deg": bool(arc_check.get("inside_coordination_arc_6deg", False)),
+        "publication_date": item.get("publication_date", ""),
+        "br_ific_no": br_ific_no,
+        "special_section": special_section,
+        "is_real_itu_br_ific": True,
+    }
+
+    return Appendix4Filing(
+        id=notice_id,
+        name=name,
+        notifying_adm=notifying_adm,
+        operator=org,
+        br_ific_ref=br_ific_no,
+        special_section=special_section,
+        filing_type=item.get("orbit_type", "NON-GSO FSS"),
+        total_satellites=n_sats,
+        constellation_type="Walker Delta" if "NGSO" in item.get("orbit_type", "") else "GSO",
+        orbital_period_min=round(90.0 + (alt_km / 100.0), 1),
+        planes=planes,
+        frequency_assignments=freq_assignments,
+        antenna_patterns={
+            "space_station": "ITU-R S.1428-1 (Phased Array)",
+            "earth_station": "ITU-R S.580-6 (Parabolic / Flat Panel)"
+        },
+        service_area=service_area,
+        applicable_itu_provisions=provisions,
+    )
+
+
+def load_itu_br_ific_filings() -> List[Appendix4Filing]:
+    """Tải toàn bộ hồ sơ mạng vệ tinh thực tế từ Công báo Quốc tế ITU BR IFIC."""
+    from leo_coord.br_ific import load_br_ific_data
+    br_data = load_br_ific_data()
+    notices = br_data.get("notices", [])
+    return [convert_br_ific_notice_to_filing(n) for n in notices]
+
+
+def get_all_available_filings() -> List[Appendix4Filing]:
+    """
+    Tải danh sách tất cả các hồ sơ khả dụng cho Hội đồng AI Thẩm định.
+    Ưu tiên 100% hồ sơ thực tế từ Công báo Quốc tế ITU BR IFIC (Realtime),
+    kèm theo các hồ sơ phụ trợ mẫu nếu có.
+    """
+    itu_filings = load_itu_br_ific_filings()
+    seen_ids = {f.id for f in itu_filings}
+    samples = load_spacecap_samples()
+    combined = list(itu_filings)
+    for s in samples:
+        if s.id not in seen_ids and not any(f.name.lower() in s.name.lower() for f in itu_filings):
+            combined.append(s)
+    return combined
+
+
+def get_filing_by_id(filing_id: str) -> Optional[Appendix4Filing]:
+    """Tìm hồ sơ theo ID từ toàn bộ nguồn dữ liệu ITU BR IFIC và mẫu SpaceCap."""
+    # 1. Tìm chính xác ID trong ITU BR IFIC
+    itu_filings = load_itu_br_ific_filings()
+    for f in itu_filings:
+        if f.id == filing_id or f.name == filing_id:
+            return f
+
+    # 2. Tìm chính xác ID trong mẫu SpaceCap
+    samples = load_spacecap_samples()
+    for s in samples:
+        if s.id == filing_id or s.name == filing_id:
+            return s
+
+    # 3. Ánh xạ alias nếu có
+    alias_map = {
+        "starlink-gen2-ap4": "USASAT-NGSO-3-MOD",
+        "guowang-gw-a59-ap4": "CHNSAT-NGSO-1",
+        "oneweb-phase2-ap4": "CR-C-4501-ONEWEB",
+    }
+    if filing_id in alias_map:
+        target_id = alias_map[filing_id]
+        for f in itu_filings:
+            if f.id == target_id:
+                return f
+
+    return None
+

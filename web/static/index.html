@@ -646,12 +646,20 @@
                                 </div>
 
                                 <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; padding: 10px; background: rgba(0, 0, 0, 0.3); border-radius: 8px;">
-                                    <label style="font-size: 0.85rem; color: #cbd5e1; font-weight: bold;">Chọn Hồ sơ Mạng Vệ tinh Thẩm định:</label>
-                                    <select id="sel-agent-filing" style="padding: 6px 12px; background: #1e293b; color: #f8fafc; border: 1px solid rgba(147, 51, 234, 0.4); border-radius: 6px; font-size: 0.85rem;">
-                                        <option value="starlink-gen2-ap4">STARLINK-GEN2-C-1 (Hoa Kỳ / SpaceX - 29,988 vệ tinh)</option>
-                                        <option value="guowang-gw-a59-ap4">GW-A59 Guowang (Trung Quốc / China SatNet - 12,992 vệ tinh)</option>
-                                        <option value="oneweb-phase2-ap4">ONEWEB-PHASE2 (Vương quốc Anh / Eutelsat OneWeb - 648 vệ tinh)</option>
-                                    </select>
+                                    <label style="font-size: 0.85rem; color: #cbd5e1; font-weight: bold;">🛰️ Chọn Hồ Sơ Mạng Vệ Tinh Thẩm Định (Công Báo ITU BR IFIC Realtime):</label>
+                                    <div style="display: flex; gap: 8px; flex: 1; min-width: 320px;">
+                                        <select id="sel-agent-filing" onchange="onAgentFilingChange()" style="flex: 1; padding: 7px 12px; background: #1e293b; color: #f8fafc; border: 1px solid rgba(147, 51, 234, 0.5); border-radius: 6px; font-size: 0.85rem;">
+                                            <option value="USASAT-NGSO-3-MOD">[BR IFIC 3014] USASAT-NGSO-3 (Starlink Gen2 - SpaceX | 7,500 vệ tinh) - 🔴 NGUY CƠ CAO</option>
+                                            <option value="CHNSAT-NGSO-1">[BR IFIC 3015] CHNSAT-NGSO-1 (Guowang GW-A59 - China SatNet | 6,000 vệ tinh) - 🔴 NGUY CƠ CAO</option>
+                                            <option value="CR-C-5120-KUIPER">[BR IFIC 3010] CR-C-5120-KUIPER (Amazon Project Kuiper | 3,236 vệ tinh) - 🟠 CẦN PHỐI HỢP</option>
+                                            <option value="CR-C-4501-ONEWEB">[BR IFIC 3006] CR-C-4501-ONEWEB (Eutelsat OneWeb Phase 1 | 648 vệ tinh) - 🟠 CẦN PHỐI HỢP</option>
+                                            <option value="KORSAT-NGSO-KA">[BR IFIC 3013] KORSAT-NGSO-KA (Hanwha Systems | 100 vệ tinh) - 🟢 AN TOÀN</option>
+                                            <option value="FRASAT-LEO-IOT">[BR IFIC 3012] FRASAT-LEO-IOT (Kineis IoT Constellation | 25 vệ tinh) - 🟢 AN TOÀN</option>
+                                        </select>
+                                        <button type="button" class="btn-text-action" id="btn-sync-agent-itu" onclick="syncItuFilingsForCouncil()" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border-color: rgba(16, 185, 129, 0.4); padding: 6px 12px; font-weight: 500; white-space: nowrap;" title="Đồng bộ hồ sơ công báo ITU BR IFIC mới nhất">
+                                            🔄 Đồng Bộ ITU
+                                        </button>
+                                    </div>
                                     <button type="button" class="btn-text-action" id="btn-convene-council" style="background: rgba(147, 51, 234, 0.3); color: #c084fc; border-color: rgba(147, 51, 234, 0.6); padding: 6px 14px; font-weight: bold;" onclick="conveneCouncilUI()">
                                         🚀 Triệu Tập Hội Đồng AI Thẩm Định
                                     </button>
@@ -664,6 +672,11 @@
                                     <button type="button" class="btn-text-action" onclick="openLlmSettingsModal()" style="padding: 6px 12px; background: rgba(56, 189, 248, 0.2); color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);">
                                         ⚙️ Cấu Hình LLM API Plugin
                                     </button>
+
+                                    <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; font-size: 0.73rem; color: #94a3b8; margin-top: 2px;">
+                                        <span>📡 Nguồn dữ liệu: <strong>ITU Radiocommunication Bureau — BR IFIC (Space Services) Publications</strong></span>
+                                        <span id="filing-itu-badge" style="color: #38bdf8;">Đồng bộ thời gian thực theo Thể lệ Vô tuyến ITU (RR Điều 9 & Điều 22)</span>
+                                    </div>
                                 </div>
 
                                 <!-- Council Verdict Banner -->

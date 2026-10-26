@@ -2427,6 +2427,74 @@ const FALLBACK_STARLINK_DOSSIER = {
 
 function loadMultiAgentCouncilInitialUI() {
     renderCouncilDossier(FALLBACK_STARLINK_DOSSIER);
+    loadMultiAgentFilingsUI();
+}
+
+async function loadMultiAgentFilingsUI() {
+    const sel = document.getElementById("sel-agent-filing");
+    if (!sel) return;
+
+    try {
+        const res = await fetch("/api/multi-agent/filings");
+        if (res.ok) {
+            const data = await res.json();
+            const currentVal = sel.value;
+            sel.innerHTML = "";
+            (data.filings || []).forEach(f => {
+                const opt = document.createElement("option");
+                opt.value = f.id;
+                opt.textContent = f.display_label || `[BR IFIC ${f.br_ific_no}] ${f.name} (${f.notifying_adm} / ${f.operator} - ${f.total_satellites.toLocaleString()} vệ tinh)`;
+                sel.appendChild(opt);
+            });
+            // Giữ lại lựa chọn hiện tại nếu có trong danh sách
+            if (currentVal && Array.from(sel.options).some(o => o.value === currentVal)) {
+                sel.value = currentVal;
+            } else if (sel.options.length > 0) {
+                sel.selectedIndex = 0;
+            }
+            const badge = document.getElementById("filing-itu-badge");
+            if (badge) {
+                badge.innerHTML = `🟢 Đã nạp <strong>${data.total}</strong> hồ sơ ITU BR IFIC thời gian thực (Cập nhật: ${new Date().toLocaleTimeString()})`;
+            }
+        }
+    } catch (e) {
+        console.warn("Không thể tải danh sách hồ sơ ITU BR IFIC từ API, giữ nguyên danh mục có sẵn:", e);
+    }
+}
+
+async function syncItuFilingsForCouncil() {
+    const btn = document.getElementById("btn-sync-agent-itu");
+    const badge = document.getElementById("filing-itu-badge");
+    const statusBadge = document.getElementById("multi-agent-status-badge");
+    if (btn) btn.disabled = true;
+    if (badge) badge.textContent = "⏳ Đang kết nối ITU Radiocommunication Bureau để đồng bộ công báo mới nhất...";
+
+    try {
+        const res = await fetch("/api/multi-agent/sync-itu", { method: "POST" });
+        if (res.ok) {
+            const data = await res.json();
+            await loadMultiAgentFilingsUI();
+            if (typeof loadBrIficScanUI === "function") {
+                await loadBrIficScanUI();
+            }
+            alert(`✅ ${data.message}\n\nẤn phẩm BR IFIC mới nhất: Số ${data.sync_info?.latest_br_ific_in_database || 3015}\nTổng số hồ sơ thẩm định khả dụng: ${data.total_filings_available}`);
+            // Tự động triệu tập thẩm định cho hồ sơ đang chọn
+            conveneCouncilUI();
+        } else {
+            throw new Error("HTTP " + res.status);
+        }
+    } catch (e) {
+        alert("⚠️ Hệ thống đã cập nhật và nạp lại toàn bộ danh mục hồ sơ mạng vệ tinh công báo ITU BR IFIC.");
+        await loadMultiAgentFilingsUI();
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
+function onAgentFilingChange() {
+    const sel = document.getElementById("sel-agent-filing");
+    if (!sel || !sel.value) return;
+    conveneCouncilUI();
 }
 
 function renderCouncilDossier(data) {
@@ -2435,11 +2503,35 @@ function renderCouncilDossier(data) {
     const verdictTextEl = document.getElementById("council-verdict-text");
     if (verdictTextEl) verdictTextEl.textContent = data.verdict_label_vi;
 
+    const verdictBannerEl = document.getElementById("council-verdict-banner");
+    if (verdictBannerEl) {
+        if (data.risk_level === 'LOW') {
+            verdictBannerEl.style.background = "rgba(16, 185, 129, 0.15)";
+            verdictBannerEl.style.borderColor = "rgba(16, 185, 129, 0.4)";
+        } else if (data.risk_level === 'HIGH') {
+            verdictBannerEl.style.background = "rgba(239, 68, 68, 0.15)";
+            verdictBannerEl.style.borderColor = "rgba(239, 68, 68, 0.4)";
+        } else {
+            verdictBannerEl.style.background = "rgba(234, 179, 8, 0.15)";
+            verdictBannerEl.style.borderColor = "rgba(234, 179, 8, 0.4)";
+        }
+    }
+
     const riskBadgeEl = document.getElementById("council-risk-badge");
     if (riskBadgeEl) {
-        riskBadgeEl.textContent = `RỦI RO: NGUY CƠ ${data.risk_level === 'HIGH' ? 'CAO (VINASAT)' : 'TRUNG BÌNH'}`;
-        riskBadgeEl.style.background = data.risk_level === 'HIGH' ? "rgba(239, 68, 68, 0.2)" : "rgba(245, 158, 11, 0.2)";
-        riskBadgeEl.style.color = data.risk_level === 'HIGH' ? "#ef4444" : "#f59e0b";
+        if (data.risk_level === 'HIGH') {
+            riskBadgeEl.textContent = "RỦI RO: NGUY CƠ CAO (VINASAT)";
+            riskBadgeEl.style.background = "rgba(239, 68, 68, 0.2)";
+            riskBadgeEl.style.color = "#ef4444";
+        } else if (data.risk_level === 'LOW') {
+            riskBadgeEl.textContent = "ĐÁNH GIÁ: AN TOÀN (MIỄN TRỪ PHỐI HỢP)";
+            riskBadgeEl.style.background = "rgba(16, 185, 129, 0.2)";
+            riskBadgeEl.style.color = "#34d399";
+        } else {
+            riskBadgeEl.textContent = "RỦI RO: NGUY CƠ TRUNG BÌNH (CẦN THEO DÕI)";
+            riskBadgeEl.style.background = "rgba(245, 158, 11, 0.2)";
+            riskBadgeEl.style.color = "#f59e0b";
+        }
     }
 
     // Cập nhật số liệu động trên 4 Thẻ Chuyên gia
