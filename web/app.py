@@ -11,7 +11,7 @@ import shutil
 import uuid
 from datetime import date, datetime
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException, Request, Body
 from fastapi.middleware.cors import CORSMiddleware
@@ -686,23 +686,28 @@ def convene_multi_agent_council_endpoint(payload: Optional[Dict[str, Any]] = Bod
     from leo_coord.spacecap import get_filing_by_id, parse_appendix4_json, get_all_available_filings
     from leo_coord.multi_agent import MultiAgentCouncil
 
-    payload = payload or {}
-    filing_id = payload.get("filing_id")
-    if filing_id:
-        filing = get_filing_by_id(filing_id)
-        if not filing:
-            raise HTTPException(status_code=404, detail=f"Không tìm thấy hồ sơ {filing_id}")
-    elif "name" in payload or "orbit" in payload:
-        filing = parse_appendix4_json(payload)
-    else:
-        # Default to first available ITU filing
-        all_f = get_all_available_filings()
-        filing = all_f[0]
+    try:
+        payload = payload or {}
+        filing_id = payload.get("filing_id")
+        if filing_id:
+            filing = get_filing_by_id(filing_id)
+            if not filing:
+                raise HTTPException(status_code=404, detail=f"Không tìm thấy hồ sơ {filing_id}")
+        elif "name" in payload or "orbit" in payload:
+            filing = parse_appendix4_json(payload)
+        else:
+            # Default to first available ITU filing
+            all_f = get_all_available_filings()
+            filing = all_f[0]
 
-    llm_cfg = payload.get("llm_config")
-    council = MultiAgentCouncil(filing, llm_config=llm_cfg)
-    dossier = council.convene_council()
-    return dossier.to_dict()
+        llm_cfg = payload.get("llm_config")
+        council = MultiAgentCouncil(filing, llm_config=llm_cfg)
+        dossier = council.convene_council()
+        return dossier.to_dict()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi thẩm định hội đồng: {str(e)}")
 
 
 @app.get("/api/multi-agent/export-markdown/{filing_id}")
