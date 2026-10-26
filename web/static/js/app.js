@@ -3336,27 +3336,70 @@ async function runSrsDiffEngineUI() {
         }
 
         const data = await res.json();
-        const s = data.diff_summary;
+        const s = data.diff_summary || data.summary || {};
+        const newCount = s.new_filings_count ?? s.new_count ?? 0;
+        const modCount = s.modified_filings_count ?? s.modified_count ?? 0;
+        const vnRiskCount = s.vietnam_risk_count ?? 0;
+        const deadlineCount = s.deadline_urgent_count ?? s.vietnam_risk_count ?? 0;
+
+        const baseLabel = data.base_label || data.base_edition || "Kỳ trước";
+        const targetLabel = data.target_label || data.target_edition || "Kỳ mới";
 
         if (titleEl) {
-            titleEl.textContent = `BÁO CÁO ĐỐI SOÁT CÔNG BÁO BR IFIC: ${data.base_edition} ➔ ${data.target_edition}`;
+            titleEl.textContent = `BÁO CÁO ĐỐI SOÁT CÔNG BÁO BR IFIC: ${baseLabel} ➔ ${targetLabel}`;
         }
 
         if (chipsBox) {
             chipsBox.innerHTML = `
-                <span class="badge-tag" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8;">🆕 Mạng Mới: <strong>${s.new_filings_count}</strong></span>
-                <span class="badge-tag" style="background: rgba(234, 179, 8, 0.2); color: #facc15;">🔄 Điều Chỉnh (MOD): <strong>${s.modified_filings_count}</strong></span>
-                <span class="badge-tag" style="background: rgba(239, 68, 68, 0.2); color: #f87171;">🇻🇳 Phủ/Can Nhiễu VN: <strong>${s.vietnam_risk_count}</strong></span>
-                <span class="badge-tag" style="background: rgba(168, 85, 247, 0.2); color: #c084fc;">⏱️ Hạn 4 Tháng RR 9.51: <strong>${s.deadline_urgent_count}</strong></span>
+                <span class="badge-tag" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8;">🆕 Mạng Mới: <strong>${newCount}</strong></span>
+                <span class="badge-tag" style="background: rgba(234, 179, 8, 0.2); color: #facc15;">🔄 Điều Chỉnh (MOD): <strong>${modCount}</strong></span>
+                <span class="badge-tag" style="background: rgba(239, 68, 68, 0.2); color: #f87171;">🇻🇳 Phủ/Can Nhiễu VN: <strong>${vnRiskCount}</strong></span>
+                <span class="badge-tag" style="background: rgba(168, 85, 247, 0.2); color: #c084fc;">⏱️ Hạn 4 Tháng RR 9.51: <strong>${deadlineCount}</strong></span>
             `;
         }
 
+        const itemsList = data.items || [
+            ...(data.new_filings || []).map(f => ({
+                network_name: f.sat_name,
+                adm: f.adm,
+                org: f.operator,
+                diff_type: "NEW",
+                details: `Hồ sơ mới: ${(f.total_satellites || 0).toLocaleString()} vệ tinh | ${f.frequency || ''}`,
+                vietnam_impact: f.is_vietnam_risk,
+                deadline_comment: `Hạn phản đối SpaceCom: ${f.spacecom_deadline}`,
+                days_remaining: f.spacecom_days_left || 122,
+                notice_id: f.filing_id
+            })),
+            ...(data.modified_filings || []).map(f => ({
+                network_name: f.sat_name,
+                adm: f.adm,
+                org: f.operator,
+                diff_type: "MODIFIED",
+                details: (f.changes || ["Điều chỉnh tham số kỹ thuật"]).join("; "),
+                vietnam_impact: f.is_vietnam_risk,
+                deadline_comment: `Hạn phản đối SpaceCom: ${f.spacecom_deadline}`,
+                days_remaining: f.spacecom_days_left || 122,
+                notice_id: f.filing_id
+            })),
+            ...(data.suppressed_filings || []).map(f => ({
+                network_name: f.sat_name,
+                adm: f.adm,
+                org: f.operator,
+                diff_type: "SUPPRESSED",
+                details: f.reason || "Hồ sơ đã rút",
+                vietnam_impact: false,
+                deadline_comment: "Không áp dụng",
+                days_remaining: 0,
+                notice_id: `SUPP-${f.sat_name}`
+            }))
+        ];
+
         if (detailsBox) {
-            if (!data.items || data.items.length === 0) {
+            if (!itemsList || itemsList.length === 0) {
                 detailsBox.innerHTML = "<div style='color: #94a3b8; padding: 8px;'>Không phát hiện thay đổi nào giữa 2 kỳ công báo đã chọn.</div>";
             } else {
                 let html = "<div style='display: flex; flex-direction: column; gap: 8px;'>";
-                data.items.forEach(item => {
+                itemsList.forEach(item => {
                     const diffTypeBadge = item.diff_type === 'NEW' 
                         ? `<span class="badge-tag" style="background: rgba(34, 197, 94, 0.2); color: #4ade80;">MỚI</span>`
                         : (item.diff_type === 'MODIFIED' 

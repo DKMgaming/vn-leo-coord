@@ -744,8 +744,8 @@ def diff_srs_editions_endpoint(payload: Optional[Dict[str, Any]] = Body(default_
     )
     db14, db15 = ensure_sample_reference_databases()
 
-    base_src = payload.get("base_source") if payload else None
-    target_src = payload.get("target_source") if payload else None
+    base_src = (payload.get("base_database") or payload.get("base_source")) if payload else None
+    target_src = (payload.get("target_database") or payload.get("target_source")) if payload else None
 
     base_path = Path(base_src) if base_src and Path(base_src).exists() else db14
     target_path = Path(target_src) if target_src and Path(target_src).exists() else db15
@@ -766,7 +766,67 @@ def diff_srs_editions_endpoint(payload: Optional[Dict[str, Any]] = Body(default_
         target_label=target_label,
     )
 
+    # Đảm bảo tương thích hoàn hảo giữa các trường frontend
+    summ = diff_report.get("summary", {})
+    diff_report["base_edition"] = base_label
+    diff_report["target_edition"] = target_label
+    diff_report["diff_summary"] = {
+        "new_filings_count": summ.get("new_count", 0),
+        "modified_filings_count": summ.get("modified_count", 0),
+        "suppressed_filings_count": summ.get("suppressed_count", 0),
+        "vietnam_risk_count": summ.get("vietnam_risk_count", 0),
+        "deadline_urgent_count": summ.get("vietnam_risk_count", 0),
+    }
+
+    # Tổng hợp danh sách items cho giao diện
+    items = []
+    for f in diff_report.get("new_filings", []):
+        items.append({
+            "network_name": f.get("sat_name"),
+            "sat_name": f.get("sat_name"),
+            "adm": f.get("adm"),
+            "org": f.get("operator"),
+            "diff_type": "NEW",
+            "diff_label": f.get("diff_label", "MỚI XUẤT BẢN"),
+            "details": f"Hồ sơ mới: {f.get('total_satellites', 0):,} vệ tinh | {f.get('alt_km', 0):.0f}km | {f.get('frequency', '')}",
+            "vietnam_impact": f.get("is_vietnam_risk", True),
+            "deadline_comment": f"Hạn phản đối SpaceCom: {f.get('spacecom_deadline')}",
+            "days_remaining": f.get("spacecom_days_left", 122),
+            "notice_id": f.get("filing_id"),
+        })
+    for f in diff_report.get("modified_filings", []):
+        chg_text = "; ".join(f.get("changes", ["Điều chỉnh tham số kỹ thuật"]))
+        items.append({
+            "network_name": f.get("sat_name"),
+            "sat_name": f.get("sat_name"),
+            "adm": f.get("adm"),
+            "org": f.get("operator"),
+            "diff_type": "MODIFIED",
+            "diff_label": f.get("diff_label", "ĐIỀU CHỈNH (MOD)"),
+            "details": chg_text,
+            "vietnam_impact": f.get("is_vietnam_risk", True),
+            "deadline_comment": f"Hạn phản đối SpaceCom: {f.get('spacecom_deadline')}",
+            "days_remaining": f.get("spacecom_days_left", 122),
+            "notice_id": f.get("filing_id"),
+        })
+    for f in diff_report.get("suppressed_filings", []):
+        items.append({
+            "network_name": f.get("sat_name"),
+            "sat_name": f.get("sat_name"),
+            "adm": f.get("adm"),
+            "org": f.get("operator"),
+            "diff_type": "SUPPRESSED",
+            "diff_label": f.get("diff_label", "ĐÃ RÚT / ĐÌNH CHỈ"),
+            "details": f.get("reason", "Hồ sơ đã rút khỏi công báo"),
+            "vietnam_impact": False,
+            "deadline_comment": "Không áp dụng",
+            "days_remaining": 0,
+            "notice_id": f"SUPPRESSED-{f.get('sat_name')}",
+        })
+
+    diff_report["items"] = items
     return diff_report
+
 
 
 @app.get("/api/srs/sample-databases")
