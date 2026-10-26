@@ -732,25 +732,23 @@ def get_all_available_filings() -> List[Appendix4Filing]:
 
 def get_filing_by_id(filing_id: str) -> Optional[Appendix4Filing]:
     """Tìm hồ sơ theo ID từ toàn bộ nguồn: Hồ sơ người dùng tải lên, ITU BR IFIC và mẫu SpaceCap."""
-    # 1. Tìm trong hồ sơ người dùng tải lên (Uploaded Filings)
+    # 1. Tìm chính xác ID (Exact ID Match) - Ưu tiên hàng đầu
     uploaded = load_uploaded_filings()
     for u in uploaded:
-        if u.id == filing_id or u.name == filing_id:
+        if u.id == filing_id:
             return u
 
-    # 2. Tìm chính xác ID trong ITU BR IFIC
     itu_filings = load_itu_br_ific_filings()
     for f in itu_filings:
-        if f.id == filing_id or f.name == filing_id:
+        if f.id == filing_id:
             return f
 
-    # 3. Tìm chính xác ID trong mẫu SpaceCap
     samples = load_spacecap_samples()
     for s in samples:
-        if s.id == filing_id or s.name == filing_id:
+        if s.id == filing_id:
             return s
 
-    # 4. Ánh xạ alias nếu có
+    # 2. Ánh xạ alias nếu có
     alias_map = {
         "starlink-gen2-ap4": "USASAT-NGSO-3-MOD",
         "guowang-gw-a59-ap4": "CHNSAT-NGSO-1",
@@ -761,6 +759,17 @@ def get_filing_by_id(filing_id: str) -> Optional[Appendix4Filing]:
         for f in itu_filings:
             if f.id == target_id:
                 return f
+
+    # 3. Khớp theo Tên (Name Match Fallback)
+    for u in uploaded:
+        if u.name == filing_id:
+            return u
+    for f in itu_filings:
+        if f.name == filing_id:
+            return f
+    for s in samples:
+        if s.name == filing_id:
+            return s
 
     return None
 

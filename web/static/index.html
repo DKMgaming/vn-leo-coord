@@ -609,6 +609,78 @@
                                     </div>
                                 </div>
 
+                                <!-- Giai đoạn 7: Bộ Giải Mã CSDL BR IFIC (SRS.mdb / SQLite) & Động cơ Diff Engine -->
+                                <div style="margin-top: 14px; padding: 12px; background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(14, 165, 233, 0.35); border-radius: 8px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <span style="font-size: 1.1rem;">💽</span>
+                                            <div>
+                                                <div style="font-weight: 700; color: #38bdf8; font-size: 0.88rem;">GIAI ĐOẠN 7: BỘ GIẢI MÃ CSDL BR IFIC (SRS.MDB / SQLITE) & ĐỘNG CƠ DIFF ENGINE</div>
+                                                <div style="font-size: 0.75rem; color: #94a3b8;">Đọc trực tiếp cơ sở dữ liệu SNS/SRS từ đĩa ITU BR IFIC hoặc kết nối máy chủ nội bộ; đối soát tự động giữa 2 kỳ công báo.</div>
+                                            </div>
+                                        </div>
+                                        <div style="display: flex; gap: 6px; align-items: center;">
+                                            <span id="srs-live-status-pill" class="badge-tag" style="background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4);">🟢 SẴN SÀNG KẾT NỐI (LIVE)</span>
+                                            <button type="button" class="btn-text-action" onclick="loadSrsStatusUI()" style="padding: 4px 10px; font-size: 0.75rem;">🔄 Làm Mới Trạng Thái</button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Grid kết nối & Diff engine -->
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                                        <!-- Cột 1: Quản lý Kết nối CSDL Trực Tiếp -->
+                                        <div style="background: rgba(0, 0, 0, 0.25); padding: 10px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.08);">
+                                            <div style="font-weight: 600; color: #e2e8f0; font-size: 0.82rem; margin-bottom: 6px;">🔌 Kết Nối Trực Tiếp CSDL ITU BR IFIC</div>
+                                            <div style="font-size: 0.76rem; color: #94a3b8; margin-bottom: 8px;">
+                                                Đường dẫn file CSDL (.mdb / .sqlite) hoặc chuỗi kết nối mạng:
+                                            </div>
+                                            <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+                                                <input type="text" id="input-srs-db-path" placeholder="Ví dụ: data/reference/srs_br_ific_3015.sqlite hoặc E:\ITU\SRS.mdb" style="flex: 1; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.4); border: 1px solid #475569; color: #f1f5f9; border-radius: 4px;">
+                                                <button type="button" class="btn-text-action" onclick="connectSrsDatabaseUI()" style="padding: 5px 10px; font-size: 0.78rem; background: rgba(56, 189, 248, 0.25); color: #38bdf8;">Kết Nối</button>
+                                            </div>
+                                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                                <button type="button" class="btn-chip" onclick="quickSelectSrsDb('srs_br_ific_3015.sqlite')" style="font-size: 0.72rem; padding: 3px 8px; border-radius: 4px; background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3);">📁 Chọn CSDL Số 3015 (SQLite)</button>
+                                                <button type="button" class="btn-chip" onclick="quickSelectSrsDb('sample_srs_ific3015.mdb')" style="font-size: 0.72rem; padding: 3px 8px; border-radius: 4px; background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3);">💾 Chọn CSDL Số 3015 (.MDB)</button>
+                                            </div>
+                                            <div id="srs-active-conn-desc" style="font-size: 0.72rem; color: #34d399; margin-top: 6px;">
+                                                Đang kết nối: CSDL BR IFIC No. 3015 (SQLite / Access MDB sẵn sàng)
+                                            </div>
+                                        </div>
+
+                                        <!-- Cột 2: Động cơ Diff Engine So Sánh 2 Kỳ Công Báo -->
+                                        <div style="background: rgba(0, 0, 0, 0.25); padding: 10px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.08);">
+                                            <div style="font-weight: 600; color: #e2e8f0; font-size: 0.82rem; margin-bottom: 6px;">⚡ Động Cơ Diff Engine So Sánh 2 Kỳ Công Báo</div>
+                                            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+                                                <div style="flex: 1;">
+                                                    <label style="font-size: 0.72rem; color: #94a3b8;">Kỳ gốc (Trước):</label>
+                                                    <select id="select-diff-base" style="width: 100%; padding: 4px 6px; font-size: 0.75rem; background: rgba(0,0,0,0.4); border: 1px solid #475569; color: #f1f5f9; border-radius: 4px;">
+                                                        <option value="data/reference/srs_br_ific_3014.sqlite">Công báo BR IFIC No. 3014 (Kỳ trước)</option>
+                                                    </select>
+                                                </div>
+                                                <div style="flex: 1;">
+                                                    <label style="font-size: 0.72rem; color: #94a3b8;">Kỳ mới (Đối soát):</label>
+                                                    <select id="select-diff-target" style="width: 100%; padding: 4px 6px; font-size: 0.75rem; background: rgba(0,0,0,0.4); border: 1px solid #475569; color: #f1f5f9; border-radius: 4px;">
+                                                        <option value="data/reference/srs_br_ific_3015.sqlite">Công báo BR IFIC No. 3015 (Kỳ mới nhất)</option>
+                                                        <option value="data/reference/sample_srs_ific3015.mdb">Tệp Microsoft Access (.MDB) Số 3015</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <button type="button" class="btn-primary" onclick="runSrsDiffEngineUI()" style="width: 100%; padding: 6px; font-size: 0.78rem; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                                                <span>⚡ CHẠY DIFF ENGINE ĐỐI SOÁT 2 KỲ CÔNG BÁO</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Bảng Kết Quả Diff Engine -->
+                                    <div id="diff-results-panel" style="display: none; margin-top: 10px; background: rgba(0,0,0,0.3); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 6px; padding: 10px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                            <span style="font-weight: 700; color: #38bdf8; font-size: 0.82rem;" id="diff-summary-title">BÁO CÁO ĐỐI SOÁT CÔNG BÁO QUỐC TẾ</span>
+                                            <button type="button" class="btn-text-action" onclick="document.getElementById('diff-results-panel').style.display='none'" style="font-size: 0.72rem;">✕ Đóng</button>
+                                        </div>
+                                        <div id="diff-stat-chips" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;"></div>
+                                        <div id="diff-details-content" style="max-height: 220px; overflow-y: auto; font-size: 0.75rem;"></div>
+                                    </div>
+                                </div>
+
                                 <!-- Notices Table -->
                                 <div class="station-table-wrapper" style="margin-top: 12px;">
                                     <table class="station-table" id="brific-notices-table">
@@ -677,12 +749,15 @@
                                         </button>
                                     </div>
 
-                                    <!-- Hàng 2: Các nút hành động chính (Tải lên XML nổi bật) -->
+                                    <!-- Hàng 2: Các nút hành động chính (Tải lên XML/MDB nổi bật) -->
                                     <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; width: 100%;">
-                                        <button type="button" class="btn-text-action" id="btn-upload-spacecap-ui" onclick="document.getElementById('file-upload-spacecap').click()" style="background: rgba(168, 85, 247, 0.35); color: #f3e8ff; border: 1.5px solid #c084fc; padding: 8px 16px; font-weight: bold; white-space: nowrap; font-size: 0.85rem; box-shadow: 0 0 10px rgba(168, 85, 247, 0.35);" title="Tải lên tệp hồ sơ thực tế định dạng SpaceCap XML, JSON hoặc YAML">
-                                            📤 Tải Lên Hồ Sơ XML (Thực tế)
+                                        <button type="button" class="btn-text-action" id="btn-upload-spacecap-ui" onclick="document.getElementById('file-upload-spacecap').click()" style="background: rgba(168, 85, 247, 0.35); color: #f3e8ff; border: 1.5px solid #c084fc; padding: 8px 16px; font-weight: bold; white-space: nowrap; font-size: 0.85rem; box-shadow: 0 0 10px rgba(168, 85, 247, 0.35);" title="Tải lên tệp hồ sơ thực tế định dạng SpaceCap XML, Microsoft Access .MDB, SQLite hoặc YAML">
+                                            📤 Tải Lên Hồ Sơ XML / MDB (Thực tế)
                                         </button>
-                                        <input type="file" id="file-upload-spacecap" accept=".xml,.json,.yaml,.yml" style="display: none;" onchange="handleSpaceCapUpload(event)">
+                                        <input type="file" id="file-upload-spacecap" accept=".xml,.json,.yaml,.yml,.mdb,.accdb,.sqlite,.db" style="display: none;" onchange="handleSpaceCapUpload(event)">
+                                        <button type="button" class="btn-text-action" onclick="downloadSampleMdb()" style="padding: 8px 12px; font-size: 0.82rem; background: rgba(59, 130, 246, 0.2); color: #60a5fa; border-color: rgba(59, 130, 246, 0.4);" title="Tải tệp mẫu Microsoft Access (.mdb) chuẩn ITU BR IFIC để thử nghiệm nạp CSDL">
+                                            💾 Tải File MDB Mẫu
+                                        </button>
 
                                         <button type="button" class="btn-text-action" id="btn-convene-council" style="background: rgba(147, 51, 234, 0.3); color: #c084fc; border-color: rgba(147, 51, 234, 0.6); padding: 8px 16px; font-weight: bold; font-size: 0.85rem;" onclick="conveneCouncilUI()">
                                             🚀 Triệu Tập Hội Đồng AI Thẩm Định

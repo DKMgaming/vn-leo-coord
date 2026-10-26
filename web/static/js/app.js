@@ -37,6 +37,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 10. Khởi tạo Hội đồng Trợ lý Multi-AI-Agent Thẩm định (Phase 4)
     loadMultiAgentCouncilInitialUI();
+
+    // 11. Khởi tạo bộ giải mã CSDL ITU BR IFIC (SRS.mdb / SQLite Diff Engine) (Phase 7)
+    loadSrsStatusUI();
 });
 
 /* ================= 1. CHUYỂN ĐỔI TAB ================= */
@@ -2541,7 +2544,7 @@ async function handleSpaceCapUpload(event) {
 
     const statusBadge = document.getElementById("multi-agent-status-badge");
     const filingBadge = document.getElementById("filing-itu-badge");
-    if (statusBadge) statusBadge.textContent = "⏳ ĐANG BÓC TÁCH TỆP HỒ SƠ ITU SPACECAP...";
+    if (statusBadge) statusBadge.textContent = "⏳ ĐANG BÓC TÁCH TỆP HỒ SƠ ITU SPACECAP / CSDL...";
 
     const formData = new FormData();
     formData.append("file", file);
@@ -2561,16 +2564,27 @@ async function handleSpaceCapUpload(event) {
         const f = data.filing;
 
         // Cập nhật lại dropdown danh sách hồ sơ và chọn ngay hồ sơ vừa tải lên
-        await loadMultiAgentFilingsUI(f.id);
-
-        if (filingBadge) {
-            filingBadge.innerHTML = `⭐ Đã nạp hồ sơ tải lên: <strong>${escapeHtml(f.name)}</strong> (${f.notifying_adm} / ${f.total_satellites.toLocaleString()} vệ tinh) — <span class="text-green">${f.status_label}</span>`;
+        await loadMultiAgentFilingsUI(f ? f.id : null);
+        if (typeof loadSrsStatusUI === "function") {
+            await loadSrsStatusUI();
         }
 
-        alert(`✅ ${data.message}\n\n🛰️ Tên mạng: ${f.name}\n🏳️ Cơ quan: ${f.notifying_adm} (${f.operator})\n🔢 Quy mô: ${f.total_satellites.toLocaleString()} vệ tinh | ${f.planes_count} mặt phẳng quỹ đạo\n📡 Băng tần: ${f.frequency_bands_count} dải tần hoạt động\n📋 Đầy đủ AP4: ${data.completeness.passed_checks}/${data.completeness.total_checks} tiêu chí (${f.status_label})\n\nHội đồng AI đang tiến hành thẩm định kỹ thuật và pháp lý ngay lập tức!`);
+        if (filingBadge && f) {
+            if (data.is_database) {
+                filingBadge.innerHTML = `💽 Đã nạp CSDL BR IFIC: <strong>${data.total_imported} hồ sơ</strong> (Đang chọn: ${escapeHtml(f.name)}) — <span class="text-green">${f.status_label || 'Hoạt động'}</span>`;
+            } else {
+                filingBadge.innerHTML = `⭐ Đã nạp hồ sơ tải lên: <strong>${escapeHtml(f.name)}</strong> (${f.notifying_adm} / ${f.total_satellites.toLocaleString()} vệ tinh) — <span class="text-green">${f.status_label}</span>`;
+            }
+        }
+
+        if (data.is_database) {
+            alert(`✅ ${data.message}\n\n💽 Đã trích xuất ${data.total_imported} hồ sơ từ CSDL BR IFIC.\n🛰️ Hồ sơ đang mở thẩm định: ${f.name} (${f.notifying_adm})\n🔢 Quy mô: ${f.total_satellites.toLocaleString()} vệ tinh | ${f.planes_count} mặt phẳng\n\nHội đồng AI đang tiến hành thẩm định kỹ thuật và pháp lý!`);
+        } else {
+            alert(`✅ ${data.message}\n\n🛰️ Tên mạng: ${f.name}\n🏳️ Cơ quan: ${f.notifying_adm} (${f.operator})\n🔢 Quy mô: ${f.total_satellites.toLocaleString()} vệ tinh | ${f.planes_count} mặt phẳng quỹ đạo\n📡 Băng tần: ${f.frequency_bands_count} dải tần hoạt động\n📋 Đầy đủ AP4: ${data.completeness.passed_checks}/${data.completeness.total_checks} tiêu chí (${f.status_label})\n\nHội đồng AI đang tiến hành thẩm định kỹ thuật và pháp lý ngay lập tức!`);
+        }
 
     } catch (e) {
-        console.error("Lỗi tải lên hồ sơ SpaceCap:", e);
+        console.error("Lỗi tải lên hồ sơ SpaceCap/MDB:", e);
         alert(`❌ Không thể bóc tách tệp hồ sơ: ${e.message}`);
         if (statusBadge) statusBadge.textContent = "⚠️ LỖI BÓC TÁCH TỆP HỒ SƠ";
     } finally {
@@ -3167,6 +3181,254 @@ function clearHandbookSearch() {
     if (resBox) resBox.style.display = "none";
 }
 window.clearHandbookSearch = clearHandbookSearch;
+
+/* ================= 11. GIAI ĐOẠN 7: BỘ GIẢI MÃ CSDL BR IFIC (SRS.MDB / SQLITE) & DIFF ENGINE ================= */
+async function loadSrsStatusUI() {
+    try {
+        const res = await fetch("/api/srs/status");
+        if (!res.ok) return;
+        const data = await res.json();
+
+        // 1. Cập nhật Status Pill
+        const pill = document.getElementById("srs-live-status-pill");
+        if (pill) {
+            if (data.is_connected) {
+                pill.className = "badge-tag";
+                pill.style.background = "rgba(16, 185, 129, 0.2)";
+                pill.style.color = "#10b981";
+                pill.style.border = "1px solid rgba(16, 185, 129, 0.4)";
+                pill.textContent = `🟢 ĐÃ KẾT NỐI (${data.db_type})`;
+            } else if (data.status === "READY_TO_CONNECT") {
+                pill.className = "badge-tag";
+                pill.style.background = "rgba(16, 185, 129, 0.2)";
+                pill.style.color = "#10b981";
+                pill.style.border = "1px solid rgba(16, 185, 129, 0.4)";
+                pill.textContent = "🟢 SẴN SÀNG KẾT NỐI (LIVE)";
+            } else {
+                pill.className = "badge-tag";
+                pill.style.background = "rgba(148, 163, 184, 0.2)";
+                pill.style.color = "#94a3b8";
+                pill.style.border = "1px solid rgba(148, 163, 184, 0.3)";
+                pill.textContent = "⚪ CHƯA KẾT NỐI";
+            }
+        }
+
+        // 2. Cập nhật dòng mô tả kết nối
+        const desc = document.getElementById("srs-active-conn-desc");
+        if (desc) {
+            if (data.is_connected && data.active_database) {
+                const basename = data.active_database.replace(/^.*[\\\/]/, '');
+                desc.innerHTML = `Đang kết nối: <strong>${escapeHtml(basename)}</strong> (${data.db_type}) — <strong>${data.notices_count || 0}</strong> hồ sơ | <strong>${data.table_count || 0}</strong> bảng`;
+                desc.style.color = "#34d399";
+            } else {
+                desc.innerHTML = `Sẵn sàng nạp CSDL BR IFIC: Hỗ trợ đĩa DVD SRS.mdb của ITU hoặc tệp CSDL nội bộ (.sqlite, .mdb).`;
+                desc.style.color = "#94a3b8";
+            }
+        }
+
+        // 3. Cập nhật danh sách database vào dropdown Diff Engine
+        if (data.available_databases && data.available_databases.length > 0) {
+            const selBase = document.getElementById("select-diff-base");
+            const selTarget = document.getElementById("select-diff-target");
+            [selBase, selTarget].forEach((sel, idx) => {
+                if (!sel) return;
+                const prev = sel.value;
+                sel.innerHTML = "";
+                data.available_databases.forEach(db => {
+                    const opt = document.createElement("option");
+                    opt.value = db.path;
+                    opt.textContent = `${db.name} (${db.type.toUpperCase()}, ${db.size_kb.toFixed(1)} KB)`;
+                    sel.appendChild(opt);
+                });
+                if (prev && Array.from(sel.options).some(o => o.value === prev)) {
+                    sel.value = prev;
+                } else if (sel.options.length > 1 && idx === 0) {
+                    sel.selectedIndex = 0; // kỳ trước
+                } else if (sel.options.length > 1 && idx === 1) {
+                    sel.selectedIndex = 1; // kỳ sau
+                }
+            });
+        }
+    } catch (e) {
+        console.warn("Không thể tải trạng thái CSDL SRS:", e);
+    }
+}
+window.loadSrsStatusUI = loadSrsStatusUI;
+
+async function connectSrsDatabaseUI() {
+    const input = document.getElementById("input-srs-db-path");
+    const path = input ? input.value.trim() : "";
+    if (!path) {
+        alert("Vui lòng nhập đường dẫn tệp CSDL .mdb, .accdb hoặc .sqlite");
+        return;
+    }
+
+    try {
+        const res = await fetch("/api/srs/connect", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ database_path: path })
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || `Lỗi HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        alert(`✅ ${data.message}\nLoại CSDL: ${data.db_type}\nSố bảng: ${data.table_count}\nSố hồ sơ mạng nạp được: ${data.notices_count}`);
+        await loadSrsStatusUI();
+        if (typeof loadMultiAgentFilingsUI === "function") {
+            await loadMultiAgentFilingsUI();
+        }
+    } catch (e) {
+        alert(`❌ Không thể kết nối CSDL BR IFIC:\n${e.message}`);
+    }
+}
+window.connectSrsDatabaseUI = connectSrsDatabaseUI;
+
+function quickSelectSrsDb(filename) {
+    const input = document.getElementById("input-srs-db-path");
+    if (input) {
+        input.value = "data/reference/" + filename;
+    }
+    connectSrsDatabaseUI();
+}
+window.quickSelectSrsDb = quickSelectSrsDb;
+
+function downloadSampleMdb() {
+    window.location.href = "/api/srs/download-sample-mdb";
+}
+window.downloadSampleMdb = downloadSampleMdb;
+
+async function runSrsDiffEngineUI() {
+    const baseDb = document.getElementById("select-diff-base")?.value;
+    const targetDb = document.getElementById("select-diff-target")?.value;
+    const panel = document.getElementById("diff-results-panel");
+    const chipsBox = document.getElementById("diff-stat-chips");
+    const detailsBox = document.getElementById("diff-details-content");
+    const titleEl = document.getElementById("diff-summary-title");
+
+    if (!baseDb || !targetDb) {
+        alert("Vui lòng chọn cả Kỳ gốc và Kỳ mới để đối soát!");
+        return;
+    }
+
+    if (panel) panel.style.display = "block";
+    if (detailsBox) detailsBox.innerHTML = "<div style='color: #38bdf8; padding: 10px; text-align: center;'>⏳ Đang kích hoạt Diff Engine đối soát cấu trúc bảng notice/freq giữa 2 kỳ công báo...</div>";
+
+    try {
+        const res = await fetch("/api/srs/diff", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                base_database: baseDb,
+                target_database: targetDb
+            })
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || `Lỗi HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        const s = data.diff_summary;
+
+        if (titleEl) {
+            titleEl.textContent = `BÁO CÁO ĐỐI SOÁT CÔNG BÁO BR IFIC: ${data.base_edition} ➔ ${data.target_edition}`;
+        }
+
+        if (chipsBox) {
+            chipsBox.innerHTML = `
+                <span class="badge-tag" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8;">🆕 Mạng Mới: <strong>${s.new_filings_count}</strong></span>
+                <span class="badge-tag" style="background: rgba(234, 179, 8, 0.2); color: #facc15;">🔄 Điều Chỉnh (MOD): <strong>${s.modified_filings_count}</strong></span>
+                <span class="badge-tag" style="background: rgba(239, 68, 68, 0.2); color: #f87171;">🇻🇳 Phủ/Can Nhiễu VN: <strong>${s.vietnam_risk_count}</strong></span>
+                <span class="badge-tag" style="background: rgba(168, 85, 247, 0.2); color: #c084fc;">⏱️ Hạn 4 Tháng RR 9.51: <strong>${s.deadline_urgent_count}</strong></span>
+            `;
+        }
+
+        if (detailsBox) {
+            if (!data.items || data.items.length === 0) {
+                detailsBox.innerHTML = "<div style='color: #94a3b8; padding: 8px;'>Không phát hiện thay đổi nào giữa 2 kỳ công báo đã chọn.</div>";
+            } else {
+                let html = "<div style='display: flex; flex-direction: column; gap: 8px;'>";
+                data.items.forEach(item => {
+                    const diffTypeBadge = item.diff_type === 'NEW' 
+                        ? `<span class="badge-tag" style="background: rgba(34, 197, 94, 0.2); color: #4ade80;">MỚI</span>`
+                        : (item.diff_type === 'MODIFIED' 
+                            ? `<span class="badge-tag" style="background: rgba(234, 179, 8, 0.2); color: #facc15;">ĐIỀU CHỈNH</span>` 
+                            : `<span class="badge-tag" style="background: rgba(148, 163, 184, 0.2); color: #94a3b8;">${item.diff_type}</span>`);
+                    
+                    const vnBadge = item.vietnam_impact 
+                        ? `<span class="badge-tag" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);">🇻🇳 RỦI RO CAN NHIỄU VN</span>` 
+                        : `<span class="badge-tag" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">AN TOÀN</span>`;
+
+                    html += `
+                        <div style="background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 6px; padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                            <div style="flex: 1;">
+                                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                    ${diffTypeBadge}
+                                    <strong style="color: #f8fafc; font-size: 0.82rem;">${escapeHtml(item.network_name)}</strong>
+                                    <span style="color: #94a3b8; font-size: 0.75rem;">(Adm: <strong>${item.adm}</strong> | Org: ${escapeHtml(item.org || 'N/A')})</span>
+                                    ${vnBadge}
+                                </div>
+                                <div style="font-size: 0.73rem; color: #cbd5e1; margin-top: 3px;">
+                                    ${escapeHtml(item.details)}
+                                </div>
+                                <div style="font-size: 0.7rem; color: #f59e0b; margin-top: 2px;">
+                                    📅 Hạn chót phản đối (RR No. 9.51/9.52): <strong>${item.deadline_comment || 'Theo quy định 4 tháng'}</strong> (Còn ${item.days_remaining} ngày)
+                                </div>
+                            </div>
+                            <div>
+                                <button type="button" class="btn-text-action" onclick="selectAndConveneFiling('${escapeHtml(item.network_name)}')" style="padding: 4px 8px; font-size: 0.72rem; white-space: nowrap; background: rgba(56, 189, 248, 0.2); color: #38bdf8;">
+                                    ⚡ Thẩm Định Ngay
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += "</div>";
+                detailsBox.innerHTML = html;
+            }
+        }
+    } catch (e) {
+        console.error("Lỗi chạy Diff Engine:", e);
+        if (detailsBox) detailsBox.innerHTML = `<div style="color: #f87171; padding: 8px;">❌ Lỗi thực thi Diff Engine: ${e.message}</div>`;
+    }
+}
+window.runSrsDiffEngineUI = runSrsDiffEngineUI;
+
+function selectAndConveneFiling(filingNameOrId) {
+    const sel = document.getElementById("sel-agent-filing");
+    if (!sel) return;
+    let found = false;
+    for (let i = 0; i < sel.options.length; i++) {
+        const text = sel.options[i].text.toUpperCase();
+        const val = sel.options[i].value.toUpperCase();
+        const search = filingNameOrId.toUpperCase();
+        if (val === search || text.includes(search)) {
+            sel.selectedIndex = i;
+            found = true;
+            break;
+        }
+    }
+    if (found) {
+        conveneCouncilUI();
+        document.getElementById("council-verdict-banner")?.scrollIntoView({ behavior: "smooth" });
+    } else {
+        alert(`Hồ sơ "${filingNameOrId}" đã được ghi nhận trong danh sách đối soát. Đang nạp danh mục hồ sơ...`);
+        loadMultiAgentFilingsUI().then(() => {
+            for (let i = 0; i < sel.options.length; i++) {
+                if (sel.options[i].text.toUpperCase().includes(filingNameOrId.toUpperCase())) {
+                    sel.selectedIndex = i;
+                    break;
+                }
+            }
+            conveneCouncilUI();
+        });
+    }
+}
+window.selectAndConveneFiling = selectAndConveneFiling;
+
 
 
 

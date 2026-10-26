@@ -20,4 +20,7 @@ out/*.html
 # Tệp hồ sơ do người dùng tải lên
 data/uploads/filings/*.json
 !data/uploads/filings/.gitkeep
+data/uploads/srs/*
+!data/uploads/srs/.gitkeep
+
 

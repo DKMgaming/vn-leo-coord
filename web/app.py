@@ -592,26 +592,78 @@ def parse_spacecap_endpoint(payload: Dict[str, Any]):
 @app.post("/api/spacecap/upload")
 async def upload_spacecap_filing(file: UploadFile = File(...)):
     """
-    Tải lên và bóc tách tệp hồ sơ mạng vệ tinh thực tế theo chuẩn ITU SpaceCap XML, JSON hoặc YAML.
+    Tải lên và bóc tách tệp hồ sơ mạng vệ tinh thực tế theo chuẩn:
+    - ITU SpaceCap XML (.xml), JSON (.json), YAML (.yaml, .yml)
+    - Cơ sở dữ liệu ITU BR IFIC / SpaceCap Microsoft Access (.mdb, .accdb)
+    - Cơ sở dữ liệu SQLite (.sqlite, .db)
     Tự động thẩm định tính đầy đủ theo Phụ lục 4 Thể lệ Vô tuyến và đăng ký vào Hội đồng AI.
     """
+    import tempfile
     from leo_coord.spacecap import (
         parse_appendix4_any,
         save_uploaded_filing,
         validate_appendix4_completeness,
     )
+    from leo_coord.srs_reader import parse_mdb_or_sqlite_file
 
-    allowed_exts = {".xml", ".json", ".yaml", ".yml"}
+    allowed_exts = {".xml", ".json", ".yaml", ".yml", ".mdb", ".accdb", ".sqlite", ".db"}
     filename = file.filename or "unknown.xml"
     ext = Path(filename).suffix.lower()
     if ext not in allowed_exts:
         raise HTTPException(
             status_code=400,
-            detail=f"Định dạng tệp không được hỗ trợ ({ext}). Chỉ chấp nhận tệp ITU SpaceCap XML (.xml), JSON (.json) hoặc YAML (.yaml, .yml)"
+            detail=f"Định dạng tệp không được hỗ trợ ({ext}). Hệ thống chấp nhận tệp XML (.xml), JSON (.json), YAML (.yaml), Microsoft Access (.mdb, .accdb) hoặc SQLite (.sqlite, .db)."
         )
 
     try:
         raw_bytes = await file.read()
+
+        # Trường hợp 1: Tệp CSDL Microsoft Access (.mdb, .accdb) hoặc SQLite (.sqlite, .db)
+        if ext in {".mdb", ".accdb", ".sqlite", ".db"}:
+            srs_upload_dir = Path(__file__).resolve().parent.parent / "data" / "uploads" / "srs"
+            srs_upload_dir.mkdir(parents=True, exist_ok=True)
+            saved_temp_path = srs_upload_dir / f"upload_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{filename}"
+            saved_temp_path.write_bytes(raw_bytes)
+
+            filings = parse_mdb_or_sqlite_file(saved_temp_path, original_filename=filename)
+            if not filings:
+                raise ValueError("Không tìm thấy hồ sơ vệ tinh hợp lệ trong tệp cơ sở dữ liệu đã nạp.")
+
+            primary = filings[0]
+            completeness = validate_appendix4_completeness(primary)
+            return {
+                "status": "success",
+                "message": f"Đã bóc tách thành công CSDL '{filename}' ({len(filings)} hồ sơ mạng vệ tinh được nạp vào hệ thống)!",
+                "is_database": True,
+                "total_filings_imported": len(filings),
+                "filing": {
+                    "id": primary.id,
+                    "name": primary.name,
+                    "notifying_adm": primary.notifying_adm,
+                    "operator": primary.operator,
+                    "br_ific_ref": primary.br_ific_ref,
+                    "special_section": primary.special_section,
+                    "total_satellites": primary.total_satellites,
+                    "planes_count": len(primary.planes),
+                    "frequency_bands_count": len(primary.frequency_assignments),
+                    "is_complete_ap4": completeness["is_complete_ap4"],
+                    "status_label": completeness["status_label"],
+                },
+                "all_imported_filings": [
+                    {
+                        "id": f.id,
+                        "name": f.name,
+                        "adm": f.notifying_adm,
+                        "operator": f.operator,
+                        "sats": f.total_satellites,
+                        "br_ific_no": f.br_ific_ref,
+                    }
+                    for f in filings
+                ],
+                "completeness": completeness,
+            }
+
+        # Trường hợp 2: Tệp XML, JSON hoặc YAML
         try:
             content = raw_bytes.decode("utf-8")
         except UnicodeDecodeError:
@@ -624,6 +676,7 @@ async def upload_spacecap_filing(file: UploadFile = File(...)):
         return {
             "status": "success",
             "message": f"Đã bóc tách và nạp thành công hồ sơ '{filing.name}' ({filename})!",
+            "is_database": False,
             "filing": {
                 "id": filing.id,
                 "name": filing.name,
@@ -641,6 +694,119 @@ async def upload_spacecap_filing(file: UploadFile = File(...)):
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Lỗi bóc tách tệp hồ sơ: {str(e)}")
+
+
+# ================= GIAI ĐOẠN 7: BR IFIC SRS CSDL & DIFF ENGINE ENDPOINTS =================
+
+@app.get("/api/srs/status")
+def get_srs_status_endpoint():
+    """Lấy trạng thái kết nối trực tiếp (Live Connection) tới CSDL ITU BR IFIC."""
+    from leo_coord.srs_reader import BRConnectionManager, ensure_sample_reference_databases
+    ensure_sample_reference_databases()
+    mgr = BRConnectionManager.get_instance()
+    return {
+        "status": "success",
+        "connection_info": mgr.get_status()
+    }
+
+
+@app.post("/api/srs/connect")
+def connect_srs_database_endpoint(payload: Dict[str, Any] = Body(...)):
+    """
+    Thực hiện kiểm tra và thiết lập kết nối trực tiếp tới tệp CSDL ITU BR IFIC (SRS.mdb hoặc SQLite)
+    trên máy chủ, mạng LAN hoặc đường dẫn cục bộ.
+    """
+    from leo_coord.srs_reader import BRConnectionManager
+    path = payload.get("database_path", "").strip()
+    if not path:
+        raise HTTPException(status_code=400, detail="Vui lòng cung cấp đường dẫn tệp cơ sở dữ liệu (database_path).")
+
+    mgr = BRConnectionManager.get_instance()
+    res = mgr.connect(path)
+    if not res.get("connected"):
+        raise HTTPException(status_code=400, detail=res.get("message", "Kết nối thất bại."))
+    return res
+
+
+@app.post("/api/srs/diff")
+def diff_srs_editions_endpoint(payload: Optional[Dict[str, Any]] = Body(default_factory=dict)):
+    """
+    Kích hoạt động cơ Diff Engine so sánh 2 kỳ công báo BR IFIC (hoặc 2 tệp CSDL MDB/SQLite):
+    - Hồ sơ mới xuất bản (New Filings)
+    - Hồ sơ sửa đổi (Modified Filings - MOD)
+    - Cảnh báo hồ sơ ảnh hưởng đến chủ quyền không gian Việt Nam & Vinasat-1/2
+    - Đồng hồ đếm ngược 4 tháng nộp phản đối RR 9.51/9.52.
+    """
+    from leo_coord.srs_reader import (
+        BRDatabaseConnector,
+        BRDiffEngine,
+        ensure_sample_reference_databases,
+    )
+    db14, db15 = ensure_sample_reference_databases()
+
+    base_src = payload.get("base_source") if payload else None
+    target_src = payload.get("target_source") if payload else None
+
+    base_path = Path(base_src) if base_src and Path(base_src).exists() else db14
+    target_path = Path(target_src) if target_src and Path(target_src).exists() else db15
+
+    base_conn = BRDatabaseConnector(base_path)
+    target_conn = BRDatabaseConnector(target_path)
+
+    base_notices = base_conn.fetch_notices()
+    target_notices = target_conn.fetch_notices()
+
+    base_label = payload.get("base_label", f"Công báo BR IFIC No. 3014 ({base_path.name})") if payload else f"Công báo BR IFIC No. 3014 ({base_path.name})"
+    target_label = payload.get("target_label", f"Công báo BR IFIC No. 3015 ({target_path.name})") if payload else f"Công báo BR IFIC No. 3015 ({target_path.name})"
+
+    diff_report = BRDiffEngine.compare_notices(
+        base_notices=base_notices,
+        target_notices=target_notices,
+        base_label=base_label,
+        target_label=target_label,
+    )
+
+    return diff_report
+
+
+@app.get("/api/srs/sample-databases")
+def get_sample_databases_endpoint():
+    """Liệt kê các CSDL BR IFIC mẫu sẵn có (SQLite và Microsoft Access MDB) để kiểm thử nhanh."""
+    from leo_coord.srs_reader import REFERENCE_DIR, ensure_sample_reference_databases
+    ensure_sample_reference_databases()
+
+    items = []
+    for ext in ["*.sqlite", "*.db", "*.mdb"]:
+        for p in REFERENCE_DIR.glob(ext):
+            items.append({
+                "filename": p.name,
+                "path": str(p.resolve()),
+                "size_kb": round(p.stat().st_size / 1024, 1),
+                "type": "Microsoft Access (.mdb)" if p.suffix.lower() == ".mdb" else "SQLite (.sqlite)",
+                "description": "CSDL mẫu chuẩn ITU BR IFIC tích hợp sẵn phục vụ đối soát",
+            })
+    return {
+        "status": "success",
+        "databases": items
+    }
+
+
+@app.get("/api/srs/download-sample-mdb")
+def download_sample_mdb_endpoint():
+    """Tải tệp Microsoft Access (.mdb) mẫu thực tế để thử nghiệm nạp CSDL."""
+    from leo_coord.srs_reader import REFERENCE_DIR
+    mdb_file = REFERENCE_DIR / "sample_srs_ific3015.mdb"
+    if not mdb_file.exists():
+        # Fallback sample_srs.mdb
+        mdb_file = REFERENCE_DIR / "sample_srs.mdb"
+    if not mdb_file.exists():
+        raise HTTPException(status_code=404, detail="Chưa có tệp MDB mẫu.")
+
+    return FileResponse(
+        path=mdb_file,
+        filename="ITU_BR_IFIC_3015_Sample.mdb",
+        media_type="application/x-msaccess",
+    )
 
 
 @app.get("/api/spacecap/download-xml/{filing_id}")
