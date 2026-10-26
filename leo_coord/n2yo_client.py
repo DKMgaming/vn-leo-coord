@@ -376,3 +376,173 @@ def calculate_look_angles(
 
     return round(el_deg, 2), round(az_deg, 2), round(slant_km, 1), compass_str
 
+
+def get_satellite_orbit_track(
+    norad_id: int,
+    client: Optional[N2YOClient] = None,
+    n_steps: int = 90
+) -> Dict[str, Any]:
+    """Tính toán quỹ đạo 3D toàn phần (Full Orbit Track) của vệ tinh thực tế.
+
+    Sử dụng SGP4 nếu có TLE từ N2YO/NORAD để lan truyền chính xác trong 1 chu kỳ bay.
+    Nếu không có TLE, tự động suy diễn mô hình quỹ đạo tròn nghiêng (Analytical Keplerian Orbit).
+    Trả về danh sách các điểm tọa độ (lat, lon, alt_km, time) và thông số quỹ đạo.
+    """
+    from leo_coord.orbits import MU, R_EARTH, OMEGA_EARTH
+
+    c = client or N2YOClient()
+    now = time.time()
+
+    # 1. Thử lấy TLE từ N2YO/NORAD
+    tle_res = c.get_tle(norad_id)
+    sat_name = f"SAT-{norad_id}"
+    if isinstance(tle_res, dict) and "info" in tle_res:
+        sat_name = tle_res["info"].get("satname", sat_name)
+
+    tle_str = tle_res.get("tle", "") if isinstance(tle_res, dict) else ""
+    tle_lines = [line.strip() for line in tle_str.strip().splitlines() if line.strip()]
+
+    # Kiểm tra xem có 2 dòng TLE hợp lệ không
+    if len(tle_lines) >= 2:
+        try:
+            from sgp4.api import Satrec, jday
+            from leo_coord.orbits import eci_to_ecef, subpoint
+
+            l1 = tle_lines[0] if tle_lines[0].startswith("1 ") else tle_lines[1]
+            l2 = tle_lines[1] if tle_lines[1].startswith("2 ") else (tle_lines[2] if len(tle_lines) > 2 else "")
+
+            if l1.startswith("1 ") and l2.startswith("2 "):
+                sat = Satrec.twoline2rv(l1, l2)
+
+                # Tính chu kỳ quỹ đạo (phút)
+                mean_motion_rad_min = sat.no_kozai
+                period_min = (2.0 * math.pi) / max(1e-6, mean_motion_rad_min)
+                inc_deg = math.degrees(sat.inclo)
+                ecc = sat.ecco
+
+                # Tính cao độ cực cận và cực viễn xấp xỉ
+                semi_major_km = (MU / ((mean_motion_rad_min / 60.0) ** 2)) ** (1.0 / 3.0)
+                perigee_km = semi_major_km * (1.0 - ecc) - R_EARTH
+                apogee_km = semi_major_km * (1.0 + ecc) - R_EARTH
+
+                # Lan truyền SGP4 dọc theo 1 chu kỳ hoàn chỉnh
+                jd0, _ = jday(1970, 1, 1, 0, 0, 0.0)
+                step_s = (period_min * 60.0) / max(30, n_steps)
+                points = []
+
+                for i in range(n_steps + 1):
+                    t_sec = now + i * step_s
+                    jd = jd0 + t_sec / 86400.0
+                    e, r, _ = sat.sgp4(jd, 0.0)
+                    if e == 0:
+                        ecef = eci_to_ecef(r, t_sec)
+                        lat, lon, alt = subpoint(ecef)
+                        points.append({
+                            "lat": round(float(lat), 3),
+                            "lon": round(float(lon), 3),
+                            "alt_km": round(float(alt), 1),
+                            "t_sec": int(t_sec)
+                        })
+
+                if len(points) >= 20:
+                    return {
+                        "status": "success",
+                        "norad_id": norad_id,
+                        "satname": sat_name,
+                        "method": "SGP4_TLE",
+                        "period_min": round(period_min, 1),
+                        "inclination_deg": round(inc_deg, 2),
+                        "apogee_km": round(max(0.0, apogee_km), 1),
+                        "perigee_km": round(max(0.0, perigee_km), 1),
+                        "eccentricity": round(ecc, 5),
+                        "points_count": len(points),
+                        "points": points
+                    }
+        except Exception:
+            pass
+
+    # 2. Phương án dự phòng: Mô hình quỹ đạo giải tích (Keplerian Analytic Orbit)
+    live_eval = evaluate_satellite_live(norad_id, client=c)
+    sat_lat = float(live_eval.get("satlatitude", 16.0))
+    sat_lon = float(live_eval.get("satlongitude", 108.0))
+    sat_alt = float(live_eval.get("sataltitude_km", 550.0))
+    sat_name = live_eval.get("satname", sat_name)
+
+    is_gso = sat_alt > 30000.0
+    if is_gso:
+        points = []
+        for l in range(-180, 181, 4):
+            points.append({
+                "lat": 0.0,
+                "lon": float(l),
+                "alt_km": round(sat_alt, 1),
+                "t_sec": int(now)
+            })
+        return {
+            "status": "success",
+            "norad_id": norad_id,
+            "satname": sat_name,
+            "method": "GSO_CIRCULAR",
+            "period_min": 1436.1,
+            "inclination_deg": 0.0,
+            "apogee_km": round(sat_alt, 1),
+            "perigee_km": round(sat_alt, 1),
+            "eccentricity": 0.0,
+            "points_count": len(points),
+            "points": points
+        }
+
+    # LEO/MEO Analytic Orbit
+    a = R_EARTH + sat_alt
+    n = math.sqrt(MU / (a ** 3))
+    period_min = (2.0 * math.pi / n) / 60.0
+    inc_deg = max(abs(sat_lat) + 2.0, 51.6 if abs(sat_lat) < 51.0 else 97.5)
+    inc_rad = math.radians(inc_deg)
+
+    sin_u = max(-1.0, min(1.0, math.sin(math.radians(sat_lat)) / max(0.01, math.sin(inc_rad))))
+    u0 = math.asin(sin_u)
+    raan_rad = math.radians(sat_lon) - math.atan2(math.cos(inc_rad) * math.sin(u0), math.cos(u0))
+
+    points = []
+    step_s = (period_min * 60.0) / max(30, n_steps)
+    for i in range(n_steps + 1):
+        t_sec = now + i * step_s
+        u = u0 + n * (i * step_s)
+        xp = a * math.cos(u)
+        yp = a * math.sin(u)
+        ci, si = math.cos(inc_rad), math.sin(inc_rad)
+        cr, sr = math.cos(raan_rad), math.sin(raan_rad)
+        x_eci = xp * cr - yp * ci * sr
+        y_eci = xp * sr + yp * ci * cr
+        z_eci = yp * si
+
+        theta_earth = OMEGA_EARTH * (i * step_s)
+        x_ecef = x_eci * math.cos(theta_earth) + y_eci * math.sin(theta_earth)
+        y_ecef = -x_eci * math.sin(theta_earth) + y_eci * math.cos(theta_earth)
+        z_ecef = z_eci
+
+        r_norm = math.sqrt(x_ecef**2 + y_ecef**2 + z_ecef**2)
+        pt_lat = math.degrees(math.asin(max(-1.0, min(1.0, z_ecef / r_norm))))
+        pt_lon = math.degrees(math.atan2(y_ecef, x_ecef))
+
+        points.append({
+            "lat": round(pt_lat, 3),
+            "lon": round(pt_lon, 3),
+            "alt_km": round(sat_alt, 1),
+            "t_sec": int(t_sec)
+        })
+
+    return {
+        "status": "success",
+        "norad_id": norad_id,
+        "satname": sat_name,
+        "method": "ANALYTIC_KEPLERIAN",
+        "period_min": round(period_min, 1),
+        "inclination_deg": round(inc_deg, 2),
+        "apogee_km": round(sat_alt, 1),
+        "perigee_km": round(sat_alt, 1),
+        "eccentricity": 0.0,
+        "points_count": len(points),
+        "points": points
+    }
+

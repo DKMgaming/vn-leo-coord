@@ -218,5 +218,17 @@ def test_spacecap_upload_endpoint():
         test_json.unlink()
 
 
+def test_real_satellite_orbit_track_route():
+    from web.app import get_satellite_orbit_track_endpoint
+    res = get_satellite_orbit_track_endpoint(25544)
+    assert res["status"] == "success"
+    assert res["norad_id"] == 25544
+    assert "points" in res
+    assert len(res["points"]) > 20
+    assert "lat" in res["points"][0]
+    assert "lon" in res["points"][0]
+
+
+
 
 

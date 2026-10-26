@@ -161,6 +161,7 @@
                             <div class="card-row"><span>Mặt phẳng:</span> <strong id="info-sat-plane">Pl 2 (inc 53°)</strong></div>
                             <div class="card-row"><span>Tọa độ Sub-sat:</span> <strong id="info-sat-coords">16.4°N, 107.8°E</strong></div>
                             <div class="card-row"><span>Độ cao quỹ đạo:</span> <strong id="info-sat-alt">550 km</strong></div>
+                            <div class="card-row" id="info-sat-track-row" style="display:none;"><span>Quỹ đạo 3D:</span> <strong id="info-sat-track-status" style="color:#00f0ff; font-family:'JetBrains Mono',monospace;">--</strong></div>
                             <div class="card-status"><span class="badge-tag">Đang phủ trạm Đà Nẵng</span></div>
                         </div>
 
@@ -1871,8 +1872,8 @@
                                 <span class="badge-orbit-type" id="n2yo-sat-type">LEO</span>
                                 <h3 id="n2yo-sat-name">SPACE STATION (NORAD 25544)</h3>
                             </div>
-                            <button type="button" class="btn-tool btn-focus-sat" onclick="focusSatelliteOnGlobe()" title="Xoay quả địa cầu 3D đến tọa độ thực tế của vệ tinh này">
-                                🎯 Khóa tiêu điểm trên Quả cầu 3D
+                            <button type="button" class="btn-tool btn-focus-sat" onclick="focusSatelliteOnGlobe()" title="Xoay quả địa cầu 3D đến tọa độ thực tế và vẽ toàn bộ đường quỹ đạo 3D của vệ tinh này">
+                                🎯 Khóa tiêu điểm & Vẽ Quỹ đạo 3D
                             </button>
                         </div>
 

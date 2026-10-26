@@ -623,12 +623,137 @@ class LeoGlobe3D {
         this.simTime = Math.max(0, Math.min(86400, seconds));
     }
 
-    focusRealSatellite(lat, lon, altKm, name) {
+    drawRealSatelliteOrbit(points, isGso, altKm, orbitInfo = {}) {
+        if (!this.realSatOrbitGroup) {
+            this.realSatOrbitGroup = new THREE.Group();
+            this.scene.add(this.realSatOrbitGroup);
+        }
+        this.realSatOrbitGroup.clear();
+
+        if (!points || points.length === 0) return;
+
+        const altNum = parseFloat(altKm) || 550;
+
+        // 1. Quỹ đạo 3D trong không gian (Space Orbit Loop)
+        const spacePts = [];
+        points.forEach(pt => {
+            const ptAlt = pt.alt_km ? parseFloat(pt.alt_km) : altNum;
+            const ptR = isGso ? 190 : this.earthRadius + Math.min(35, Math.max(8, (ptAlt / 1500) * 20));
+            spacePts.push(this.latLonToVector3(pt.lat, pt.lon, ptR));
+        });
+
+        // Khép kín vòng lặp nếu điểm đầu và cuối không trùng
+        if (spacePts.length > 2) {
+            const first = spacePts[0];
+            const last = spacePts[spacePts.length - 1];
+            if (first.distanceTo(last) > 0.1) {
+                spacePts.push(first.clone());
+            }
+        }
+
+        const orbitColor = isGso ? 0xec4899 : 0x00f0ff;
+        const orbitGeo = new THREE.BufferGeometry().setFromPoints(spacePts);
+        const orbitMat = new THREE.LineBasicMaterial({
+            color: orbitColor,
+            transparent: true,
+            opacity: 0.85,
+            linewidth: 2
+        });
+        const orbitLine = new THREE.Line(orbitGeo, orbitMat);
+        this.realSatOrbitGroup.add(orbitLine);
+
+        // 2. Mũi tên chỉ hướng bay (Directional Flight Cones) dọc theo quỹ đạo 3D
+        if (!isGso && spacePts.length >= 8) {
+            const stepFraction = [0.12, 0.37, 0.62, 0.87];
+            stepFraction.forEach(frac => {
+                const idx = Math.min(spacePts.length - 2, Math.floor(spacePts.length * frac));
+                const p1 = spacePts[idx];
+                const p2 = spacePts[idx + 1];
+                const dir = p2.clone().sub(p1).normalize();
+                if (dir.lengthSq() > 0.0001) {
+                    const coneGeo = new THREE.ConeGeometry(1.3, 3.5, 8);
+                    const coneMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+                    const cone = new THREE.Mesh(coneGeo, coneMat);
+                    cone.position.copy(p1);
+                    cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+                    this.realSatOrbitGroup.add(cone);
+                }
+            });
+        }
+
+        // 3. Hình chiếu mặt đất (Ground Track Projection) trên bề mặt Trái Đất
+        if (!isGso) {
+            const segments = [];
+            let curSeg = [];
+            for (let i = 0; i < points.length; i++) {
+                const pt = points[i];
+                if (curSeg.length > 0) {
+                    const prevPt = points[i - 1];
+                    // Khi kinh độ nhảy qua ranh giới 180° / -180° (kinh tuyến đổi ngày), tách đoạn để tránh kẻ xuyên tâm địa cầu
+                    if (Math.abs(pt.lon - prevPt.lon) > 180) {
+                        segments.push(curSeg);
+                        curSeg = [];
+                    }
+                }
+                curSeg.push(this.latLonToVector3(pt.lat, pt.lon, this.earthRadius * 1.002));
+            }
+            if (curSeg.length > 0) segments.push(curSeg);
+
+            segments.forEach(segPts => {
+                if (segPts.length < 2) return;
+                const segGeo = new THREE.BufferGeometry().setFromPoints(segPts);
+                const segMat = new THREE.LineDashedMaterial({
+                    color: 0xfacc15,
+                    dashSize: 2.2,
+                    gapSize: 1.2,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const line = new THREE.Line(segGeo, segMat);
+                line.computeLineDistances();
+                this.realSatOrbitGroup.add(line);
+            });
+        } else {
+            // Trường hợp vệ tinh Địa tĩnh GSO: Vẽ toàn bộ vành xích đạo GSO và cung phối hợp ±6°
+            const gsoRingPts = [];
+            for (let lon = -180; lon <= 180; lon += 3) {
+                gsoRingPts.push(this.latLonToVector3(0, lon, 190));
+            }
+            const gsoRingGeo = new THREE.BufferGeometry().setFromPoints(gsoRingPts);
+            const gsoRingMat = new THREE.LineBasicMaterial({
+                color: 0xec4899,
+                transparent: true,
+                opacity: 0.45
+            });
+            this.realSatOrbitGroup.add(new THREE.Line(gsoRingGeo, gsoRingMat));
+
+            // Cung phối hợp ±6° quanh kinh độ vệ tinh (Rec. ITU-R S.1428)
+            const centerLon = points[0] ? points[0].lon : 132.0;
+            const arcPts = [];
+            for (let dLon = -6.0; dLon <= 6.0; dLon += 0.5) {
+                arcPts.push(this.latLonToVector3(0, centerLon + dLon, 190.5));
+            }
+            const arcGeo = new THREE.BufferGeometry().setFromPoints(arcPts);
+            const arcMat = new THREE.LineBasicMaterial({
+                color: 0xf43f5e,
+                linewidth: 3
+            });
+            this.realSatOrbitGroup.add(new THREE.Line(arcGeo, arcMat));
+        }
+    }
+
+    focusRealSatellite(lat, lon, altKm, name, extraData = {}) {
         if (!this.realSatGroup) {
             this.realSatGroup = new THREE.Group();
             this.scene.add(this.realSatGroup);
         }
         this.realSatGroup.clear();
+
+        if (!this.realSatOrbitGroup) {
+            this.realSatOrbitGroup = new THREE.Group();
+            this.scene.add(this.realSatOrbitGroup);
+        }
+        this.realSatOrbitGroup.clear();
 
         const latNum = parseFloat(lat);
         const lonNum = parseFloat(lon);
@@ -711,6 +836,13 @@ class LeoGlobe3D {
             const altEl = document.getElementById("info-sat-alt");
             if (altEl) altEl.textContent = `${Math.round(altNum).toLocaleString()} km`;
 
+            const trackRow = document.getElementById("info-sat-track-row");
+            const trackStatus = document.getElementById("info-sat-track-status");
+            if (trackRow && trackStatus) {
+                trackRow.style.display = "flex";
+                trackStatus.innerHTML = `<span>⏳ Đang tải SGP4...</span>`;
+            }
+
             // Kiểm tra In-line Event với Vinasat (132°E) từ Đà Nẵng
             if (!isGso && window.fetch) {
                 fetch(`/api/antenna/in-line-check?sat_lat=${latNum}&sat_lon=${lonNum}&sat_alt_km=${altNum}&station=danang`)
@@ -732,6 +864,54 @@ class LeoGlobe3D {
                     })
                     .catch(() => {});
             }
+        }
+
+        // 4. VẼ QUỸ ĐẠO THỰC TẾ (ORBIT TRACKING)
+        // Bước 4.1: Vẽ tức thì quỹ đạo Keplerian giải tích để phản hồi 0ms
+        const immediatePts = [];
+        if (isGso) {
+            for (let lon = -180; lon <= 180; lon += 4) {
+                immediatePts.push({ lat: 0, lon: lon, alt_km: altNum });
+            }
+        } else {
+            const incDeg = Math.max(Math.abs(latNum) + 2.0, 51.6);
+            const incRad = incDeg * (Math.PI / 180);
+            const sinU = Math.max(-1.0, Math.min(1.0, Math.sin(latNum * (Math.PI / 180)) / Math.max(0.01, Math.sin(incRad))));
+            const u0 = Math.asin(sinU);
+            const raanRad = (lonNum * (Math.PI / 180)) - Math.atan2(Math.cos(incRad) * Math.sin(u0), Math.cos(u0));
+            for (let step = 0; step <= 90; step++) {
+                const u = u0 + (step * 2 * Math.PI / 90);
+                const ptLat = Math.asin(Math.sin(incRad) * Math.sin(u)) * (180 / Math.PI);
+                const ptLon = (raanRad + Math.atan2(Math.cos(incRad) * Math.sin(u), Math.cos(u))) * (180 / Math.PI);
+                immediatePts.push({ lat: ptLat, lon: ((ptLon + 540) % 360) - 180, alt_km: altNum });
+            }
+        }
+        this.drawRealSatelliteOrbit(immediatePts, isGso, altNum, { method: "ANALYTICAL" });
+
+        // Bước 4.2: Nạp quỹ đạo truyền biến chính xác chuẩn SGP4 từ NORAD TLE qua Backend API
+        const noradId = extraData?.norad_id || extraData?.satid || (extraData?.info && extraData?.info.satid);
+        if (noradId && window.fetch) {
+            fetch(`/api/real-satellites/orbit-track/${noradId}?n_steps=90`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data && data.points && data.points.length > 0) {
+                        this.drawRealSatelliteOrbit(data.points, isGso, data.alt_km || altNum, data);
+                        const trackStatus = document.getElementById("info-sat-track-status");
+                        if (trackStatus) {
+                            const pMin = data.period_min ? `${data.period_min}m` : (isGso ? "23h56m" : "--");
+                            const iDeg = data.inclination_deg !== undefined ? `${data.inclination_deg}°` : "--";
+                            const methodLabel = data.method === "SGP4_TLE" ? "SGP4" : (data.method || "SGP4");
+                            trackStatus.innerHTML = `<span style="color:#00f0ff;">T=${pMin} | i=${iDeg}</span> <span class="badge-tag" style="background:#0284c7; color:#fff; font-size:0.65rem; padding:0.1rem 0.35rem; margin-left:4px;">${methodLabel}</span>`;
+                        }
+                    }
+                })
+                .catch(err => {
+                    console.warn("Lỗi fetch SGP4 track:", err);
+                    const trackStatus = document.getElementById("info-sat-track-status");
+                    if (trackStatus) {
+                        trackStatus.innerHTML = `<span style="color:#94a3b8;">Giải tích (Keplerian)</span>`;
+                    }
+                });
         }
     }
 

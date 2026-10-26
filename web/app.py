@@ -882,6 +882,17 @@ def get_satellite_tle(norad_id: int):
     return res
 
 
+@app.get("/api/real-satellites/orbit-track/{norad_id}")
+def get_satellite_orbit_track_endpoint(norad_id: int):
+    """Tính toán và trả về đường quỹ đạo 3D toàn phần (Full Orbit Track) của vệ tinh thực tế."""
+    from leo_coord.n2yo_client import get_satellite_orbit_track
+    result = get_satellite_orbit_track(norad_id)
+    if result.get("status") == "error":
+        raise HTTPException(status_code=400, detail=result.get("message", "Lỗi tính toán quỹ đạo vệ tinh"))
+    return result
+
+
+
 @app.get("/api/real-satellites/above")
 def get_satellites_above_station(
     station: str = "hanoi",

@@ -90,3 +90,54 @@ def test_calculate_look_angles():
     assert az_n == pytest.approx(0.0, abs=0.5)
     assert "N" in comp_n
 
+
+@patch("urllib.request.urlopen")
+def test_satellite_orbit_track_sgp4(mock_urlopen):
+    from leo_coord.n2yo_client import get_satellite_orbit_track
+
+    # Mock TLE của Trạm Vũ Trụ Quốc Tế (ISS - NORAD 25544)
+    iss_tle = (
+        "1 25544U 98067A   26116.51234567  .00016717  00000+0  10270-3 0  9993\r\n"
+        "2 25544  51.6412 110.1234 0005432  65.1234  45.1234 15.50123456456789"
+    )
+    mock_resp = MagicMock()
+    mock_resp.read.return_value = json.dumps({
+        "info": {"satname": "SPACE STATION", "satid": 25544},
+        "tle": iss_tle
+    }).encode("utf-8")
+    mock_urlopen.return_value.__enter__.return_value = mock_resp
+
+    client = N2YOClient(api_key="TEST_KEY")
+    res = get_satellite_orbit_track(25544, client=client, n_steps=60)
+
+    assert res["status"] == "success"
+    assert res["norad_id"] == 25544
+    assert res["method"] == "SGP4_TLE"
+    assert res["period_min"] > 80.0
+    assert res["inclination_deg"] == pytest.approx(51.64, abs=0.1)
+    assert len(res["points"]) >= 50
+    assert "lat" in res["points"][0]
+    assert "lon" in res["points"][0]
+    assert "alt_km" in res["points"][0]
+
+
+@patch("urllib.request.urlopen")
+def test_satellite_orbit_track_analytic_fallback(mock_urlopen):
+    from leo_coord.n2yo_client import get_satellite_orbit_track
+
+    # TLE lỗi -> rơi về Analytic Keplerian
+    mock_resp = MagicMock()
+    mock_resp.read.return_value = json.dumps({
+        "error": "TLE not available"
+    }).encode("utf-8")
+    mock_urlopen.return_value.__enter__.return_value = mock_resp
+
+    client = N2YOClient(api_key="TEST_KEY")
+    res = get_satellite_orbit_track(99999, client=client, n_steps=45)
+
+    assert res["status"] == "success"
+    assert res["norad_id"] == 99999
+    assert res["method"] in ["ANALYTIC_KEPLERIAN", "GSO_CIRCULAR"]
+    assert len(res["points"]) >= 30
+
+

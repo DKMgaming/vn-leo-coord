@@ -105,6 +105,8 @@ function initGlobe() {
         document.getElementById("info-sat-plane").textContent = `Pl ${sat.plane} (inc ${globe.incDeg}°)`;
         document.getElementById("info-sat-coords").textContent = `${sat.lat > 0 ? sat.lat + '°N' : -sat.lat + '°S'}, ${sat.lon > 0 ? sat.lon + '°E' : -sat.lon + '°W'}`;
         document.getElementById("info-sat-alt").textContent = `${sat.alt_km || globe.altKm} km`;
+        const trackRow = document.getElementById("info-sat-track-row");
+        if (trackRow) trackRow.style.display = "none";
     };
 }
 
@@ -1011,7 +1013,8 @@ function focusSatelliteOnGlobe() {
             parseFloat(currentRealSatData.satlatitude),
             parseFloat(currentRealSatData.satlongitude),
             parseFloat(currentRealSatData.sataltitude_km),
-            currentRealSatData.satname
+            currentRealSatData.satname,
+            currentRealSatData
         );
     }
     closeN2YOModal();
@@ -1361,7 +1364,8 @@ function quickFocusAboveSat(satid, satname, satlat, satlng, satalt) {
             parseFloat(satlat),
             parseFloat(satlng),
             parseFloat(satalt),
-            satname
+            satname,
+            { norad_id: satid, satname: satname, satlatitude: satlat, satlongitude: satlng, sataltitude_km: satalt }
         );
     }
     closeN2YOModal();
