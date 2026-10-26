@@ -3563,7 +3563,8 @@ async function submitAlertDispatchUI() {
         }
 
         const data = await res.json();
-        alert(`✅ ${data.message}\n\nĐã phát qua các kênh:\n- Email công vụ: ${recipient}\n- Webhook: ${telegramChecked ? 'Đã kích hoạt' : 'Bỏ qua'}\n- Nhật ký kiểm toán: Đã ghi nhận bản ghi ${data.alert.id}`);
+        const tgMsg = telegramChecked ? "\n- 🤖 Telegram: Đã gửi trực tiếp tới Bot Cv Ngô Minh Trí (@Mr_Tri_bot)!" : "";
+        alert(`✅ ${data.message}\n\nĐã phát qua các kênh:\n- Email công vụ: ${recipient}${tgMsg}\n- Nhật ký kiểm toán: Đã ghi nhận bản ghi ${data.alert.id}`);
 
         closeAlertModalUI();
         await loadAlertsHistoryUI();
@@ -3573,6 +3574,25 @@ async function submitAlertDispatchUI() {
     }
 }
 window.submitAlertDispatchUI = submitAlertDispatchUI;
+
+async function testTelegramAlertUI() {
+    try {
+        const res = await fetch("/api/srs/alert/test-telegram", { method: "POST" });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || `Lỗi HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        if (data.ok) {
+            alert(`✅ ${data.message}\nNgười nhận: ${data.recipient}\nTin nhắn đã hiển thị trên ứng dụng Telegram của bạn!`);
+        } else {
+            alert(`⚠️ Kết quả Telegram: ${data.message}`);
+        }
+    } catch (e) {
+        alert(`❌ Không thể gửi Telegram: ${e.message}`);
+    }
+}
+window.testTelegramAlertUI = testTelegramAlertUI;
 
 function toggleAlertsHistoryUI() {
     const box = document.getElementById("alerts-history-box");

@@ -97,7 +97,7 @@ def test_dispatch_multi_channel_alert():
 
     channels_dispatched = [r["channel"] for r in alert["dispatched_results"]]
     assert "email" in channels_dispatched
-    assert "webhook" in channels_dispatched
+    assert "telegram" in channels_dispatched
     assert "in_app" in channels_dispatched
 
     # Kiểm tra lưu vào lịch sử
@@ -134,4 +134,28 @@ def test_api_srs_alert_dispatch_and_history():
     assert hist_data["total"] > 0
     ids = [a["id"] for a in hist_data["alerts"]]
     assert alert_id in ids
+
+
+def test_telegram_config():
+    from leo_coord.alert_dispatcher import get_telegram_config
+    cfg = get_telegram_config()
+    assert "7913986968" in cfg["bot_token"]
+    assert cfg["chat_id"] == "7712497688"
+    assert "Ngô Minh Trí" in cfg["officer_name"]
+
+
+def test_api_test_telegram_endpoint(monkeypatch):
+    from web.app import test_telegram_alert_endpoint
+    import leo_coord.alert_dispatcher as ad
+    
+    # Mock send_telegram_alert so unit test is deterministic offline
+    monkeypatch.setattr(
+        ad,
+        "send_telegram_alert",
+        lambda msg: {"ok": True, "status": "DELIVERED_TELEGRAM", "recipient": "Cv Ngô Minh Trí (Chat ID: 7712497688)", "message": "Thành công"}
+    )
+    res = test_telegram_alert_endpoint()
+    assert res["ok"] is True
+    assert "Cv Ngô Minh Trí" in res["recipient"]
+
 

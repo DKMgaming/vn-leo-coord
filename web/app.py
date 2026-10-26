@@ -867,6 +867,25 @@ def get_alerts_history_endpoint():
     return {"total": len(history), "alerts": history}
 
 
+@app.post("/api/srs/alert/test-telegram")
+def test_telegram_alert_endpoint():
+    """Bắn thử nghiệm tin nhắn cảnh báo tới Telegram Bot của Cv Ngô Minh Trí."""
+    from leo_coord.alert_dispatcher import send_telegram_alert, get_telegram_config
+    cfg = get_telegram_config()
+    test_msg = (
+        f"🧪 <b>[LEO-COORD VN - KIỂM THỬ KẾT NỐI TELEGRAM BOT]</b>\n\n"
+        f"Kính gửi: <b>{cfg['officer_name']}</b> (Cục Tần số Vô tuyến điện)\n"
+        f"Trạng thái: 🟢 <b>KẾT NỐI HOẠT ĐỘNG HOÀN HẢO</b>\n"
+        f"Chat ID: <code>{cfg['chat_id']}</code>\n"
+        f"Thời gian: <i>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} (UTC+7)</i>\n\n"
+        f"Hệ thống cảnh báo tự động ITU RR No. 9.51/9.52 đã sẵn sàng gửi thông báo khẩn "
+        f"ngay khi phát hiện hồ sơ chòm sao LEO xâm phạm vùng trời Việt Nam."
+    )
+    res = send_telegram_alert(test_msg)
+    return res
+
+
+
 
 @app.get("/api/spacecap/download-xml/{filing_id}")
 def download_spacecap_xml_endpoint(filing_id: str):

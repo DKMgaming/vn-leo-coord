@@ -17,12 +17,104 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta
 import json
+import os
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 import urllib.request
 import urllib.error
 
 ALERTS_FILE = Path(__file__).resolve().parent.parent / "data" / "reference" / "alerts_history.json"
+ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
+
+# Cấu hình mặc định Telegram Bot điều hành (Cv Ngô Minh Trí)
+DEFAULT_TELEGRAM_BOT_TOKEN = "7913986968:AAHWepp1noHuHEU9XahjnuPuLBHnU7CuQ3Y"
+DEFAULT_TELEGRAM_CHAT_ID = "7712497688"
+DEFAULT_OFFICER_NAME = "Cv Ngô Minh Trí"
+
+
+def get_telegram_config() -> dict:
+    """Đọc cấu hình Telegram Bot từ biến môi trường, tệp .env hoặc giá trị mặc định."""
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+    officer_name = os.environ.get("TELEGRAM_OFFICER_NAME", DEFAULT_OFFICER_NAME)
+
+    if (not token or not chat_id) and ENV_FILE.exists():
+        try:
+            for line in ENV_FILE.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" in line:
+                    k, v = line.split("=", 1)
+                    k, v = k.strip(), v.strip().strip('"').strip("'")
+                    if k == "TELEGRAM_BOT_TOKEN" and not token:
+                        token = v
+                    elif k == "TELEGRAM_CHAT_ID" and not chat_id:
+                        chat_id = v
+                    elif k == "TELEGRAM_OFFICER_NAME" and not os.environ.get("TELEGRAM_OFFICER_NAME"):
+                        officer_name = v
+        except Exception:
+            pass
+
+    return {
+        "bot_token": token or DEFAULT_TELEGRAM_BOT_TOKEN,
+        "chat_id": chat_id or DEFAULT_TELEGRAM_CHAT_ID,
+        "officer_name": officer_name,
+    }
+
+
+def send_telegram_alert(
+    text: str,
+    bot_token: Optional[str] = None,
+    chat_id: Optional[str] = None,
+    parse_mode: str = "HTML",
+) -> dict:
+    """Gửi trực tiếp tin nhắn cảnh báo tới Telegram Bot của Chuyên viên Ngô Minh Trí."""
+    cfg = get_telegram_config()
+    token = bot_token or cfg["bot_token"]
+    cid = chat_id or cfg["chat_id"]
+    officer = cfg["officer_name"]
+
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {
+        "chat_id": cid,
+        "text": text,
+        "parse_mode": parse_mode,
+        "disable_web_page_preview": True,
+    }
+
+    try:
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json", "User-Agent": "LEO-COORD-ARFM/1.0"},
+        )
+        with urllib.request.urlopen(req, timeout=8) as response:
+            resp_body = response.read().decode("utf-8")
+            resp_json = json.loads(resp_body)
+            if resp_json.get("ok"):
+                msg_id = resp_json.get("result", {}).get("message_id")
+                return {
+                    "ok": True,
+                    "status": "DELIVERED_TELEGRAM",
+                    "recipient": f"{officer} (Chat ID: {cid})",
+                    "message_id": msg_id,
+                    "message": f"Đã gửi tin nhắn cảnh báo tới Telegram của {officer} thành công! (Msg ID: {msg_id})",
+                }
+            else:
+                return {
+                    "ok": False,
+                    "status": "TELEGRAM_API_ERROR",
+                    "recipient": f"{officer} (Chat ID: {cid})",
+                    "message": f"Telegram API trả về lỗi: {resp_json.get('description')}",
+                }
+    except Exception as e:
+        return {
+            "ok": False,
+            "status": "TELEGRAM_NETWORK_ERROR",
+            "recipient": f"{officer} (Chat ID: {cid})",
+            "message": f"Lỗi gửi Telegram ({str(e)}). Hệ thống chuyển chế độ dự phòng nội bộ.",
+        }
 
 
 def calculate_rr951_phases(publication_date_str: str, ref_date: Optional[date] = None) -> dict:
@@ -235,35 +327,58 @@ def dispatch_multi_channel_alert(
             "dispatched_at": timestamp_str,
         })
 
-    # 2. Kênh Webhook Telegram / Hệ thống Điều hành
-    if "telegram" in channels or "webhook" in channels:
-        webhook_status = "DELIVERED"
-        webhook_target = webhook_url or "https://api.telegram.org/bot[ARFM_SECURE_TOKEN]/sendMessage"
-        webhook_msg = f"Đã gửi gói webhook cảnh báo JSON tới kênh chỉ huy tác chiến."
+    # 2. Kênh Webhook Telegram (Trực tiếp Bot của Cv Ngô Minh Trí)
+    if "telegram" in channels:
+        telegram_html = (
+            f"🚨 <b>[ARFM - CẢNH BÁO KHẨN RR 9.51]</b>\n"
+            f"Kính gửi: <b>Cv Ngô Minh Trí</b> (Cục Tần số VTĐ)\n\n"
+            f"🛰️ <b>Mạng vệ tinh:</b> <code>{network_name}</code>\n"
+            f"🏳️ <b>Cơ quan thông báo:</b> <b>{notifying_adm}</b>\n"
+            f"📅 <b>Ngày công báo BR IFIC:</b> {publication_date_str}\n"
+            f"⏱️ <b>Hạn phản đối (122 ngày):</b> {phases_info['deadline_date']} (Còn <b>{phases_info['days_remaining']} ngày</b>)\n"
+            f"📊 <b>Tiến độ quy trình:</b> {phases_info['status_label']}\n"
+            f"📡 <b>Băng tần:</b> {bands_str}\n"
+            f"🇻🇳 <b>Nguy cơ can nhiễu VN:</b> {'🔴 NGUY CƠ CAO (Vinasat-1/2)' if vietnam_impact else '🟢 Thấp'}\n"
+            f"⚖️ <b>Mức độ rủi ro:</b> {risk_level}\n\n"
+            f"📝 <b>Chỉ đạo tác chiến:</b> <i>{notes or 'Yêu cầu thẩm định chi tiết và chuẩn bị dự thảo công văn phản đối SpaceCom.'}</i>\n\n"
+            f"📍 <i>Hệ thống Điều hành Tần số Không gian LEO-COORD VN</i>"
+        )
+        tg_res = send_telegram_alert(telegram_html)
+        dispatched_results.append({
+            "channel": "telegram",
+            "target": tg_res.get("recipient", "Cv Ngô Minh Trí (Chat ID: 7712497688)"),
+            "status": tg_res.get("status", "DELIVERED"),
+            "message_id": tg_res.get("message_id"),
+            "message": tg_res.get("message", "Đã gửi cảnh báo Telegram thành công!"),
+            "dispatched_at": timestamp_str,
+        })
 
-        # Nếu người dùng cung cấp webhook thực tế (http/https), thử gửi POST thực tế
-        if webhook_url and webhook_url.startswith("http"):
-            try:
-                payload_data = {
-                    "text": message_body,
-                    "event": "ITU_RR_951_DEADLINE_ALERT",
-                    "satellite_name": network_name,
-                    "notifying_adm": notifying_adm,
-                    "days_remaining": phases_info["days_remaining"],
-                    "deadline_date": phases_info["deadline_date"],
-                    "timestamp": timestamp_str,
-                }
-                req = urllib.request.Request(
-                    webhook_url,
-                    data=json.dumps(payload_data).encode("utf-8"),
-                    headers={"Content-Type": "application/json", "User-Agent": "LEO-COORD-Alert/1.0"},
-                )
-                with urllib.request.urlopen(req, timeout=5) as response:
-                    webhook_status = "DELIVERED_HTTP_OK"
-                    webhook_msg = f"Đã phát thành công tới máy chủ Webhook: HTTP {response.status}"
-            except Exception as e:
-                webhook_status = "SIMULATED_SUCCESS"
-                webhook_msg = f"Lỗi kết nối webhook bên ngoài ({str(e)}), hệ thống đã ghi nhận mô phỏng an toàn nội bộ."
+    # 3. Kênh Webhook Điều Hành Khác (Nếu có cấu hình thêm)
+    if "webhook" in channels and webhook_url:
+        webhook_status = "DELIVERED"
+        webhook_target = webhook_url
+        webhook_msg = f"Đã gửi gói webhook cảnh báo JSON tới kênh chỉ huy tác chiến."
+        try:
+            payload_data = {
+                "text": message_body,
+                "event": "ITU_RR_951_DEADLINE_ALERT",
+                "satellite_name": network_name,
+                "notifying_adm": notifying_adm,
+                "days_remaining": phases_info["days_remaining"],
+                "deadline_date": phases_info["deadline_date"],
+                "timestamp": timestamp_str,
+            }
+            req = urllib.request.Request(
+                webhook_url,
+                data=json.dumps(payload_data).encode("utf-8"),
+                headers={"Content-Type": "application/json", "User-Agent": "LEO-COORD-Alert/1.0"},
+            )
+            with urllib.request.urlopen(req, timeout=5) as response:
+                webhook_status = "DELIVERED_HTTP_OK"
+                webhook_msg = f"Đã phát thành công tới máy chủ Webhook: HTTP {response.status}"
+        except Exception as e:
+            webhook_status = "SIMULATED_SUCCESS"
+            webhook_msg = f"Lỗi kết nối webhook bên ngoài ({str(e)}), hệ thống đã ghi nhận mô phỏng an toàn nội bộ."
 
         dispatched_results.append({
             "channel": "webhook",
