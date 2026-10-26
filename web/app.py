@@ -13,7 +13,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 
-from fastapi import FastAPI, File, Form, UploadFile, HTTPException, Request, Body
+from fastapi import FastAPI, File, Form, UploadFile, HTTPException, Request, Body, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -1230,6 +1230,57 @@ def get_reference_audit():
     return {
         "summary": ref.get_verification_status_summary(),
         "audit_details": ref.audit_reference_tables()
+    }
+
+
+# ================= ITU-R HANDBOOK ON SMALL SATELLITES (HDB-65-2023) =================
+
+@app.get("/api/handbook/summary")
+def get_handbook_summary_endpoint():
+    """Lấy dữ liệu tổng quan Sổ tay Vệ tinh Nhỏ ITU-R (Edition 2023)."""
+    from leo_coord.handbook import get_handbook_summary
+    return get_handbook_summary()
+
+
+@app.get("/api/handbook/chapters")
+def get_handbook_chapters_endpoint():
+    """Lấy danh mục 9 chương của Sổ tay ITU-R."""
+    from leo_coord.handbook import get_handbook_chapters
+    return get_handbook_chapters()
+
+
+@app.get("/api/handbook/chapters/{chapter_num}")
+def get_handbook_chapter_detail_endpoint(chapter_num: int):
+    """Lấy chi tiết 1 chương của Sổ tay ITU-R."""
+    from leo_coord.handbook import get_handbook_chapter_detail
+    detail = get_handbook_chapter_detail(chapter_num)
+    if not detail:
+        raise HTTPException(status_code=404, detail=f"Không tìm thấy chương {chapter_num}")
+    return detail
+
+
+@app.get("/api/handbook/search")
+def search_handbook_endpoint(q: str = Query(..., description="Từ khóa tra cứu sổ tay ITU")):
+    """Tra cứu nhanh trong cơ sở tri thức Sổ tay ITU Handbook 2023."""
+    from leo_coord.handbook import search_handbook
+    return {
+        "query": q,
+        "results": search_handbook(q)
+    }
+
+
+@app.get("/api/handbook/pdf-status")
+def get_handbook_pdf_status():
+    """Kiểm tra sự tồn tại và dung lượng tệp PDF Sổ tay ITU gốc."""
+    pdf_path = Path(r"E:\leo-coord-main\Handbook-R-HDB-65-2023-PDF-E.pdf")
+    exists = pdf_path.exists()
+    return {
+        "filename": "Handbook-R-HDB-65-2023-PDF-E.pdf",
+        "path": str(pdf_path),
+        "exists": exists,
+        "size_bytes": pdf_path.stat().st_size if exists else 0,
+        "size_mb": round(pdf_path.stat().st_size / (1024 * 1024), 2) if exists else 0,
+        "total_pages": 212
     }
 
 

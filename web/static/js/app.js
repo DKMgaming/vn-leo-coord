@@ -45,14 +45,16 @@ function switchTab(tabIndex) {
     const tab2Btn = document.getElementById("tab-btn-2");
     const tab3Btn = document.getElementById("tab-btn-3");
     const tab4Btn = document.getElementById("tab-btn-4");
+    const tab5Btn = document.getElementById("tab-btn-5");
     const pane1 = document.getElementById("tab-content-1");
     const pane2 = document.getElementById("tab-content-2");
     const pane3 = document.getElementById("tab-content-3");
     const pane4 = document.getElementById("tab-content-4");
+    const pane5 = document.getElementById("tab-content-5");
 
     // Reset active state across all tabs
-    [tab1Btn, tab2Btn, tab3Btn, tab4Btn].forEach(btn => btn?.classList.remove("active"));
-    [pane1, pane2, pane3, pane4].forEach(pane => pane?.classList.remove("active"));
+    [tab1Btn, tab2Btn, tab3Btn, tab4Btn, tab5Btn].forEach(btn => btn?.classList.remove("active"));
+    [pane1, pane2, pane3, pane4, pane5].forEach(pane => pane?.classList.remove("active"));
 
     if (tabIndex === 1) {
         tab1Btn?.classList.add("active");
@@ -73,6 +75,11 @@ function switchTab(tabIndex) {
         pane4?.classList.add("active");
         window.scrollTo({ top: 0, behavior: 'smooth' });
         loadReferenceTables();
+    } else if (tabIndex === 5) {
+        tab5Btn?.classList.add("active");
+        pane5?.classList.add("active");
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        loadHandbookData();
     }
 }
 
@@ -2923,6 +2930,185 @@ async function testLlmKeyUI() {
         if (btn) btn.disabled = false;
     }
 }
+
+
+/* ================= 15. ITU-R HANDBOOK ON SMALL SATELLITES (TAB 5) ================= */
+let handbookDataCache = null;
+let handbookSearchTimer = null;
+
+async function loadHandbookData() {
+    const listEl = document.getElementById("handbook-chapters-accordion-list");
+    if (!listEl) return;
+    if (handbookDataCache) {
+        renderHandbookChapters(handbookDataCache.chapters);
+        return;
+    }
+
+    listEl.innerHTML = `<div style="padding:1.5rem; text-align:center; color:#94a3b8;">⏳ Đang nạp cơ sở tri thức Sổ tay ITU Handbook 2023...</div>`;
+
+    try {
+        const res = await fetch("/api/handbook/summary");
+        if (res.ok) {
+            handbookDataCache = await res.json();
+            renderHandbookChapters(handbookDataCache.chapters);
+        } else {
+            listEl.innerHTML = `<div style="padding:1rem; color:#ef4444; background:rgba(239,68,68,0.1); border-radius:8px;">Lỗi tải dữ liệu Sổ tay ITU (Mã ${res.status}).</div>`;
+        }
+    } catch (e) {
+        listEl.innerHTML = `<div style="padding:1rem; color:#ef4444; background:rgba(239,68,68,0.1); border-radius:8px;">Lỗi kết nối: ${escapeHtml(e.message)}</div>`;
+    }
+}
+window.loadHandbookData = loadHandbookData;
+
+function renderHandbookChapters(chapters) {
+    const listEl = document.getElementById("handbook-chapters-accordion-list");
+    if (!listEl || !chapters) return;
+
+    listEl.innerHTML = "";
+    chapters.forEach(ch => {
+        const card = document.createElement("div");
+        card.className = "handbook-chapter-card";
+        card.style.cssText = "background:rgba(15,23,42,0.6); border:1px solid rgba(255,255,255,0.08); border-radius:12px; overflow:hidden;";
+
+        const topicsHtml = (ch.key_topics || []).map(t => `<li style="margin-bottom:4px;">${escapeHtml(t)}</li>`).join("");
+
+        card.innerHTML = `
+            <div class="chapter-header" onclick="toggleChapterAccordion(${ch.chapter_num})" style="padding:14px 18px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); transition:background 0.2s;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span style="font-size:1.15rem; color:#a855f7; font-weight:700;">Chương ${ch.chapter_num}</span>
+                    <strong style="color:#f8fafc; font-size:0.95rem;">${escapeHtml(ch.title)}</strong>
+                    <span style="font-size:0.75rem; color:#94a3b8; margin-left:4px;">(${escapeHtml(ch.vietnamese_title.split(':')[1] || '')})</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="badge-tag" style="background:rgba(139,92,246,0.18); color:#c084fc; font-size:0.72rem;">Trang ${escapeHtml(ch.page_range)}</span>
+                    <span id="ch-icon-${ch.chapter_num}" style="color:#94a3b8; font-size:0.9rem; transition:transform 0.2s;">▾</span>
+                </div>
+            </div>
+            <div id="ch-body-${ch.chapter_num}" class="chapter-body" style="display:none; padding:14px 18px; border-top:1px solid rgba(255,255,255,0.05); background:rgba(0,0,0,0.2); font-size:0.84rem; color:#cbd5e1;">
+                <div style="margin-bottom:10px;">
+                    <strong style="color:#38bdf8;">Chủ đề kỹ thuật cốt lõi trong sổ tay:</strong>
+                    <ul style="padding-left:18px; margin:6px 0; line-height:1.6;">${topicsHtml}</ul>
+                </div>
+                <div style="background:rgba(52,211,153,0.06); border-left:3px solid #10b981; padding:8px 12px; border-radius:4px; font-size:0.8rem; color:#a7f3d0;">
+                    <strong>Giá trị áp dụng cho Việt Nam:</strong> ${escapeHtml(ch.relevance_to_vietnam)}
+                </div>
+            </div>
+        `;
+        listEl.appendChild(card);
+    });
+}
+
+function toggleChapterAccordion(chNum) {
+    const body = document.getElementById(`ch-body-${chNum}`);
+    const icon = document.getElementById(`ch-icon-${chNum}`);
+    if (!body) return;
+    const isHidden = body.style.display === "none";
+    body.style.display = isHidden ? "block" : "none";
+    if (icon) {
+        icon.textContent = isHidden ? "▴" : "▾";
+        icon.style.color = isHidden ? "#c084fc" : "#94a3b8";
+    }
+}
+window.toggleChapterAccordion = toggleChapterAccordion;
+
+function filterHandbookSection(category) {
+    const filters = document.querySelectorAll("#handbook-filter-group .filter-btn");
+    filters.forEach(btn => btn.classList.remove("active"));
+    const activeBtn = Array.from(filters).find(btn => (btn.getAttribute("onclick") || "").includes(category));
+    if (activeBtn) activeBtn.classList.add("active");
+
+    const secClass = document.getElementById("hb-sec-classification");
+    const secReg = document.getElementById("hb-sec-regulatory");
+    const secSoft = document.getElementById("hb-sec-software");
+    const secDebris = document.getElementById("hb-sec-debris");
+    const secCh = document.getElementById("hb-sec-chapters");
+
+    const allSecs = [secClass, secReg, secSoft, secDebris, secCh];
+    if (category === "all") {
+        allSecs.forEach(s => { if (s) s.style.display = "block"; });
+    } else if (category === "regulatory") {
+        allSecs.forEach(s => { if (s) s.style.display = "none"; });
+        if (secReg) secReg.style.display = "block";
+    } else if (category === "software") {
+        allSecs.forEach(s => { if (s) s.style.display = "none"; });
+        if (secSoft) secSoft.style.display = "block";
+    } else if (category === "debris") {
+        allSecs.forEach(s => { if (s) s.style.display = "none"; });
+        if (secDebris) secDebris.style.display = "block";
+    } else if (category === "case-studies") {
+        allSecs.forEach(s => { if (s) s.style.display = "none"; });
+        if (secDebris) secDebris.style.display = "block";
+    } else if (category === "chapters") {
+        allSecs.forEach(s => { if (s) s.style.display = "none"; });
+        if (secCh) secCh.style.display = "block";
+    }
+}
+window.filterHandbookSection = filterHandbookSection;
+
+function onSearchHandbook(val) {
+    clearTimeout(handbookSearchTimer);
+    const q = (val || "").trim();
+    const resBox = document.getElementById("handbook-search-results-box");
+    if (!resBox) return;
+
+    if (!q) {
+        resBox.style.display = "none";
+        return;
+    }
+
+    handbookSearchTimer = setTimeout(async () => {
+        try {
+            const res = await fetch(`/api/handbook/search?q=${encodeURIComponent(q)}`);
+            if (res.ok) {
+                const data = await res.json();
+                renderHandbookSearchResults(data.results, q);
+            }
+        } catch (e) {
+            console.warn("Lỗi tra cứu Sổ tay ITU:", e);
+        }
+    }, 250);
+}
+window.onSearchHandbook = onSearchHandbook;
+
+function renderHandbookSearchResults(results, query) {
+    const resBox = document.getElementById("handbook-search-results-box");
+    if (!resBox) return;
+
+    resBox.style.display = "block";
+    if (!results || results.length === 0) {
+        resBox.innerHTML = `<div style="color:#94a3b8; font-size:0.85rem; text-align:center; padding:8px;">Không tìm thấy mục nào khớp với từ khóa "<strong>${escapeHtml(query)}</strong>" trong Sổ tay ITU.</div>`;
+        return;
+    }
+
+    let html = `<div style="font-size:0.85rem; color:#e2e8f0; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+        <span>Tìm thấy <strong style="color:#c084fc;">${results.length} kết quả</strong> trong Sổ tay ITU Handbook 2023:</span>
+        <button type="button" onclick="clearHandbookSearch()" style="background:none; border:none; color:#94a3b8; cursor:pointer; font-size:0.8rem;">Đóng ✕</button>
+    </div>`;
+
+    results.forEach(r => {
+        html += `
+            <div style="background:rgba(0,0,0,0.3); border-left:3px solid #8b5cf6; padding:8px 12px; margin-bottom:8px; border-radius:6px; font-size:0.82rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <strong style="color:#f8fafc;">${escapeHtml(r.title)}</strong>
+                    <span class="badge-tag" style="background:rgba(139,92,246,0.2); color:#c084fc; font-size:0.7rem;">${escapeHtml(r.page_range)}</span>
+                </div>
+                <div style="color:#cbd5e1; margin-top:4px;">${escapeHtml(r.snippet)}</div>
+                <div style="color:#34d399; font-size:0.76rem; margin-top:3px;">${escapeHtml(r.relevance)}</div>
+            </div>
+        `;
+    });
+
+    resBox.innerHTML = html;
+}
+
+function clearHandbookSearch() {
+    const input = document.getElementById("handbook-search-input");
+    if (input) input.value = "";
+    const resBox = document.getElementById("handbook-search-results-box");
+    if (resBox) resBox.style.display = "none";
+}
+window.clearHandbookSearch = clearHandbookSearch;
+
 
 
 

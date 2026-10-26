@@ -48,6 +48,12 @@
                 <span class="tab-label mobile-only">THAM CHIẾU</span>
                 <span class="badge-count" style="background:#059669; color:#fff;" id="ref-status-badge">RR 2024</span>
             </button>
+            <button class="tab-btn" id="tab-btn-5" onclick="switchTab(5)" role="tab" aria-selected="false">
+                <span class="tab-icon">📖</span>
+                <span class="tab-label desktop-only">SỔ TAY ITU HANDBOOK</span>
+                <span class="tab-label mobile-only">HANDBOOK</span>
+                <span class="badge-count" style="background:#7c3aed; color:#fff;" id="handbook-status-badge">HDB-65</span>
+            </button>
         </nav>
 
         <div class="header-right">
@@ -1636,6 +1642,336 @@
             </div>
         </section>
 
+        <!-- ================= TAB 5: ITU HANDBOOK ON SMALL SATELLITES (EDITION 2023) ================= -->
+        <section id="tab-content-5" class="tab-pane" style="display:none;">
+            <div class="about-container" style="max-width: 1350px;">
+                
+                <!-- 1. HERO BANNER ITU HANDBOOK -->
+                <div class="about-hero-card" style="border-left: 4px solid #8b5cf6; background: linear-gradient(135deg, rgba(139, 92, 246, 0.12) 0%, rgba(15, 23, 42, 0.85) 100%);">
+                    <div class="hero-badge" style="background: rgba(139, 92, 246, 0.2); color: #c084fc; border-color: rgba(139, 92, 246, 0.4);">
+                        <span class="badge-dot pulse" style="background: #a855f7;"></span>
+                        <span>ẤN PHẨM CHÍNH THỨC ITU-R — HANDBOOK ON SMALL SATELLITES (EDITION 2023)</span>
+                    </div>
+                    <h1 class="hero-title" style="color: #f8fafc;">SỔ TAY QUY CHUẨN VỆ TINH NHỎ ITU-R & CƠ SỞ TRI THỨC PHÁP LÝ QUỐC TẾ</h1>
+                    <p class="hero-subtitle">
+                        Tài liệu quy chuẩn toàn diện được ban hành theo <strong>Nghị quyết Resolution ITU-R 68</strong> bởi Ban Nghiên cứu ITU-R Study Group 4 (Dịch vụ Vệ tinh) phối hợp cùng Cục Thông tin Vô tuyến (BR). Hệ thống đối chiếu trực tiếp từ tệp văn bản gốc <code>Handbook-R-HDB-65-2023-PDF-E.pdf</code> (212 trang, Geneva 2023), cung cấp đầy đủ căn cứ kỹ thuật & thủ tục Thể lệ Vô tuyến điện phục vụ thẩm định hồ sơ mạng chòm vệ tinh LEO và bảo vệ tài nguyên quỹ đạo của Việt Nam.
+                    </p>
+                    <div class="hero-kpi-bar">
+                        <div class="hero-kpi-item">
+                            <span class="kpi-icon">📖</span>
+                            <div>
+                                <span class="kpi-val" style="color:#c084fc;">9 Chương</span>
+                                <span class="kpi-desc">Khung quy chuẩn toàn diện</span>
+                            </div>
+                        </div>
+                        <div class="hero-kpi-item">
+                            <span class="kpi-icon">📄</span>
+                            <div>
+                                <span class="kpi-val" style="color:#38bdf8;">212 Trang</span>
+                                <span class="kpi-desc">Tài liệu gốc PDF ITU-R 2023</span>
+                            </div>
+                        </div>
+                        <div class="hero-kpi-item">
+                            <span class="kpi-icon">💻</span>
+                            <div>
+                                <span class="kpi-val" style="color:#34d399;">6 Công cụ BR</span>
+                                <span class="kpi-desc">SpaceCap, GIBC, TFA, SAM...</span>
+                            </div>
+                        </div>
+                        <div class="hero-kpi-item">
+                            <span class="kpi-icon">⚖️</span>
+                            <div>
+                                <span class="kpi-val" style="color:#fbbf24;">Res 35 & Art 21/22</span>
+                                <span class="kpi-desc">Mốc triển khai & PFD/EPFD</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. HANDBOOK TOOLBAR & FAST SEARCH -->
+                <div class="docs-toolbar" style="margin-bottom: 24px;">
+                    <div class="category-filters" id="handbook-filter-group">
+                        <button class="filter-btn active" onclick="filterHandbookSection('all')">🌐 Toàn Bộ Sổ Tay (Tổng quan)</button>
+                        <button class="filter-btn" onclick="filterHandbookSection('regulatory')">⚖️ Thủ Tục Đăng Bạ (Chương 3)</button>
+                        <button class="filter-btn" onclick="filterHandbookSection('software')">💻 Bộ Phần Mềm BR (SpaceCap/GIBC)</button>
+                        <button class="filter-btn" onclick="filterHandbookSection('debris')">♻️ Rác Vũ Trụ & Tự Hủy (Chương 8)</button>
+                        <button class="filter-btn" onclick="filterHandbookSection('case-studies')">🛰️ Hồ Sơ Starlink Mẫu (Chương 9)</button>
+                        <button class="filter-btn" onclick="filterHandbookSection('chapters')">📚 Danh Mục 9 Chương (Tra cứu PDF)</button>
+                    </div>
+                    <div class="search-box" style="margin-top:14px; display:flex; gap:10px; align-items:center;">
+                        <input type="text" id="handbook-search-input" class="search-input" style="flex:1; background:rgba(15,23,42,0.6); border:1px solid rgba(139,92,246,0.3); color:#f8fafc; padding:0.65rem 1rem; border-radius:10px;" placeholder="🔍 Nhập từ khóa tra cứu trong Sổ tay ITU (vd: SpaceCap, Resolution 35, Article 21, Starlink, de-orbit, 11.31)..." onkeyup="onSearchHandbook(this.value)">
+                        <button type="button" class="btn-tool" onclick="clearHandbookSearch()" style="padding:0.65rem 1.2rem; background:rgba(139,92,246,0.2); border:1px solid rgba(139,92,246,0.4); color:#c084fc;">Xóa tìm kiếm</button>
+                    </div>
+                    <div id="handbook-search-results-box" style="display:none; margin-top:12px; background:rgba(15,23,42,0.85); border:1px solid rgba(139,92,246,0.4); border-radius:12px; padding:16px;"></div>
+                </div>
+
+                <!-- 3. MAIN CONTENT SECTIONS -->
+                <div id="handbook-content-container">
+
+                    <!-- SECTION: PHÂN LOẠI VỆ TINH NHỎ THEO KHỐI LƯỢNG (CHAPTER 1, SECTION 1.4) -->
+                    <div class="handbook-section-block" id="hb-sec-classification" style="margin-bottom:30px;">
+                        <div class="section-title-box" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                            <h2 style="font-size:1.18rem; color:#f8fafc; display:flex; align-items:center; gap:8px;">
+                                <span style="color:#a855f7;">📦</span> BẢNG PHÂN LOẠI VỆ TINH NHỎ THEO KHỐI LƯỢNG & ĐẶC TÍNH (SECTION 1.4)
+                            </h2>
+                            <span class="badge-tag" style="background:rgba(139,92,246,0.2); color:#c084fc;">Trang 13-15 PDF</span>
+                        </div>
+                        <div class="table-responsive" style="background:rgba(15,23,42,0.6); border:1px solid rgba(255,255,255,0.08); border-radius:14px; overflow:hidden;">
+                            <table class="data-table" style="width:100%; border-collapse:collapse; font-size:0.86rem;">
+                                <thead>
+                                    <tr style="background:rgba(139,92,246,0.15); color:#e2e8f0; text-align:left;">
+                                        <th style="padding:10px 14px;">Phân Loại (Category)</th>
+                                        <th style="padding:10px 14px;">Dải Khối Lượng</th>
+                                        <th style="padding:10px 14px;">Kích Thước Mẫu</th>
+                                        <th style="padding:10px 14px;">Tuổi Thọ Điển Hình</th>
+                                        <th style="padding:10px 14px;">Ứng Dụng Điển Hình Theo Sổ Tay</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                                        <td style="padding:10px 14px;"><strong style="color:#f472b6;">Femtosatellite</strong></td>
+                                        <td style="padding:10px 14px; font-family:'JetBrains Mono',monospace; color:#38bdf8;">&lt; 100 g (&lt; 0.1 kg)</td>
+                                        <td style="padding:10px 14px;">ChipSat, thẻ mạch mỏng</td>
+                                        <td style="padding:10px 14px;">Vài ngày đến vài tuần</td>
+                                        <td style="padding:10px 14px;">Cảm biến không gian rải rác, thử nghiệm vật liệu bán dẫn</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                                        <td style="padding:10px 14px;"><strong style="color:#fbbf24;">Picosatellite</strong></td>
+                                        <td style="padding:10px 14px; font-family:'JetBrains Mono',monospace; color:#38bdf8;">100 g – 1 kg</td>
+                                        <td style="padding:10px 14px;">PocketQube (5x5x5 cm), 1/4U - 1/2U</td>
+                                        <td style="padding:10px 14px;">Vài tuần đến vài tháng</td>
+                                        <td style="padding:10px 14px;">Giáo dục đại học, IoT/M2M dải hẹp, beacon vô tuyến nghiệp dư</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(255,255,255,0.05); background:rgba(56,189,248,0.03);">
+                                        <td style="padding:10px 14px;"><strong style="color:#38bdf8;">Nanosatellite</strong></td>
+                                        <td style="padding:10px 14px; font-family:'JetBrains Mono',monospace; color:#38bdf8;">1 kg – 10 kg</td>
+                                        <td style="padding:10px 14px;">1U, 2U, 3U, 6U CubeSat (10x10 cm)</td>
+                                        <td style="padding:10px 14px;">1 – 3 năm</td>
+                                        <td style="padding:10px 14px;">IoT vệ tinh, viễn thám độ phân giải vừa, ADS-B giám sát hàng không, AIS hàng hải (NanoDragon)</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                                        <td style="padding:10px 14px;"><strong style="color:#34d399;">Microsatellite</strong></td>
+                                        <td style="padding:10px 14px; font-family:'JetBrains Mono',monospace; color:#38bdf8;">10 kg – 100 kg</td>
+                                        <td style="padding:10px 14px;">12U, 16U, 27U hoặc thân chuyên dụng</td>
+                                        <td style="padding:10px 14px;">3 – 5 năm</td>
+                                        <td style="padding:10px 14px;">Ảnh quang học phân giải cao, radar SAR nhỏ, viễn thông thương mại băng hẹp (MicroDragon ~50kg)</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(255,255,255,0.05); background:rgba(139,92,246,0.04);">
+                                        <td style="padding:10px 14px;"><strong style="color:#c084fc;">Minisatellite / SmallSat</strong></td>
+                                        <td style="padding:10px 14px; font-family:'JetBrains Mono',monospace; color:#38bdf8;">100 kg – 500 kg</td>
+                                        <td style="padding:10px 14px;">Module chuẩn ESPA Ring</td>
+                                        <td style="padding:10px 14px;">5 – 7 năm</td>
+                                        <td style="padding:10px 14px;">Chòm Megaconstellation Internet (Starlink v1 ~260kg, OneWeb ~150kg), vi viễn thông GSO (Astranis ~400kg)</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:10px 14px;"><strong style="color:#e2e8f0;">Small satellite landscape</strong></td>
+                                        <td style="padding:10px 14px; font-family:'JetBrains Mono',monospace; color:#38bdf8;">500 kg – 1000 kg</td>
+                                        <td style="padding:10px 14px;">Thân vệ tinh tầm trung</td>
+                                        <td style="padding:10px 14px;">7 – 10 năm</td>
+                                        <td style="padding:10px 14px;">Viễn thám chuyên dụng cấp quốc gia (VNREDSat-1 ~115kg), an ninh quốc phòng</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- SECTION: THỦ TỤC PHÁP LÝ & QUY TRÌNH ĐĂNG KÝ ITU (CHAPTER 3) -->
+                    <div class="handbook-section-block" id="hb-sec-regulatory" style="margin-bottom:30px;">
+                        <div class="section-title-box" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                            <h2 style="font-size:1.18rem; color:#f8fafc; display:flex; align-items:center; gap:8px;">
+                                <span style="color:#38bdf8;">⚖️</span> THỦ TỤC ĐĂNG BẠ TẦN SỐ QUỐC TẾ & CƠ CHẾ THẨM ĐỊNH (CHƯƠNG 3)
+                            </h2>
+                            <span class="badge-tag" style="background:rgba(56,189,248,0.2); color:#38bdf8;">Trang 24-98 PDF</span>
+                        </div>
+
+                        <!-- 2 Comparison Columns: API vs CR/C -->
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap:18px; margin-bottom:20px;">
+                            <!-- Column 1: API (Not subject to coordination) -->
+                            <div style="background:rgba(15,23,42,0.6); border:1px solid rgba(56,189,248,0.25); border-radius:14px; padding:18px;">
+                                <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+                                    <span class="badge-tag" style="background:rgba(56,189,248,0.2); color:#38bdf8; font-weight:700;">LUỒNG 1</span>
+                                    <h3 style="font-size:1.02rem; color:#f8fafc; margin:0;">Không Thuộc Diện Phối Hợp (API)</h3>
+                                </div>
+                                <div style="font-size:0.83rem; color:#94a3b8; margin-bottom:10px;">Căn cứ: <strong>RR Section I of Article 9</strong> & <strong>Resolution 32 (WRC-19)</strong></div>
+                                <ul style="font-size:0.84rem; color:#cbd5e1; padding-left:18px; margin:0; line-height:1.6;">
+                                    <li><strong>Đối tượng áp dụng:</strong> Vệ tinh nghiên cứu khoa học, giáo dục CubeSat, sứ mệnh thời gian ngắn (SDM &lt; 3 năm) không dùng dải tần FSS/MSS thương mại.</li>
+                                    <li><strong>Hồ sơ nộp:</strong> Advance Publication Information (API/A Special Section) định dạng Phụ lục 4 qua phần mềm SpaceCap.</li>
+                                    <li><strong>Thời gian bình luận:</strong> Các quốc gia có <strong>4 tháng</strong> để gửi ý kiến bình luận nếu phát hiện nguy cơ can nhiễu.</li>
+                                    <li><strong>Ấn phẩm công báo:</strong> Xuất bản công báo kết quả <strong>API/B</strong> và gửi hồ sơ Thông báo Notification (Part I-S, II-S) vào Sổ Master Register (MIFR).</li>
+                                </ul>
+                            </div>
+
+                            <!-- Column 2: CR/C (Subject to coordination) -->
+                            <div style="background:rgba(15,23,42,0.6); border:1px solid rgba(236,72,153,0.25); border-radius:14px; padding:18px;">
+                                <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+                                    <span class="badge-tag" style="background:rgba(236,72,153,0.2); color:#ec4899; font-weight:700;">LUỒNG 2</span>
+                                    <h3 style="font-size:1.02rem; color:#f8fafc; margin:0;">Bắt Buộc Phối Hợp (CR/C Special Section)</h3>
+                                </div>
+                                <div style="font-size:0.83rem; color:#94a3b8; margin-bottom:10px;">Căn cứ: <strong>RR Section II of Article 9</strong> (RR Nos. 9.11A, 9.12, 9.12A, 9.21)</div>
+                                <ul style="font-size:0.84rem; color:#cbd5e1; padding-left:18px; margin:0; line-height:1.6;">
+                                    <li><strong>Đối tượng áp dụng:</strong> Toàn bộ chòm sao LEO băng rộng thương mại (Starlink, OneWeb, Kuiper) dải tần Ku, Ka, Q/V và vệ tinh viễn thông.</li>
+                                    <li><strong>Hồ sơ nộp:</strong> Yêu cầu phối hợp <strong>CR/C Special Section</strong>, tính toán toàn bộ danh sách quốc gia và mạng vệ tinh bị ảnh hưởng.</li>
+                                    <li><strong>Thẩm định RR No. 11.31:</strong> Bắt buộc vượt qua các giới hạn cứng <strong>Hard Limits</strong> (Article 21 PFD limits và Article 22 EPFD limits bảo vệ GSO).</li>
+                                    <li><strong>Áp dụng Resolution 35:</strong> Bắt buộc tuân thủ 3 mốc triển khai (10% sau 2 năm, 50% sau 5 năm, 100% sau 7 năm).</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Technical Examination Table (Table 3 from Handbook) -->
+                        <div style="background:rgba(15,23,42,0.6); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:16px;">
+                            <h4 style="font-size:0.95rem; color:#38bdf8; margin:0 0 10px 0;">5 Tiêu Chuẩn Thẩm Định Kỹ Thuật Bắt Buộc Theo RR No. 11.31 (Table 3 Handbook)</h4>
+                            <div class="table-responsive">
+                                <table class="data-table" style="width:100%; border-collapse:collapse; font-size:0.84rem;">
+                                    <thead>
+                                        <tr style="background:rgba(56,189,248,0.12); color:#e2e8f0; text-align:left;">
+                                            <th style="padding:8px 12px;">Điều Khoản Thể Lệ Vô Tuyến</th>
+                                            <th style="padding:8px 12px;">Nội Dung & Phạm Vi Thẩm Định</th>
+                                            <th style="padding:8px 12px;">Hệ Quả Nếu Không Đạt (Unfavourable Finding)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                                            <td style="padding:8px 12px;"><strong style="color:#fbbf24;">RR Article 5 (TFA)</strong></td>
+                                            <td style="padding:8px 12px;">Bảng phân bổ tần số theo 3 Region. Việt Nam thuộc Region 3. Không cấp sai nghiệp vụ hoặc vi phạm cước chú cấm.</td>
+                                            <td style="padding:8px 12px; color:#f87171;">Bị BR trả lại hồ sơ (Part III-S) hoặc phải xin vận hành ngoại lệ theo RR No. 4.4.</td>
+                                        </tr>
+                                        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                                            <td style="padding:8px 12px;"><strong style="color:#38bdf8;">RR Article 21 (PFD Hard Limits)</strong></td>
+                                            <td style="padding:8px 12px;">Giới hạn mật độ thông lượng công suất tại mặt đất (Bảng 21-4) theo góc ngẩng 0°-5°, 5°-25°, 25°-90° để bảo vệ trạm cố định mặt đất và mạng 5G.</td>
+                                            <td style="padding:8px 12px; color:#f87171;">Hồ sơ bị BR ra kết luận bất lợi (Unfavourable under 11.31). Không được công nhận bảo vệ quốc tế.</td>
+                                        </tr>
+                                        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                                            <td style="padding:8px 12px;"><strong style="color:#34d399;">RR Article 22 (EPFD Hard Limits)</strong></td>
+                                            <td style="padding:8px 12px;">Mật độ thông lượng công suất tương đương tích lũy từ chòm Non-GSO chiếu vào ăng-ten trạm mặt đất thu vệ tinh Địa tĩnh GSO (Vinasat-1/2) theo Khuyến nghị ITU-R S.1503.</td>
+                                            <td style="padding:8px 12px; color:#f87171;">Bị đình chỉ quyền phát sóng hoặc bắt buộc phải giảm công suất / nghiêng búp sóng tránh trục ngắm GSO.</td>
+                                        </tr>
+                                        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                                            <td style="padding:8px 12px;"><strong style="color:#c084fc;">RR No. 22.1 (Space Operation TT&C)</strong></td>
+                                            <td style="padding:8px 12px;">Kênh điều khiển và đo xa vệ tinh phải hạn chế công suất ở mức tối thiểu để duy trì điều khiển an toàn, tránh gây nghẽn băng 2 GHz.</td>
+                                            <td style="padding:8px 12px; color:#fbbf24;">Yêu cầu hiệu chỉnh tham số công suất phát EIRP trong hồ sơ SpaceCap.</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding:8px 12px;"><strong style="color:#cbd5e1;">RR No. 4.4 (Derogation Operation)</strong></td>
+                                            <td style="padding:8px 12px;">Hoạt động trái với Bảng phân bổ tần số nhưng nước nộp cam kết: Không gây can nhiễu có hại và Không đòi hỏi bất kỳ sự bảo vệ nào.</td>
+                                            <td style="padding:8px 12px; color:#fbbf24;">Ghi nhận vào MIFR ở chế độ thông tin ('For information only'). Phải tắt phát sóng ngay lập tức nếu bị khiếu nại nhiễu (RR No. 8.5).</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SECTION: BỘ PHẦN MỀM CHUYÊN DỤNG ITU BR (SECTION 3.5.5) -->
+                    <div class="handbook-section-block" id="hb-sec-software" style="margin-bottom:30px;">
+                        <div class="section-title-box" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                            <h2 style="font-size:1.18rem; color:#f8fafc; display:flex; align-items:center; gap:8px;">
+                                <span style="color:#34d399;">💻</span> HỆ SINH THÁI PHẦN MỀM CHUYÊN DỤNG ITU BR (SECTION 3.5.5)
+                            </h2>
+                            <span class="badge-tag" style="background:rgba(52,211,153,0.2); color:#34d399;">Trang 82-85 PDF</span>
+                        </div>
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:16px;">
+                            <div style="background:rgba(15,23,42,0.6); border:1px solid rgba(52,211,153,0.2); border-radius:12px; padding:16px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                    <strong style="color:#34d399; font-size:1rem;">SpaceCap (v9.2)</strong>
+                                    <span class="badge-tag" style="background:rgba(52,211,153,0.2); color:#34d399; font-size:0.7rem;">Capture Tool</span>
+                                </div>
+                                <div style="font-size:0.83rem; color:#cbd5e1; line-height:1.5;">Phần mềm chính thức nhập liệu hồ sơ mạng vệ tinh theo chuẩn Phụ lục 4. Xuất tệp cơ sở dữ liệu SNS định dạng XML / MDB. Đã được tích hợp bộ bóc tách XML tự động trong LEO-COORD.</div>
+                            </div>
+                            <div style="background:rgba(15,23,42,0.6); border:1px solid rgba(56,189,248,0.2); border-radius:12px; padding:16px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                    <strong style="color:#38bdf8; font-size:1rem;">SpaceVal / BRSIS Validation</strong>
+                                    <span class="badge-tag" style="background:rgba(56,189,248,0.2); color:#38bdf8; font-size:0.7rem;">Syntax & Integrity</span>
+                                </div>
+                                <div style="font-size:0.83rem; color:#cbd5e1; line-height:1.5;">Công cụ kiểm toán cú pháp và tính toàn vẹn trường dữ liệu trước khi gửi e-Submission tới ITU. Phát hiện lỗi Fatal Errors và Warnings về độ cao, góc nghiêng và băng tần.</div>
+                            </div>
+                            <div style="background:rgba(15,23,42,0.6); border:1px solid rgba(251,191,36,0.2); border-radius:12px; padding:16px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                    <strong style="color:#fbbf24; font-size:1rem;">SpacePub</strong>
+                                    <span class="badge-tag" style="background:rgba(251,191,36,0.2); color:#fbbf24; font-size:0.7rem;">Publication Viewer</span>
+                                </div>
+                                <div style="font-size:0.83rem; color:#cbd5e1; line-height:1.5;">Trình khai thác và in ấn công báo BR IFIC (Space Services) định kỳ 2 tuần/lần. Xem chi tiết chùm sóng GIMS, danh sách mạng vệ tinh có khả năng bị ảnh hưởng can nhiễu.</div>
+                            </div>
+                            <div style="background:rgba(15,23,42,0.6); border:1px solid rgba(236,72,153,0.2); border-radius:12px; padding:16px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                    <strong style="color:#ec4899; font-size:1rem;">GIBC (Interference Check)</strong>
+                                    <span class="badge-tag" style="background:rgba(236,72,153,0.2); color:#ec4899; font-size:0.7rem;">Interference Engine</span>
+                                </div>
+                                <div style="font-size:0.83rem; color:#cbd5e1; line-height:1.5;">Phần mềm tính toán can nhiễu độc lập của ITU: Kiểm tra giới hạn PFD Điều 21, tính đường bao phối hợp Phụ lục 7 (Appendix 7 contours) và độ tăng nhiệt độ nhiễu Delta T/T Phụ lục 8.</div>
+                            </div>
+                            <div style="background:rgba(15,23,42,0.6); border:1px solid rgba(139,92,246,0.2); border-radius:12px; padding:16px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                    <strong style="color:#c084fc; font-size:1rem;">TFA Software (Edition 2024)</strong>
+                                    <span class="badge-tag" style="background:rgba(139,92,246,0.2); color:#c084fc; font-size:0.7rem;">Spectrum Allocation</span>
+                                </div>
+                                <div style="font-size:0.83rem; color:#cbd5e1; line-height:1.5;">Tra cứu Bảng phân bổ tần số quốc tế Điều 5 Thể lệ Vô tuyến theo 3 Vùng (Region 1, 2, 3) kèm toàn bộ cước chú chân trang (Footnotes) liên quan đến điều kiện áp dụng 9.11A / 9.21.</div>
+                            </div>
+                            <div style="background:rgba(15,23,42,0.6); border:1px solid rgba(148,163,184,0.2); border-radius:12px; padding:16px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                    <strong style="color:#94a3b8; font-size:1rem;">SAM (Space Advance Tool)</strong>
+                                    <span class="badge-tag" style="background:rgba(148,163,184,0.2); color:#94a3b8; font-size:0.7rem;">Dispute Resolution</span>
+                                </div>
+                                <div style="font-size:0.83rem; color:#cbd5e1; line-height:1.5;">Hệ thống hỗ trợ các quốc gia thành viên gửi văn bản bình luận và phản đối kỹ thuật (Comments) đối với các thông báo xuất bản trước trong thời hạn 4 tháng theo Thể lệ Vô tuyến.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SECTION: GIẢM THIỂU RÁC VŨ TRỤ (CHAPTER 8) & CASE STUDIES (CHAPTER 9) -->
+                    <div class="handbook-section-block" id="hb-sec-debris" style="margin-bottom:30px;">
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap:20px;">
+                            <!-- Space Debris Box -->
+                            <div style="background:rgba(15,23,42,0.6); border:1px solid rgba(245,158,11,0.25); border-radius:14px; padding:18px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                    <h3 style="font-size:1.05rem; color:#fbbf24; margin:0; display:flex; align-items:center; gap:8px;">
+                                        <span>♻️</span> TIÊU CHUẨN GIẢM THIỂU RÁC VŨ TRỤ (CHƯƠNG 8)
+                                    </h3>
+                                    <span class="badge-tag" style="background:rgba(245,158,11,0.2); color:#fbbf24;">IADC & UN COPUOS</span>
+                                </div>
+                                <ul style="font-size:0.84rem; color:#cbd5e1; padding-left:18px; margin:0; line-height:1.65;">
+                                    <li><strong>Quy tắc 25 năm LEO (Post-Mission Disposal):</strong> Vệ tinh kết thúc sứ mệnh trong dải LEO (&lt; 2000 km) phải có khả năng tự hạ quỹ đạo hoặc kích hoạt dù hãm khí động học để tái nhập bầu khí quyển trong vòng không quá <strong>25 năm</strong>.</li>
+                                    <li><strong>Ngưỡng rủi ro thương vong:</strong> Xác suất mảnh vỡ sống sót rơi trúng con người trên mặt đất phải nhỏ hơn <strong>1 / 10.000 (&lt; 10⁻⁴)</strong>.</li>
+                                    <li><strong>Thụ động hóa năng lượng (Passivation):</strong> Khi kết thúc sứ mệnh, bắt buộc phải xả cạn năng lượng pin hóa học và xả hết áp suất bình nhiên liệu để ngăn nổ vỡ thứ cấp trên quỹ đạo.</li>
+                                </ul>
+                            </div>
+
+                            <!-- Starlink Case Study Box -->
+                            <div style="background:rgba(15,23,42,0.6); border:1px solid rgba(139,92,246,0.25); border-radius:14px; padding:18px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                    <h3 style="font-size:1.05rem; color:#c084fc; margin:0; display:flex; align-items:center; gap:8px;">
+                                        <span>🛰️</span> HỒ SƠ STARLINK NON-GSO MẪU (BẢNG 27 SỔ TAY)
+                                    </h3>
+                                    <span class="badge-tag" style="background:rgba(139,92,246,0.2); color:#c084fc;">SpaceX Filing</span>
+                                </div>
+                                <div style="font-size:0.84rem; color:#cbd5e1; line-height:1.6;">
+                                    Theo Bảng 27 (Trang 184 Sổ tay ITU), chòm sao Starlink được cấp phép với tổng cộng <strong>4.408 vệ tinh</strong> ở 5 cấu hình quỹ đạo:
+                                    <div style="margin:8px 0; background:rgba(0,0,0,0.3); padding:8px 12px; border-radius:8px; font-family:'JetBrains Mono',monospace; font-size:0.78rem; color:#38bdf8;">
+                                        • 72 mặt phẳng x 22 vệ tinh (1.584 sats) @ 550 km, nghiêng 53.0°<br>
+                                        • 72 mặt phẳng x 22 vệ tinh (1.584 sats) @ 540 km, nghiêng 53.2°<br>
+                                        • 36 mặt phẳng x 20 vệ tinh (720 sats) @ 570 km, nghiêng 70.0°<br>
+                                        • 6 mặt phẳng x 58 vệ tinh (348 sats) @ 560 km, nghiêng 97.6° (Cực)<br>
+                                        • 4 mặt phẳng x 43 vệ tinh (172 sats) @ 560 km, nghiêng 97.6° (Cực)
+                                    </div>
+                                    Trang bị liên kết quang học laser liên vệ tinh (ISL) và điều hướng búp sóng chủ động né trục ngắm GSO để tuân thủ tuyệt đối giới hạn EPFD theo Điều 22.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SECTION: DANH MỤC 9 CHƯƠNG TOÀN DIỆN CỦA SỔ TAY -->
+                    <div class="handbook-section-block" id="hb-sec-chapters">
+                        <div class="section-title-box" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                            <h2 style="font-size:1.18rem; color:#f8fafc; display:flex; align-items:center; gap:8px;">
+                                <span style="color:#ec4899;">📚</span> TOÀN VĂN DANH MỤC 9 CHƯƠNG TRONG SỔ TAY ITU (TRA CỨU VĂN BẢN GỐC)
+                            </h2>
+                            <span class="badge-tag" style="background:rgba(236,72,153,0.2); color:#ec4899;">9 Chapters • 212 Pages</span>
+                        </div>
+                        <div id="handbook-chapters-accordion-list" style="display:flex; flex-direction:column; gap:12px;"></div>
+                    </div>
+
+                </div>
+
+            </div>
+        </section>
+
     </main>
 
     <!-- Upload Document Modal -->
@@ -2270,13 +2606,15 @@
             const tab2Btn = document.getElementById("tab-btn-2");
             const tab3Btn = document.getElementById("tab-btn-3");
             const tab4Btn = document.getElementById("tab-btn-4");
+            const tab5Btn = document.getElementById("tab-btn-5");
             const pane1 = document.getElementById("tab-content-1");
             const pane2 = document.getElementById("tab-content-2");
             const pane3 = document.getElementById("tab-content-3");
             const pane4 = document.getElementById("tab-content-4");
+            const pane5 = document.getElementById("tab-content-5");
 
-            [tab1Btn, tab2Btn, tab3Btn, tab4Btn].forEach(btn => btn?.classList.remove("active"));
-            [pane1, pane2, pane3, pane4].forEach(pane => {
+            [tab1Btn, tab2Btn, tab3Btn, tab4Btn, tab5Btn].forEach(btn => btn?.classList.remove("active"));
+            [pane1, pane2, pane3, pane4, pane5].forEach(pane => {
                 if (pane) {
                     pane.classList.remove("active");
                     pane.style.display = "none";
@@ -2301,6 +2639,13 @@
                 window.scrollTo({ top: 0, behavior: "smooth" });
                 if (typeof loadReferenceTables === "function") {
                     loadReferenceTables();
+                }
+            } else if (tabIndex === 5) {
+                tab5Btn?.classList.add("active");
+                if (pane5) { pane5.classList.add("active"); pane5.style.display = "block"; }
+                window.scrollTo({ top: 0, behavior: "smooth" });
+                if (typeof loadHandbookData === "function") {
+                    loadHandbookData();
                 }
             }
         };
