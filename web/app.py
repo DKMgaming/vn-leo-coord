@@ -809,6 +809,65 @@ def download_sample_mdb_endpoint():
     )
 
 
+@app.get("/api/srs/phases/{pub_date}")
+def get_rr951_phases_endpoint(pub_date: str):
+    """
+    Tính toán chi tiết tiến độ 3 chặng quy trình nội bộ trong 122 ngày (RR 9.51/9.52):
+    - Chặng 1 (1 - 30 ngày): Thẩm định kỹ thuật & mô phỏng PFD/EPFD (Chuyên viên).
+    - Chặng 2 (31 - 90 ngày): Trình Lãnh đạo Phòng & Lãnh đạo Cục phê duyệt phương án.
+    - Chặng 3 (91 - 122 ngày): Phát hành công văn ngoại giao & gửi SpaceCom MDB qua ITU TIES.
+    """
+    from leo_coord.alert_dispatcher import calculate_rr951_phases
+    try:
+        return calculate_rr951_phases(pub_date)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Lỗi tính toán phân kỳ thời hạn: {str(e)}")
+
+
+@app.post("/api/srs/alert/dispatch")
+def dispatch_srs_alert_endpoint(payload: Dict[str, Any] = Body(...)):
+    """
+    Phát cảnh báo đa kênh (Email công vụ, Webhook Telegram / Hệ thống Điều hành, In-app Notification)
+    đối với hồ sơ công báo BR IFIC có nguy cơ can nhiễu cao hoặc sắp hết hạn 4 tháng.
+    """
+    from leo_coord.alert_dispatcher import dispatch_multi_channel_alert
+    notice_id = payload.get("notice_id", "UNKNOWN")
+    network_name = payload.get("network_name", "CHƯA_XÁC_ĐỊNH")
+    notifying_adm = payload.get("notifying_adm", "N/A")
+    publication_date_str = payload.get("publication_date", date.today().isoformat())
+    channels = payload.get("channels", ["email", "telegram", "in_app"])
+    risk_level = payload.get("risk_level", "HIGH")
+    vietnam_impact = payload.get("vietnam_impact", True)
+    affected_bands = payload.get("affected_bands", ["Ku-band", "Ka-band"])
+    custom_recipient = payload.get("custom_recipient")
+    webhook_url = payload.get("webhook_url")
+    notes = payload.get("notes")
+
+    res = dispatch_multi_channel_alert(
+        notice_id=notice_id,
+        network_name=network_name,
+        notifying_adm=notifying_adm,
+        publication_date_str=publication_date_str,
+        channels=channels,
+        risk_level=risk_level,
+        vietnam_impact=vietnam_impact,
+        affected_bands=affected_bands,
+        custom_recipient=custom_recipient,
+        webhook_url=webhook_url,
+        notes=notes,
+    )
+    return res
+
+
+@app.get("/api/srs/alert/history")
+def get_alerts_history_endpoint():
+    """Lấy danh sách nhật ký kiểm toán cảnh báo đa kênh gần nhất."""
+    from leo_coord.alert_dispatcher import load_alerts_history
+    history = load_alerts_history()
+    return {"total": len(history), "alerts": history}
+
+
+
 @app.get("/api/spacecap/download-xml/{filing_id}")
 def download_spacecap_xml_endpoint(filing_id: str):
     """Xuất hồ sơ mạng vệ tinh theo chuẩn XML ITU SpaceCap v2.0."""

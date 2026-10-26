@@ -3249,6 +3249,11 @@ async function loadSrsStatusUI() {
                 }
             });
         }
+
+        // 4. Tải đồng hồ 3 chặng RR 9.51
+        if (typeof loadRR951PhasesUI === "function") {
+            loadRR951PhasesUI("2026-03-01");
+        }
     } catch (e) {
         console.warn("Không thể tải trạng thái CSDL SRS:", e);
     }
@@ -3378,9 +3383,12 @@ async function runSrsDiffEngineUI() {
                                     📅 Hạn chót phản đối (RR No. 9.51/9.52): <strong>${item.deadline_comment || 'Theo quy định 4 tháng'}</strong> (Còn ${item.days_remaining} ngày)
                                 </div>
                             </div>
-                            <div>
+                            <div style="display: flex; gap: 4px; flex-direction: column;">
                                 <button type="button" class="btn-text-action" onclick="selectAndConveneFiling('${escapeHtml(item.network_name)}')" style="padding: 4px 8px; font-size: 0.72rem; white-space: nowrap; background: rgba(56, 189, 248, 0.2); color: #38bdf8;">
                                     ⚡ Thẩm Định Ngay
+                                </button>
+                                <button type="button" class="btn-text-action" onclick="openAlertModalUI('${escapeHtml(item.network_name)}', '${escapeHtml(item.adm)}', '${escapeHtml(item.notice_id || '')}')" style="padding: 3px 8px; font-size: 0.7rem; white-space: nowrap; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);">
+                                    🚨 Cảnh Báo Khẩn
                                 </button>
                             </div>
                         </div>
@@ -3428,6 +3436,194 @@ function selectAndConveneFiling(filingNameOrId) {
     }
 }
 window.selectAndConveneFiling = selectAndConveneFiling;
+
+/* ================= 12. NHIỆM VỤ 7.3: ĐỒNG HỒ 3 CHẶNG RR 9.51 & CẢNH BÁO ĐA KÊNH ================= */
+let currentAlertNoticeData = {
+    network_name: "KUIPER-NGSO-V",
+    adm: "USA",
+    notice_id: "3015_001",
+    publication_date: "2026-03-01"
+};
+
+async function loadRR951PhasesUI(pubDate) {
+    const dateStr = pubDate || "2026-03-01";
+    try {
+        const res = await fetch(`/api/srs/phases/${dateStr}`);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        // 1. Cập nhật Badge Trạng Thái
+        const badge = document.getElementById("rr951-badge-status");
+        if (badge) {
+            badge.textContent = data.current_phase_index <= 3 
+                ? `CHẶNG ${data.current_phase_index}: ${data.phases[data.current_phase_index - 1]?.name.split(':')[1]?.trim() || ''}`
+                : "QUÁ HẠN 4 THÁNG";
+            badge.style.background = data.badge_color + "33";
+            badge.style.color = data.badge_color;
+        }
+
+        // 2. Cập nhật nhãn ngày
+        const dayLabel = document.getElementById("rr951-current-day-label");
+        if (dayLabel) {
+            dayLabel.innerHTML = `Tiến độ: <strong>Ngày ${data.days_elapsed}/${data.total_days}</strong> (Còn <strong>${data.days_remaining} ngày</strong> đến hạn)`;
+        }
+
+        // 3. Cập nhật độ mờ/sáng của các phân đoạn thanh tiến trình
+        const p1 = document.getElementById("rr951-prog-p1");
+        const p2 = document.getElementById("rr951-prog-p2");
+        const p3 = document.getElementById("rr951-prog-p3");
+        if (p1) p1.style.opacity = data.current_phase_index >= 1 ? "1.0" : "0.3";
+        if (p2) p2.style.opacity = data.current_phase_index >= 2 ? "1.0" : "0.3";
+        if (p3) p3.style.opacity = data.current_phase_index >= 3 ? "1.0" : "0.3";
+
+        // 4. Cập nhật 3 Thẻ Chặng
+        const st1 = document.getElementById("stage-1-status");
+        const st2 = document.getElementById("stage-2-status");
+        const st3 = document.getElementById("stage-3-status");
+        if (st1) {
+            st1.textContent = data.current_phase_index > 1 ? "✅ Đã hoàn thành" : (data.current_phase_index === 1 ? `⏳ Còn ${data.days_remaining_in_current_phase} ngày` : "Chờ đến hạn");
+            st1.style.color = data.current_phase_index === 1 ? "#38bdf8" : "#94a3b8";
+        }
+        if (st2) {
+            st2.textContent = data.current_phase_index > 2 ? "✅ Đã hoàn thành" : (data.current_phase_index === 2 ? `⏳ Còn ${data.days_remaining_in_current_phase} ngày` : "Chờ đến hạn");
+            st2.style.color = data.current_phase_index === 2 ? "#facc15" : "#94a3b8";
+        }
+        if (st3) {
+            st3.textContent = data.current_phase_index > 3 ? "❌ Đã quá hạn" : (data.current_phase_index === 3 ? `🚨 Còn ${data.days_remaining_in_current_phase} ngày` : "Chờ đến hạn");
+            st3.style.color = data.current_phase_index === 3 ? "#f87171" : "#94a3b8";
+        }
+    } catch (e) {
+        console.warn("Không thể tải tiến trình 3 chặng RR 9.51:", e);
+    }
+}
+window.loadRR951PhasesUI = loadRR951PhasesUI;
+
+function openAlertModalUI(networkName, adm, noticeId) {
+    if (networkName) {
+        currentAlertNoticeData.network_name = networkName;
+        currentAlertNoticeData.adm = adm || "N/A";
+        currentAlertNoticeData.notice_id = noticeId || "NOTICE";
+    }
+    const inputNet = document.getElementById("alert-input-network");
+    if (inputNet) {
+        inputNet.value = `${currentAlertNoticeData.network_name} (${currentAlertNoticeData.adm})`;
+    }
+    const modal = document.getElementById("modal-alert-dispatch");
+    if (modal) modal.style.display = "block";
+    loadRR951PhasesUI("2026-03-01");
+}
+window.openAlertModalUI = openAlertModalUI;
+
+function closeAlertModalUI() {
+    const modal = document.getElementById("modal-alert-dispatch");
+    if (modal) modal.style.display = "none";
+}
+window.closeAlertModalUI = closeAlertModalUI;
+
+async function submitAlertDispatchUI() {
+    const emailChecked = document.getElementById("chk-alert-email")?.checked;
+    const telegramChecked = document.getElementById("chk-alert-telegram")?.checked;
+    const inappChecked = document.getElementById("chk-alert-inapp")?.checked;
+
+    const channels = [];
+    if (emailChecked) channels.push("email");
+    if (telegramChecked) channels.push("telegram");
+    if (inappChecked) channels.push("in_app");
+
+    if (channels.length === 0) {
+        alert("Vui lòng chọn ít nhất 1 kênh để phát cảnh báo!");
+        return;
+    }
+
+    const recipient = document.getElementById("alert-input-email")?.value.trim() || "chuyenvien.arfm@mic.gov.vn";
+    const webhookUrl = document.getElementById("alert-input-webhook")?.value.trim() || null;
+
+    try {
+        const res = await fetch("/api/srs/alert/dispatch", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                notice_id: currentAlertNoticeData.notice_id || "3015_001",
+                network_name: currentAlertNoticeData.network_name || "KUIPER-NGSO-V",
+                notifying_adm: currentAlertNoticeData.adm || "USA",
+                publication_date: currentAlertNoticeData.publication_date || "2026-03-01",
+                channels: channels,
+                custom_recipient: recipient,
+                webhook_url: webhookUrl,
+                risk_level: "HIGH",
+                vietnam_impact: true,
+                affected_bands: ["Ku-band (10.7-12.75 GHz)", "Ka-band (17.7-20.2 GHz)"],
+                notes: "Hồ sơ can nhiễu Vinasat-1/2, yêu cầu chuyển ngay sang Chặng 2 trình Lãnh đạo Cục."
+            })
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || `Lỗi HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        alert(`✅ ${data.message}\n\nĐã phát qua các kênh:\n- Email công vụ: ${recipient}\n- Webhook: ${telegramChecked ? 'Đã kích hoạt' : 'Bỏ qua'}\n- Nhật ký kiểm toán: Đã ghi nhận bản ghi ${data.alert.id}`);
+
+        closeAlertModalUI();
+        await loadAlertsHistoryUI();
+        document.getElementById("alerts-history-box").style.display = "block";
+    } catch (e) {
+        alert(`❌ Lỗi phát cảnh báo: ${e.message}`);
+    }
+}
+window.submitAlertDispatchUI = submitAlertDispatchUI;
+
+function toggleAlertsHistoryUI() {
+    const box = document.getElementById("alerts-history-box");
+    if (!box) return;
+    if (box.style.display === "none" || !box.style.display) {
+        box.style.display = "block";
+        loadAlertsHistoryUI();
+    } else {
+        box.style.display = "none";
+    }
+}
+window.toggleAlertsHistoryUI = toggleAlertsHistoryUI;
+
+async function loadAlertsHistoryUI() {
+    const listBox = document.getElementById("alerts-history-list");
+    if (!listBox) return;
+    listBox.innerHTML = "<div style='color: #94a3b8; padding: 4px;'>Đang tải lịch sử cảnh báo...</div>";
+
+    try {
+        const res = await fetch("/api/srs/alert/history");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.alerts || data.alerts.length === 0) {
+            listBox.innerHTML = "<div style='color: #94a3b8; padding: 4px;'>Chưa có bản ghi cảnh báo nào được phát.</div>";
+            return;
+        }
+
+        let html = "";
+        data.alerts.forEach(alt => {
+            html += `
+                <div style="background: rgba(0, 0, 0, 0.3); border-left: 3px solid #ef4444; border-radius: 4px; padding: 5px 8px; margin-bottom: 5px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <strong style="color: #f87171;">${escapeHtml(alt.network_name)}</strong>
+                        <span style="color: #94a3b8; font-size: 0.68rem;">${alt.created_at}</span>
+                    </div>
+                    <div style="color: #cbd5e1; font-size: 0.7rem; margin-top: 2px;">
+                        ${escapeHtml(alt.subject)}
+                    </div>
+                    <div style="color: #38bdf8; font-size: 0.68rem; margin-top: 2px;">
+                        Kênh: ${alt.dispatched_results.map(r => r.channel.toUpperCase()).join(", ")} | Còn: <strong>${alt.days_remaining} ngày</strong>
+                    </div>
+                </div>
+            `;
+        });
+        listBox.innerHTML = html;
+    } catch (e) {
+        listBox.innerHTML = `<div style="color: #f87171; padding: 4px;">Lỗi tải nhật ký: ${e.message}</div>`;
+    }
+}
+window.loadAlertsHistoryUI = loadAlertsHistoryUI;
+
 
 
 

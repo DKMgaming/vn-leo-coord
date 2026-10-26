@@ -1,0 +1,144 @@
+{
+  "updated_at": "2026-10-26T16:41:26.651424",
+  "total": 4,
+  "alerts": [
+    {
+      "id": "ALT-20261026164126-API_TEST",
+      "notice_id": "API_TEST_002",
+      "network_name": "API-KUIPER-V",
+      "notifying_adm": "USA",
+      "publication_date": "2026-03-01",
+      "days_remaining": -117,
+      "current_phase": 4,
+      "status_label": "Đã quá hạn 4 tháng (117 ngày) — Mặc nhiên chấp thuận theo RR 9.52C",
+      "risk_level": "HIGH",
+      "vietnam_impact": true,
+      "subject": "[ARFM - CẢNH BÁO KHẨN RR 9.51] Hồ sơ vệ tinh API-KUIPER-V (USA) - Đã quá hạn 4 tháng (117 ngày) — Mặc nhiên chấp thuận theo RR 9.52C",
+      "body_preview": "🚨 CẢNH BÁO TẦN SỐ VÔ TUYẾN ĐIỆN QUỐC TẾ (ITU RR No. 9.51/9.52)\n--------------------------------------------------\n🛰️ Mạng vệ tinh: API-KUIPER-V\n🏳️ Cơ quan thông báo: USA\n📅 Ngày công báo BR IFIC: 2026-...",
+      "dispatched_results": [
+        {
+          "channel": "email",
+          "target": "kiemsoat.arfm@mic.gov.vn",
+          "status": "DELIVERED",
+          "message": "Đã gửi email cảnh báo tự động tới hòm thư công vụ kiemsoat.arfm@mic.gov.vn.",
+          "dispatched_at": "2026-10-26 16:41:26"
+        },
+        {
+          "channel": "in_app",
+          "target": "Hệ thống Bảng Điều Khiển LEO-COORD",
+          "status": "RECORDED",
+          "message": "Đã lưu vào Nhật ký Kiểm toán & Cảnh báo đỏ tại Tab 1 & Tab 3.",
+          "dispatched_at": "2026-10-26 16:41:26"
+        }
+      ],
+      "created_at": "2026-10-26 16:41:26"
+    },
+    {
+      "id": "ALT-20261026164126-TEST_NOT",
+      "notice_id": "TEST_NOTICE_001",
+      "network_name": "TEST-STARLINK-V",
+      "notifying_adm": "USA",
+      "publication_date": "2026-03-01",
+      "days_remaining": -117,
+      "current_phase": 4,
+      "status_label": "Đã quá hạn 4 tháng (117 ngày) — Mặc nhiên chấp thuận theo RR 9.52C",
+      "risk_level": "HIGH",
+      "vietnam_impact": true,
+      "subject": "[ARFM - CẢNH BÁO KHẨN RR 9.51] Hồ sơ vệ tinh TEST-STARLINK-V (USA) - Đã quá hạn 4 tháng (117 ngày) — Mặc nhiên chấp thuận theo RR 9.52C",
+      "body_preview": "🚨 CẢNH BÁO TẦN SỐ VÔ TUYẾN ĐIỆN QUỐC TẾ (ITU RR No. 9.51/9.52)\n--------------------------------------------------\n🛰️ Mạng vệ tinh: TEST-STARLINK-V\n🏳️ Cơ quan thông báo: USA\n📅 Ngày công báo BR IFIC: 20...",
+      "dispatched_results": [
+        {
+          "channel": "email",
+          "target": "chuyenvien.arfm@mic.gov.vn",
+          "status": "DELIVERED",
+          "message": "Đã gửi email cảnh báo tự động tới hòm thư công vụ chuyenvien.arfm@mic.gov.vn.",
+          "dispatched_at": "2026-10-26 16:41:26"
+        },
+        {
+          "channel": "webhook",
+          "target": "https://api.telegram.org/bot[ARFM_SECURE_TOKEN]/sendMessage",
+          "status": "DELIVERED",
+          "message": "Đã gửi gói webhook cảnh báo JSON tới kênh chỉ huy tác chiến.",
+          "dispatched_at": "2026-10-26 16:41:26"
+        },
+        {
+          "channel": "in_app",
+          "target": "Hệ thống Bảng Điều Khiển LEO-COORD",
+          "status": "RECORDED",
+          "message": "Đã lưu vào Nhật ký Kiểm toán & Cảnh báo đỏ tại Tab 1 & Tab 3.",
+          "dispatched_at": "2026-10-26 16:41:26"
+        }
+      ],
+      "created_at": "2026-10-26 16:41:26"
+    },
+    {
+      "id": "ALT-20261026164013-API_TEST",
+      "notice_id": "API_TEST_002",
+      "network_name": "API-KUIPER-V",
+      "notifying_adm": "USA",
+      "publication_date": "2026-03-01",
+      "days_remaining": -117,
+      "current_phase": 4,
+      "status_label": "Đã quá hạn 4 tháng (117 ngày) — Mặc nhiên chấp thuận theo RR 9.52C",
+      "risk_level": "HIGH",
+      "vietnam_impact": true,
+      "subject": "[ARFM - CẢNH BÁO KHẨN RR 9.51] Hồ sơ vệ tinh API-KUIPER-V (USA) - Đã quá hạn 4 tháng (117 ngày) — Mặc nhiên chấp thuận theo RR 9.52C",
+      "body_preview": "🚨 CẢNH BÁO TẦN SỐ VÔ TUYẾN ĐIỆN QUỐC TẾ (ITU RR No. 9.51/9.52)\n--------------------------------------------------\n🛰️ Mạng vệ tinh: API-KUIPER-V\n🏳️ Cơ quan thông báo: USA\n📅 Ngày công báo BR IFIC: 2026-...",
+      "dispatched_results": [
+        {
+          "channel": "email",
+          "target": "kiemsoat.arfm@mic.gov.vn",
+          "status": "DELIVERED",
+          "message": "Đã gửi email cảnh báo tự động tới hòm thư công vụ kiemsoat.arfm@mic.gov.vn.",
+          "dispatched_at": "2026-10-26 16:40:13"
+        },
+        {
+          "channel": "in_app",
+          "target": "Hệ thống Bảng Điều Khiển LEO-COORD",
+          "status": "RECORDED",
+          "message": "Đã lưu vào Nhật ký Kiểm toán & Cảnh báo đỏ tại Tab 1 & Tab 3.",
+          "dispatched_at": "2026-10-26 16:40:13"
+        }
+      ],
+      "created_at": "2026-10-26 16:40:13"
+    },
+    {
+      "id": "ALT-20261026164013-TEST_NOT",
+      "notice_id": "TEST_NOTICE_001",
+      "network_name": "TEST-STARLINK-V",
+      "notifying_adm": "USA",
+      "publication_date": "2026-03-01",
+      "days_remaining": -117,
+      "current_phase": 4,
+      "status_label": "Đã quá hạn 4 tháng (117 ngày) — Mặc nhiên chấp thuận theo RR 9.52C",
+      "risk_level": "HIGH",
+      "vietnam_impact": true,
+      "subject": "[ARFM - CẢNH BÁO KHẨN RR 9.51] Hồ sơ vệ tinh TEST-STARLINK-V (USA) - Đã quá hạn 4 tháng (117 ngày) — Mặc nhiên chấp thuận theo RR 9.52C",
+      "body_preview": "🚨 CẢNH BÁO TẦN SỐ VÔ TUYẾN ĐIỆN QUỐC TẾ (ITU RR No. 9.51/9.52)\n--------------------------------------------------\n🛰️ Mạng vệ tinh: TEST-STARLINK-V\n🏳️ Cơ quan thông báo: USA\n📅 Ngày công báo BR IFIC: 20...",
+      "dispatched_results": [
+        {
+          "channel": "email",
+          "target": "chuyenvien.arfm@mic.gov.vn",
+          "status": "DELIVERED",
+          "message": "Đã gửi email cảnh báo tự động tới hòm thư công vụ chuyenvien.arfm@mic.gov.vn.",
+          "dispatched_at": "2026-10-26 16:40:13"
+        },
+        {
+          "channel": "webhook",
+          "target": "https://api.telegram.org/bot[ARFM_SECURE_TOKEN]/sendMessage",
+          "status": "DELIVERED",
+          "message": "Đã gửi gói webhook cảnh báo JSON tới kênh chỉ huy tác chiến.",
+          "dispatched_at": "2026-10-26 16:40:13"
+        },
+        {
+          "channel": "in_app",
+          "target": "Hệ thống Bảng Điều Khiển LEO-COORD",
+          "status": "RECORDED",
+          "message": "Đã lưu vào Nhật ký Kiểm toán & Cảnh báo đỏ tại Tab 1 & Tab 3.",
+          "dispatched_at": "2026-10-26 16:40:13"
+        }
+      ],
+      "created_at": "2026-10-26 16:40:13"
+    }
+  ]
+}

@@ -670,7 +670,7 @@
                                         </div>
                                     </div>
 
-                                    <!-- Bảng Kết Quả Diff Engine -->
+                                     <!-- Bảng Kết Quả Diff Engine -->
                                     <div id="diff-results-panel" style="display: none; margin-top: 10px; background: rgba(0,0,0,0.3); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 6px; padding: 10px;">
                                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                                             <span style="font-weight: 700; color: #38bdf8; font-size: 0.82rem;" id="diff-summary-title">BÁO CÁO ĐỐI SOÁT CÔNG BÁO QUỐC TẾ</span>
@@ -678,6 +678,99 @@
                                         </div>
                                         <div id="diff-stat-chips" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;"></div>
                                         <div id="diff-details-content" style="max-height: 220px; overflow-y: auto; font-size: 0.75rem;"></div>
+                                    </div>
+
+                                    <!-- Nhiệm vụ 7.3: Đồng Hồ Đếm Ngược 3 Chặng RR 9.51 & Bảng Điều Khiển Cảnh Báo Đa Kênh -->
+                                    <div id="rr951-alert-panel" style="margin-top: 10px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 6px; padding: 10px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
+                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                <span style="font-size: 1rem;">⏱️</span>
+                                                <strong style="color: #fbbf24; font-size: 0.82rem;">NHIỆM VỤ 7.3: ĐỒNG HỒ 3 CHẶNG RR 9.51/9.52 & CẢNH BÁO ĐA KÊNH</strong>
+                                                <span id="rr951-badge-status" class="badge-tag" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; font-size: 0.7rem;">CHẶNG 1: THẨM ĐỊNH KT</span>
+                                            </div>
+                                            <div style="display: flex; gap: 6px;">
+                                                <button type="button" class="btn-text-action" onclick="openAlertModalUI()" style="padding: 3px 8px; font-size: 0.72rem; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);">
+                                                    🚨 Phát Cảnh Báo Khẩn (Email / Webhook)
+                                                </button>
+                                                <button type="button" class="btn-text-action" onclick="toggleAlertsHistoryUI()" style="padding: 3px 8px; font-size: 0.72rem;">
+                                                    📋 Xem Nhật Ký Cảnh Báo
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Thanh phân bổ 3 chặng quy chuẩn trong 122 ngày -->
+                                        <div style="background: rgba(0, 0, 0, 0.35); padding: 8px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.05); margin-bottom: 8px;">
+                                            <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: #94a3b8; margin-bottom: 4px;">
+                                                <span>Ngày 1 (Công bố BR IFIC)</span>
+                                                <span id="rr951-current-day-label" style="color: #fbbf24; font-weight: 600;">Tiến độ: Ngày 24/122</span>
+                                                <span>Hạn 122 ngày (RR 9.51)</span>
+                                            </div>
+                                            <!-- Thanh tiến trình chia 3 đoạn -->
+                                            <div style="height: 8px; width: 100%; background: #1e293b; border-radius: 4px; display: flex; overflow: hidden; margin-bottom: 6px;">
+                                                <div id="rr951-prog-p1" style="width: 24.6%; background: #38bdf8; height: 100%; border-right: 1px solid #0f172a;" title="Chặng 1: Thẩm định Kỹ thuật (1-30 ngày)"></div>
+                                                <div id="rr951-prog-p2" style="width: 49.2%; background: #facc15; height: 100%; border-right: 1px solid #0f172a;" title="Chặng 2: Trình Lãnh đạo Phê duyệt (31-90 ngày)"></div>
+                                                <div id="rr951-prog-p3" style="width: 26.2%; background: #ef4444; height: 100%;" title="Chặng 3: Phát hành SpaceCom (91-122 ngày)"></div>
+                                            </div>
+                                            <!-- 3 Thẻ chi tiết chặng -->
+                                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; font-size: 0.7rem;">
+                                                <div id="card-stage-1" style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 4px; padding: 5px;">
+                                                    <strong style="color: #38bdf8;">Chặng 1 (Ngày 1-30)</strong>
+                                                    <div style="color: #cbd5e1; font-size: 0.68rem; margin-top: 2px;">Thẩm định KT & PFD/EPFD</div>
+                                                    <div id="stage-1-status" style="color: #38bdf8; font-weight: 600; margin-top: 2px;">Đang thực hiện</div>
+                                                </div>
+                                                <div id="card-stage-2" style="background: rgba(250, 204, 21, 0.05); border: 1px solid rgba(250, 204, 21, 0.2); border-radius: 4px; padding: 5px;">
+                                                    <strong style="color: #facc15;">Chặng 2 (Ngày 31-90)</strong>
+                                                    <div style="color: #cbd5e1; font-size: 0.68rem; margin-top: 2px;">Trình Lãnh đạo Cục duyệt</div>
+                                                    <div id="stage-2-status" style="color: #94a3b8; margin-top: 2px;">Chờ đến hạn</div>
+                                                </div>
+                                                <div id="card-stage-3" style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 4px; padding: 5px;">
+                                                    <strong style="color: #f87171;">Chặng 3 (Ngày 91-122)</strong>
+                                                    <div style="color: #cbd5e1; font-size: 0.68rem; margin-top: 2px;">Gửi phản đối SpaceCom MDB</div>
+                                                    <div id="stage-3-status" style="color: #94a3b8; margin-top: 2px;">Chờ đến hạn</div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Khung Modal Phát Cảnh Báo Đa Kênh Tức Thời -->
+                                        <div id="modal-alert-dispatch" style="display: none; background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 8px; margin-top: 6px;">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                                <strong style="color: #f87171; font-size: 0.78rem;">🚨 THIẾT LẬP PHÁT CẢNH BÁO ĐA KÊNH KHẨN CẤP</strong>
+                                                <button type="button" class="btn-text-action" onclick="closeAlertModalUI()" style="font-size: 0.7rem;">✕ Đóng</button>
+                                            </div>
+                                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.74rem;">
+                                                <div>
+                                                    <label style="color: #94a3b8; display: block; margin-bottom: 2px;">Hồ sơ mục tiêu:</label>
+                                                    <input type="text" id="alert-input-network" value="KUIPER-NGSO-V (Mỹ - 3.236 vệ tinh)" style="width: 100%; padding: 4px 6px; font-size: 0.74rem; background: rgba(0,0,0,0.4); border: 1px solid #475569; color: #f1f5f9; border-radius: 4px;">
+                                                </div>
+                                                <div>
+                                                    <label style="color: #94a3b8; display: block; margin-bottom: 2px;">Hòm thư công vụ nhận tin:</label>
+                                                    <input type="text" id="alert-input-email" value="chuyenvien.arfm@mic.gov.vn" style="width: 100%; padding: 4px 6px; font-size: 0.74rem; background: rgba(0,0,0,0.4); border: 1px solid #475569; color: #f1f5f9; border-radius: 4px;">
+                                                </div>
+                                                <div style="grid-column: span 2;">
+                                                    <label style="color: #94a3b8; display: block; margin-bottom: 2px;">Webhook URL Telegram / Điều hành (Tùy chọn):</label>
+                                                    <input type="text" id="alert-input-webhook" placeholder="https://api.telegram.org/bot[TOKEN]/sendMessage hoặc Webhook LAN nội bộ" style="width: 100%; padding: 4px 6px; font-size: 0.74rem; background: rgba(0,0,0,0.4); border: 1px solid #475569; color: #f1f5f9; border-radius: 4px;">
+                                                </div>
+                                            </div>
+                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                                                <div style="display: flex; gap: 8px; font-size: 0.72rem; color: #cbd5e1;">
+                                                    <label><input type="checkbox" id="chk-alert-email" checked> 📧 Email Công vụ</label>
+                                                    <label><input type="checkbox" id="chk-alert-telegram" checked> 🤖 Webhook Bot</label>
+                                                    <label><input type="checkbox" id="chk-alert-inapp" checked> 📝 Nhật ký Kiểm toán</label>
+                                                </div>
+                                                <button type="button" class="btn-primary" onclick="submitAlertDispatchUI()" style="padding: 4px 10px; font-size: 0.74rem; font-weight: 600; background: #ef4444; border-color: #ef4444;">
+                                                    🚀 BẮN CẢNH BÁO NGAY
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Nhật ký Cảnh Báo Đã Phát (Collapsible) -->
+                                        <div id="alerts-history-box" style="display: none; margin-top: 8px; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 6px; padding: 8px;">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                                <span style="font-weight: 600; color: #cbd5e1; font-size: 0.74rem;">📋 LỊCH SỬ CẢNH BÁO ĐA KÊNH ĐÃ PHÁT ĐI</span>
+                                                <button type="button" class="btn-text-action" onclick="loadAlertsHistoryUI()" style="font-size: 0.7rem;">🔄 Làm Mới</button>
+                                            </div>
+                                            <div id="alerts-history-list" style="max-height: 140px; overflow-y: auto; font-size: 0.72rem;"></div>
+                                        </div>
                                     </div>
                                 </div>
 
