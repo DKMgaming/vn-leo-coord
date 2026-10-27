@@ -69,9 +69,9 @@ class LeoGlobe3D {
         // Scene
         this.scene = new THREE.Scene();
 
-        // Camera
+        // Camera: Mặc định đặt góc nhìn thẳng vào vị trí Việt Nam
         this.camera = new THREE.PerspectiveCamera(45, width / height, 1, 3000);
-        this.camera.position.set(0, 50, 260);
+        this.camera.position.set(-68, 62, -205);
 
         // Renderer
         this.renderer = new THREE.WebGLRenderer({
@@ -634,14 +634,14 @@ class LeoGlobe3D {
     }
 
     focusVietnam() {
-        // Hướng camera thẳng vào tọa độ Việt Nam (210° lon tương ứng trên texture)
-        const targetPos = new THREE.Vector3(-140, 60, 160);
+        // Hướng camera thẳng vào tọa độ Việt Nam (Đà Nẵng / Trung tâm dải đất hình chữ S: ~16°N, 108°E)
+        const targetPos = new THREE.Vector3(-68, 62, -205);
         this.animateCameraTo(targetPos, new THREE.Vector3(0, 0, 0));
     }
 
     focusGso() {
-        // Zoom xa để quan sát toàn bộ quỹ đạo địa tĩnh 35.786km
-        const targetPos = new THREE.Vector3(0, 150, 480);
+        // Zoom xa để quan sát toàn bộ quỹ đạo địa tĩnh 35.786km và 2 vệ tinh Vinasat-1/2 (105.5°E & 132°E)
+        const targetPos = new THREE.Vector3(-180, 160, -380);
         this.animateCameraTo(targetPos, new THREE.Vector3(0, 0, 0));
     }
 
