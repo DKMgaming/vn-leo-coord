@@ -607,7 +607,8 @@ async def upload_spacecap_filing(file: UploadFile = File(...)):
     from leo_coord.srs_reader import parse_mdb_or_sqlite_file
 
     allowed_exts = {".xml", ".json", ".yaml", ".yml", ".mdb", ".accdb", ".sqlite", ".db"}
-    filename = file.filename or "unknown.xml"
+    raw_name = file.filename or "unknown.xml"
+    filename = Path(raw_name).name
     ext = Path(filename).suffix.lower()
     if ext not in allowed_exts:
         raise HTTPException(
@@ -1325,7 +1326,8 @@ async def upload_document(
 ):
     """Tải lên tài liệu tham luận (.doc, .docx, .xls, .xlsx, .pdf, .ppt, .pptx)."""
     allowed_exts = {".doc", ".docx", ".xls", ".xlsx", ".pdf", ".ppt", ".pptx"}
-    filename = file.filename or "unknown"
+    raw_name = file.filename or "unknown"
+    filename = Path(raw_name).name
     ext = Path(filename).suffix.lower()
 
     if ext not in allowed_exts:
@@ -1336,24 +1338,31 @@ async def upload_document(
 
     doc_id = f"doc-{uuid.uuid4().hex[:8]}"
     saved_filename = f"{doc_id}_{filename}"
-    save_path = UPLOAD_DIR / saved_filename
+    save_path = (UPLOAD_DIR / saved_filename).resolve()
+    if not str(save_path).startswith(str(UPLOAD_DIR.resolve())):
+        raise HTTPException(status_code=400, detail="Tên tệp không hợp lệ!")
 
     # Đọc và ghi file
     content = await file.read()
     save_path.write_bytes(content)
     file_size = len(content)
 
+    title_str = (title if isinstance(title, str) else str(title or "")).strip()
+    author_str = (author if isinstance(author, str) else str(author or "")).strip()
+    category_str = category if isinstance(category, str) else "Chiến lược & Chính sách"
+    summary_str = (summary if isinstance(summary, str) else str(summary or "")).strip()
+
     new_doc = {
         "id": doc_id,
-        "title": title.strip() or filename,
-        "author": author.strip() or "Khuyết danh",
-        "category": category,
+        "title": title_str or filename,
+        "author": author_str or "Khuyết danh",
+        "category": category_str,
         "file_type": ext.lstrip("."),
         "filename": saved_filename,
         "original_filename": filename,
         "file_size": file_size,
         "upload_date": datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "summary": summary.strip()
+        "summary": summary_str
     }
 
     docs = load_documents_meta()
@@ -1371,14 +1380,18 @@ def download_document(doc_id: str):
     if not target:
         raise HTTPException(status_code=404, detail="Không tìm thấy tài liệu!")
 
-    file_path = UPLOAD_DIR / target["filename"]
+    safe_name = Path(target["filename"]).name
+    file_path = (UPLOAD_DIR / safe_name).resolve()
+    if not str(file_path).startswith(str(UPLOAD_DIR.resolve())):
+        raise HTTPException(status_code=400, detail="Đường dẫn tệp không hợp lệ!")
+
     if not file_path.exists():
         # Fallback tạo tệp mẫu nếu tệp chưa có
         file_path.write_text(f"Nội dung tài liệu {target['title']}\nTác giả: {target['author']}", encoding="utf-8")
 
     return FileResponse(
         path=file_path,
-        filename=target["original_filename"],
+        filename=target.get("original_filename", safe_name),
         media_type="application/octet-stream"
     )
 
@@ -1391,9 +1404,10 @@ def delete_document(doc_id: str):
     if not target:
         raise HTTPException(status_code=404, detail="Không tìm thấy tài liệu!")
 
-    # Xóa file vật lý
-    file_path = UPLOAD_DIR / target["filename"]
-    if file_path.exists():
+    # Xóa file vật lý an toàn
+    safe_name = Path(target["filename"]).name
+    file_path = (UPLOAD_DIR / safe_name).resolve()
+    if str(file_path).startswith(str(UPLOAD_DIR.resolve())) and file_path.exists():
         try:
             file_path.unlink()
         except Exception:
@@ -1465,7 +1479,10 @@ def get_document_content(doc_id: str):
         return {"title": target["title"], "content": target["content_full"]}
 
     # Đọc từ file nếu là docx/txt
-    file_path = UPLOAD_DIR / target["filename"]
+    safe_name = Path(target["filename"]).name
+    file_path = (UPLOAD_DIR / safe_name).resolve()
+    if not str(file_path).startswith(str(UPLOAD_DIR.resolve())):
+        raise HTTPException(status_code=400, detail="Đường dẫn tệp không hợp lệ!")
     if file_path.exists():
         if target["filename"].endswith(".docx"):
             try:

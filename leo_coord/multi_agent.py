@@ -630,7 +630,7 @@ def call_llm_api(
                     "Authorization": f"Bearer {api_key}"
                 }
             else:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
                 headers = {
                     "Content-Type": "application/json",
                     "x-goog-api-key": api_key

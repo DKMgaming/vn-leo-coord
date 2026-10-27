@@ -13,6 +13,8 @@ leo-coord = "leo_coord.cli:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
+
 
 [tool.setuptools.packages.find]
 include = ["leo_coord*"]
