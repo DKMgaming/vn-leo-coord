@@ -35,6 +35,7 @@ class LeoGlobe3D {
         this.showGso = true;
         this.showSlantRange = true;
         this.showContours = true;
+        this.showProvinces = true;
 
         this.selectedSat = null;
         this.satellitesData = [];
@@ -46,6 +47,7 @@ class LeoGlobe3D {
         this.initEarth();
         this.initAtmosphere();
         this.initStarfield();
+        this.initProvinceBoundaries();
         this.initGroundStations();
         this.initCoordinationContours();
         this.initGsoRingAndVinasat();
@@ -187,6 +189,60 @@ class LeoGlobe3D {
         const z = radius * Math.sin(phi) * Math.sin(theta);
         const y = radius * Math.cos(phi);
         return new THREE.Vector3(x, y, z);
+    }
+
+    initProvinceBoundaries() {
+        this.provinceBoundariesGroup = new THREE.Group();
+        this.scene.add(this.provinceBoundariesGroup);
+
+        fetch("/api/reference/province-boundaries")
+            .then(res => res.json())
+            .then(data => {
+                if (!data || !data.boundaries) return;
+                const boundaries = data.boundaries;
+                const segmentPoints = [];
+
+                // Chiều cao nhô lên 0.4% so với bán kính Trái Đất (tương đương các đường viền Appendix 7)
+                // để nét vẽ luôn sắc nét, không bị khuất vào bề mặt địa hình quả cầu
+                const borderRadius = this.earthRadius * 1.004;
+
+                Object.keys(boundaries).forEach(provName => {
+                    const items = boundaries[provName];
+                    if (!Array.isArray(items)) return;
+
+                    items.forEach(item => {
+                        const paths = item.paths || [];
+                        paths.forEach(ring => {
+                            if (!Array.isArray(ring) || ring.length < 2) return;
+                            for (let i = 0; i < ring.length; i++) {
+                                const pt1 = ring[i];
+                                const pt2 = ring[(i + 1) % ring.length];
+                                // Mỗi điểm là cặp tọa độ [vĩ_độ, kinh_độ]
+                                const v1 = this.latLonToVector3(pt1[0], pt1[1], borderRadius);
+                                const v2 = this.latLonToVector3(pt2[0], pt2[1], borderRadius);
+                                segmentPoints.push(v1, v2);
+                            }
+                        });
+                    });
+                });
+
+                if (segmentPoints.length > 0) {
+                    const geometry = new THREE.BufferGeometry().setFromPoints(segmentPoints);
+                    // Ranh giới tỉnh thành phát sáng màu Cyan Neon công nghệ cao (#22d3ee)
+                    const material = new THREE.LineBasicMaterial({
+                        color: 0x22d3ee, // Bright Neon Cyan
+                        linewidth: 2,
+                        transparent: true,
+                        opacity: 0.95,
+                        depthWrite: false
+                    });
+                    const lineSegments = new THREE.LineSegments(geometry, material);
+                    lineSegments.renderOrder = 6;
+                    this.provinceBoundariesGroup.add(lineSegments);
+                    console.log(`[GIS] Đã nạp và hiển thị ${segmentPoints.length / 2} đoạn ranh giới tỉnh thành Việt Nam thành công.`);
+                }
+            })
+            .catch(err => console.warn("Lỗi nạp ranh giới tỉnh thành Việt Nam:", err));
     }
 
     initGroundStations() {
@@ -546,6 +602,9 @@ class LeoGlobe3D {
         this.groundStationGroup.visible = this.showLabels;
         if (this.coordinationContoursGroup) {
             this.coordinationContoursGroup.visible = this.showContours;
+        }
+        if (this.provinceBoundariesGroup) {
+            this.provinceBoundariesGroup.visible = this.showProvinces;
         }
 
         // Cập nhật vị trí vệ tinh

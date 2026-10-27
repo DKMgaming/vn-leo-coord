@@ -198,6 +198,7 @@ function toggleAllLayers(enable) {
         { id: 'chk-gso', prop: 'showGso' },
         { id: 'chk-slant', prop: 'showSlantRange' },
         { id: 'chk-contours', prop: 'showContours' },
+        { id: 'chk-provinces', prop: 'showProvinces' },
         { id: 'chk-orbits', prop: 'showOrbits' },
         { id: 'chk-footprints', prop: 'showFootprints' },
         { id: 'chk-beams', prop: 'showBeams' },
@@ -216,7 +217,7 @@ function toggleAllLayers(enable) {
 }
 
 function updateLayersActiveCount() {
-    const layerIds = ['chk-gso', 'chk-slant', 'chk-contours', 'chk-orbits', 'chk-footprints', 'chk-beams', 'chk-labels'];
+    const layerIds = ['chk-gso', 'chk-slant', 'chk-contours', 'chk-provinces', 'chk-orbits', 'chk-footprints', 'chk-beams', 'chk-labels'];
     let count = 0;
     layerIds.forEach(id => {
         const el = document.getElementById(id);

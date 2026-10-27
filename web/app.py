@@ -1554,6 +1554,13 @@ def get_reference_audit():
     }
 
 
+@app.get("/api/reference/province-boundaries")
+def get_reference_province_boundaries():
+    """Lấy dữ liệu ranh giới địa giới hành chính và phương án sáp nhập các tỉnh thành Việt Nam."""
+    from leo_coord import reference as ref
+    return ref.load_province_boundaries()
+
+
 # ================= ITU-R HANDBOOK ON SMALL SATELLITES (HDB-65-2023) =================
 
 @app.get("/api/handbook/summary")

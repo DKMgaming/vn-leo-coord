@@ -167,3 +167,38 @@ def audit_reference_tables() -> List[dict]:
             "compliant": bool(exists and valid_yaml and "VERIFIED" in t.get("verification_status", ""))
         })
     return results
+
+
+_PROVINCE_CACHE: Optional[dict] = None
+
+
+def load_province_boundaries() -> dict:
+    """Nạp dữ liệu ranh giới địa giới hành chính và phương án sáp nhập các tỉnh thành Việt Nam."""
+    global _PROVINCE_CACHE
+    if _PROVINCE_CACHE is None:
+        r_dir = reference_dir()
+        b_file = r_dir / "province_boundaries.json"
+        m_file = r_dir / "province_merges.json"
+        boundaries = json.loads(b_file.read_text(encoding="utf-8")) if b_file.exists() else {}
+        merges = json.loads(m_file.read_text(encoding="utf-8")) if m_file.exists() else {}
+
+        centroids: Dict[str, Dict[str, float]] = {}
+        for prov_name, items in boundaries.items():
+            pts = []
+            if isinstance(items, list):
+                for it in items:
+                    for ring in it.get("paths", []):
+                        pts.extend(ring)
+            if pts:
+                avg_lat = sum(p[0] for p in pts) / len(pts)
+                avg_lon = sum(p[1] for p in pts) / len(pts)
+                centroids[prov_name] = {"lat": round(avg_lat, 4), "lon": round(avg_lon, 4)}
+
+        _PROVINCE_CACHE = {
+            "status": "success",
+            "total_provinces": len(boundaries),
+            "centroids": centroids,
+            "merges": merges,
+            "boundaries": boundaries,
+        }
+    return _PROVINCE_CACHE

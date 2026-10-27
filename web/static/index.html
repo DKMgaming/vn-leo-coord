@@ -136,6 +136,11 @@
                                         <span class="layer-color-dot" style="background:#eab308; box-shadow:0 0 8px rgba(234,179,8,0.6);"></span>
                                         <span class="layer-name">Vùng Phối Hợp Gateway (App. 7)</span>
                                     </label>
+                                    <label class="layer-item" for="chk-provinces">
+                                        <input type="checkbox" id="chk-provinces" checked onchange="onLayerChange('showProvinces', this.checked)">
+                                        <span class="layer-color-dot" style="background:#06b6d4; box-shadow:0 0 8px rgba(6,182,212,0.6);"></span>
+                                        <span class="layer-name">Ranh giới Tỉnh & Việt Nam</span>
+                                    </label>
                                     <label class="layer-item" for="chk-orbits">
                                         <input type="checkbox" id="chk-orbits" checked onchange="onLayerChange('showOrbits', this.checked)">
                                         <span class="layer-color-dot" style="background:#06b6d4; box-shadow:0 0 8px rgba(6,182,212,0.6);"></span>
@@ -2650,8 +2655,8 @@
     <!-- Scripts -->
     <script src="/static/js/three.min.js"></script>
     <script src="/static/js/OrbitControls.js"></script>
-    <script src="/static/js/globe3d.js?v=3.8"></script>
-    <script src="/static/js/app.js?v=4.3"></script>
+    <script src="/static/js/globe3d.js?v=4.0"></script>
+    <script src="/static/js/app.js?v=4.5"></script>
     
     <!-- Robust Global Dropdown Controller (Direct inline fallback) -->
     <script>
@@ -2700,6 +2705,8 @@
                 const layers = [
                     { id: 'chk-gso', prop: 'showGso' },
                     { id: 'chk-slant', prop: 'showSlantRange' },
+                    { id: 'chk-contours', prop: 'showContours' },
+                    { id: 'chk-provinces', prop: 'showProvinces' },
                     { id: 'chk-orbits', prop: 'showOrbits' },
                     { id: 'chk-footprints', prop: 'showFootprints' },
                     { id: 'chk-beams', prop: 'showBeams' },
@@ -2720,7 +2727,7 @@
             };
 
             window.updateLayersActiveCount = function() {
-                const layerIds = ['chk-gso', 'chk-slant', 'chk-orbits', 'chk-footprints', 'chk-beams', 'chk-labels'];
+                const layerIds = ['chk-gso', 'chk-slant', 'chk-contours', 'chk-provinces', 'chk-orbits', 'chk-footprints', 'chk-beams', 'chk-labels'];
                 let count = 0;
                 layerIds.forEach(id => {
                     const el = document.getElementById(id);

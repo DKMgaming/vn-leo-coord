@@ -167,3 +167,35 @@ def test_audit_all_tables_pass():
         assert item["items_count"] > 0
         assert item["compliant"] is True
         assert "VERIFIED" in item["verification_status"]
+
+
+def test_province_boundaries_loading():
+    from leo_coord.reference import load_province_boundaries
+    data = load_province_boundaries()
+    assert data["status"] == "success"
+    assert data["total_provinces"] >= 34
+    assert "boundaries" in data
+    assert "merges" in data
+    assert "centroids" in data
+    assert "TP. Hà Nội" in data["boundaries"]
+    assert "TP. Hồ Chí Minh" in data["boundaries"]
+    assert "TP. Đà Nẵng" in data["boundaries"]
+
+    # Kiểm tra cấu trúc paths của một tỉnh
+    hn = data["boundaries"]["TP. Hà Nội"]
+    assert len(hn) >= 1
+    assert "paths" in hn[0]
+    assert len(hn[0]["paths"]) >= 1
+    # Mỗi điểm là cặp tọa độ [vĩ_độ, kinh_độ]
+    first_pt = hn[0]["paths"][0][0]
+    assert len(first_pt) == 2
+    assert 20.0 <= first_pt[0] <= 22.0  # Vĩ độ Hà Nội
+    assert 105.0 <= first_pt[1] <= 107.0  # Kinh độ Hà Nội
+
+
+def test_province_boundaries_api_endpoint():
+    from web.app import get_reference_province_boundaries
+    res = get_reference_province_boundaries()
+    assert res["status"] == "success"
+    assert res["total_provinces"] >= 34
+    assert "TP. Hà Nội" in res["boundaries"]
