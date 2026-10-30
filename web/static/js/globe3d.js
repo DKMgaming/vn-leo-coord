@@ -692,69 +692,81 @@ class LeoGlobe3D {
         if (!points || points.length === 0) return;
 
         const altNum = parseFloat(altKm) || 550;
+        const ptR = isGso ? 190 : this.earthRadius + Math.min(35, Math.max(8, (altNum / 1500) * 20));
 
-        // 1. Quỹ đạo 3D trong không gian (Space Orbit Loop)
-        const spacePts = [];
-        points.forEach(pt => {
-            const ptAlt = pt.alt_km ? parseFloat(pt.alt_km) : altNum;
-            const ptR = isGso ? 190 : this.earthRadius + Math.min(35, Math.max(8, (ptAlt / 1500) * 20));
-            spacePts.push(this.latLonToVector3(pt.lat, pt.lon, ptR));
-        });
+        if (!isGso && points.length >= 2) {
+            // 1. Quỹ đạo 3D trong không gian (Inertial 3D Space Orbit)
+            // Trong hệ tọa độ quán tính, quỹ đạo vệ tinh là một mặt phẳng tròn/elip 3D trơn tru hoàn hảo.
+            // Sử dụng 2 điểm liên tiếp (vị trí hiện tại P0 và bước tiếp theo P1) để xác định vectơ pháp tuyến n của mặt phẳng quỹ đạo
+            const p0 = this.latLonToVector3(points[0].lat, points[0].lon, ptR);
+            const p1 = this.latLonToVector3(points[1].lat, points[1].lon, ptR);
 
-        // Khép kín vòng lặp nếu điểm đầu và cuối không trùng
-        if (spacePts.length > 2) {
-            const first = spacePts[0];
-            const last = spacePts[spacePts.length - 1];
-            if (first.distanceTo(last) > 0.1) {
-                spacePts.push(first.clone());
+            const u = p0.clone().normalize();
+            let n = p0.clone().cross(p1).normalize();
+            // Đảm bảo vectơ pháp tuyến hợp lệ (tránh trường hợp suy biến)
+            if (n.lengthSq() < 0.001) {
+                const incRad = (orbitInfo.inclination_deg || 53.0) * (Math.PI / 180);
+                n = new THREE.Vector3(Math.cos(incRad), Math.sin(incRad), 0).normalize();
             }
-        }
+            const v = n.clone().cross(u).normalize();
 
-        const orbitColor = isGso ? 0xec4899 : 0x00f0ff;
-        const orbitGeo = new THREE.BufferGeometry().setFromPoints(spacePts);
-        const orbitMat = new THREE.LineBasicMaterial({
-            color: orbitColor,
-            transparent: true,
-            opacity: 0.85,
-            linewidth: 2
-        });
-        const orbitLine = new THREE.Line(orbitGeo, orbitMat);
-        this.realSatOrbitGroup.add(orbitLine);
+            // Dựng vòng tròn quỹ đạo 3D phẳng hoàn hảo khép kín 360° qua đúng vị trí vệ tinh
+            const spacePts = [];
+            const nSegments = 128;
+            for (let s = 0; s <= nSegments; s++) {
+                const theta = (s / nSegments) * Math.PI * 2;
+                const pt = u.clone().multiplyScalar(Math.cos(theta))
+                            .add(v.clone().multiplyScalar(Math.sin(theta)))
+                            .multiplyScalar(ptR);
+                spacePts.push(pt);
+            }
 
-        // 2. Mũi tên chỉ hướng bay (Directional Flight Cones) dọc theo quỹ đạo 3D
-        if (!isGso && spacePts.length >= 8) {
-            const stepFraction = [0.12, 0.37, 0.62, 0.87];
-            stepFraction.forEach(frac => {
-                const idx = Math.min(spacePts.length - 2, Math.floor(spacePts.length * frac));
-                const p1 = spacePts[idx];
-                const p2 = spacePts[idx + 1];
-                const dir = p2.clone().sub(p1).normalize();
-                if (dir.lengthSq() > 0.0001) {
-                    const coneGeo = new THREE.ConeGeometry(1.3, 3.5, 8);
-                    const coneMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
-                    const cone = new THREE.Mesh(coneGeo, coneMat);
-                    cone.position.copy(p1);
-                    cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-                    this.realSatOrbitGroup.add(cone);
-                }
+            const orbitGeo = new THREE.BufferGeometry().setFromPoints(spacePts);
+            const orbitMat = new THREE.LineBasicMaterial({
+                color: 0x00f0ff,
+                transparent: true,
+                opacity: 0.85,
+                linewidth: 2
             });
-        }
+            const orbitLine = new THREE.Line(orbitGeo, orbitMat);
+            this.realSatOrbitGroup.add(orbitLine);
 
-        // 3. Hình chiếu mặt đất (Ground Track Projection) trên bề mặt Trái Đất
-        if (!isGso) {
+            // 2. Mũi tên chỉ hướng bay (Directional Flight Cones) tiếp tuyến dọc theo vòng tròn 3D
+            const coneFractions = [0.125, 0.375, 0.625, 0.875];
+            coneFractions.forEach(frac => {
+                const theta = frac * Math.PI * 2;
+                const pos = u.clone().multiplyScalar(Math.cos(theta))
+                             .add(v.clone().multiplyScalar(Math.sin(theta)))
+                             .multiplyScalar(ptR);
+                const tangentDir = u.clone().multiplyScalar(-Math.sin(theta))
+                                    .add(v.clone().multiplyScalar(Math.cos(theta)))
+                                    .normalize();
+                const coneGeo = new THREE.ConeGeometry(1.4, 3.8, 8);
+                const coneMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+                const cone = new THREE.Mesh(coneGeo, coneMat);
+                cone.position.copy(pos);
+                cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tangentDir);
+                this.realSatOrbitGroup.add(cone);
+            });
+
+            // 3. Đường vệt quét mặt đất (Ground Track) trên bề mặt Trái Đất (Vàng Neon nét đứt)
+            // Vệt quét mặt đất là hình chiếu của vệ tinh theo thời gian khi Trái Đất tự quay bên dưới.
+            // QUAN TRỌNG: Tuyệt đối không khép kín nối điểm cuối về điểm đầu (vì sau 1 chu kỳ, Trái Đất tự quay làm điểm cuối lệch ~25°-27° về phía Tây).
             const segments = [];
             let curSeg = [];
+            const surfaceR = this.earthRadius * 1.0025;
+
             for (let i = 0; i < points.length; i++) {
                 const pt = points[i];
                 if (curSeg.length > 0) {
                     const prevPt = points[i - 1];
-                    // Khi kinh độ nhảy qua ranh giới 180° / -180° (kinh tuyến đổi ngày), tách đoạn để tránh kẻ xuyên tâm địa cầu
+                    // Khi kinh độ nhảy qua kinh tuyến đổi ngày 180° / -180°, ngắt đoạn để không kẻ xuyên qua tâm địa cầu
                     if (Math.abs(pt.lon - prevPt.lon) > 180) {
                         segments.push(curSeg);
                         curSeg = [];
                     }
                 }
-                curSeg.push(this.latLonToVector3(pt.lat, pt.lon, this.earthRadius * 1.002));
+                curSeg.push(this.latLonToVector3(pt.lat, pt.lon, surfaceR));
             }
             if (curSeg.length > 0) segments.push(curSeg);
 
@@ -766,7 +778,7 @@ class LeoGlobe3D {
                     dashSize: 2.2,
                     gapSize: 1.2,
                     transparent: true,
-                    opacity: 0.8
+                    opacity: 0.85
                 });
                 const line = new THREE.Line(segGeo, segMat);
                 line.computeLineDistances();
