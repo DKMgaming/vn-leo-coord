@@ -156,6 +156,188 @@ def read_mdb_table_to_dataframe(file_path: Path | str, table_name: str) -> Any:
     return pd.read_csv(io.BytesIO(res.stdout))
 
 
+def parse_itu_srs_records(
+    notice_rows: List[Dict[str, Any]],
+    geo_rows: Optional[List[Dict[str, Any]]] = None,
+    non_geo_rows: Optional[List[Dict[str, Any]]] = None,
+    orbit_rows: Optional[List[Dict[str, Any]]] = None,
+    ssn_rows: Optional[List[Dict[str, Any]]] = None,
+    grp_rows: Optional[List[Dict[str, Any]]] = None,
+) -> List[BRNoticeRecord]:
+    """
+    Bóc tách CSDL chuẩn ITU Space Network System (SpaceCap SRS / BR IFIC):
+    Liên kết các bảng quan hệ notice, geo, non_geo, orbit, pub_ssn, grp thành các thực thể BRNoticeRecord.
+    """
+    geo_map: Dict[int, Dict[str, Any]] = {}
+    if geo_rows:
+        for r in geo_rows:
+            try:
+                nid = int(r.get("ntc_id", 0))
+                if nid and nid not in geo_map:
+                    geo_map[nid] = {
+                        "sat_name": str(r.get("sat_name") or "").strip(),
+                        "long_nom": float(r["long_nom"]) if r.get("long_nom") is not None and str(r["long_nom"]).strip() != "" else None,
+                    }
+            except Exception:
+                continue
+
+    non_geo_map: Dict[int, Dict[str, Any]] = {}
+    if non_geo_rows:
+        for r in non_geo_rows:
+            try:
+                nid = int(r.get("ntc_id", 0))
+                if nid and nid not in non_geo_map:
+                    non_geo_map[nid] = {
+                        "sat_name": str(r.get("sat_name") or "").strip(),
+                        "nbr_plane": int(float(r["nbr_plane"])) if r.get("nbr_plane") is not None and str(r["nbr_plane"]).strip() != "" else 1,
+                    }
+            except Exception:
+                continue
+
+    orbit_map: Dict[int, Dict[str, Any]] = {}
+    if orbit_rows:
+        for r in orbit_rows:
+            try:
+                nid = int(r.get("ntc_id", 0))
+                if nid and nid not in orbit_map:
+                    orbit_map[nid] = {
+                        "alt_km": float(r["apog"]) if r.get("apog") is not None and str(r["apog"]).strip() != "" else 600.0,
+                        "incl_deg": float(r["inclin_ang"]) if r.get("inclin_ang") is not None and str(r["inclin_ang"]).strip() != "" else 50.0,
+                        "sats_per_plane": int(float(r["nbr_sat_pl"])) if r.get("nbr_sat_pl") is not None and str(r["nbr_sat_pl"]).strip() != "" else 1,
+                    }
+            except Exception:
+                continue
+
+    ssn_map: Dict[int, str] = {}
+    if ssn_rows:
+        for r in ssn_rows:
+            try:
+                nid = int(r.get("ntc_id", 0))
+                ref = str(r.get("ssn_ref") or "").strip()
+                no = str(r.get("ssn_no") or "").strip()
+                if nid and nid not in ssn_map and ref:
+                    ssn_map[nid] = f"{ref}/{no}" if no else ref
+            except Exception:
+                continue
+
+    freq_map: Dict[int, Tuple[float, float, str]] = {}
+    if grp_rows:
+        for r in grp_rows:
+            try:
+                nid = int(r.get("ntc_id", 0))
+                f_min_raw = r.get("freq_min")
+                f_max_raw = r.get("freq_max")
+                if nid and f_min_raw is not None and str(f_min_raw).strip() != "":
+                    f_min = float(f_min_raw) / 1000.0
+                    f_max = (float(f_max_raw) if f_max_raw is not None and str(f_max_raw).strip() != "" else float(f_min_raw)) / 1000.0
+                    if nid not in freq_map:
+                        freq_map[nid] = (f_min, f_max, "")
+                    else:
+                        cur_min, cur_max, _ = freq_map[nid]
+                        freq_map[nid] = (min(cur_min, f_min), max(cur_max, f_max), "")
+            except Exception:
+                continue
+
+    notices: List[BRNoticeRecord] = []
+    for r in notice_rows:
+        try:
+            nid = int(r.get("ntc_id", 1))
+            adm = str(r.get("adm") or "ITU").strip()
+            org = str(r.get("ntwk_org") or r.get("operator") or adm).strip()
+            ntc_type = str(r.get("ntc_type") or "G").strip().upper()
+            act_code = str(r.get("act_code") or "A").strip().upper()
+            wic_no = int(float(r.get("wic_no") or r.get("br_ific_no") or 2691))
+            d_adm_val = r.get("d_adm") or r.get("d_wic") or r.get("d_rcv")
+            d_adm = str(d_adm_val)[:10] if d_adm_val else datetime.date.today().isoformat()
+
+            if nid in non_geo_map:
+                sat_name = non_geo_map[nid]["sat_name"] or f"NGSO-{nid}"
+                is_gso = False
+                orb = orbit_map.get(nid, {})
+                alt_km = orb.get("alt_km", 600.0)
+                incl_deg = orb.get("incl_deg", 50.0)
+                num_planes = non_geo_map[nid].get("nbr_plane", 1) or 1
+                sats_per_plane = orb.get("sats_per_plane", 1) or 1
+                total_sats = max(1, num_planes * sats_per_plane)
+                pos_deg = None
+                filing_type = "NON-GSO FSS/MSS"
+            elif nid in geo_map:
+                sat_name = geo_map[nid]["sat_name"] or f"GSO-{nid}"
+                is_gso = True
+                alt_km = 35786.0
+                incl_deg = 0.0
+                num_planes = 1
+                sats_per_plane = 1
+                total_sats = 1
+                pos_deg = geo_map[nid]["long_nom"]
+                filing_type = "GSO FSS/BSS"
+            else:
+                sat_name = str(r.get("sat_name") or f"SAT-{nid}").strip()
+                is_gso = (ntc_type == "G")
+                alt_km = 35786.0 if is_gso else 600.0
+                incl_deg = 0.0 if is_gso else 50.0
+                num_planes = 1
+                sats_per_plane = 1
+                total_sats = 1
+                pos_deg = None
+                filing_type = "GSO FSS" if is_gso else "NON-GSO FSS"
+
+            ssn = ssn_map.get(nid, str(r.get("special_sec") or f"PART I-S / {wic_no}"))
+            f_min, f_max, _ = freq_map.get(nid, (10.7, 12.75, "Ku-band"))
+
+            if is_gso and pos_deg is not None:
+                delta_vinasat = min(abs(pos_deg - 132.0), abs(pos_deg - 131.8))
+                inside_arc = delta_vinasat <= 6.0
+                vn_covered = (70.0 <= pos_deg <= 150.0)
+            else:
+                delta_vinasat = 1.8
+                inside_arc = True
+                vn_covered = (incl_deg >= 8.0)
+
+            if f_max <= 3.0:
+                band_name = "L/S-band"
+            elif f_max <= 8.0:
+                band_name = "C-band"
+            elif f_max <= 18.0:
+                band_name = "Ku-band"
+            elif f_max <= 31.0:
+                band_name = "Ka-band"
+            elif f_max <= 55.0:
+                band_name = "Q/V-band"
+            else:
+                band_name = "EHF-band"
+
+            notices.append(
+                BRNoticeRecord(
+                    ntc_id=nid,
+                    sat_name=sat_name,
+                    adm=adm,
+                    operator=org,
+                    br_ific_no=wic_no,
+                    special_sec=ssn,
+                    ntc_type=ntc_type,
+                    act_code=act_code,
+                    d_adm=d_adm,
+                    filing_type=filing_type,
+                    alt_km=alt_km,
+                    incl_deg=incl_deg,
+                    total_satellites=total_sats,
+                    num_planes=num_planes,
+                    sats_per_plane=sats_per_plane,
+                    freq_min_ghz=round(f_min, 3),
+                    freq_max_ghz=round(f_max, 3),
+                    band_name=band_name,
+                    vietnam_covered=vn_covered,
+                    closest_approach_to_vinasat_deg=round(delta_vinasat, 2),
+                    inside_coordination_arc_6deg=inside_arc,
+                )
+            )
+        except Exception:
+            continue
+
+    return notices
+
+
 class BRDatabaseConnector:
     """Bộ kết nối CSDL ITU BR IFIC (hỗ trợ SQLite và Microsoft Access .mdb)."""
 
@@ -249,10 +431,21 @@ class BRDatabaseConnector:
                     if t in tables:
                         cur.execute(f"SELECT COUNT(*) FROM [{t}]")
                         record_count = cur.fetchone()[0]
-                        cur.execute(f"SELECT MAX(br_ific_no) FROM [{t}]")
-                        val = cur.fetchone()[0]
-                        if val:
-                            edition_guess = int(val)
+                        try:
+                            cur.execute(f"SELECT TOP 1 * FROM [{t}]")
+                            t_cols = [c[0].lower() for c in cur.description]
+                            if "br_ific_no" in t_cols:
+                                cur.execute(f"SELECT MAX(br_ific_no) FROM [{t}]")
+                                val = cur.fetchone()[0]
+                                if val:
+                                    edition_guess = int(val)
+                            elif "wic_no" in t_cols:
+                                cur.execute(f"SELECT MAX(wic_no) FROM [{t}]")
+                                val = cur.fetchone()[0]
+                                if val:
+                                    edition_guess = int(val)
+                        except Exception:
+                            pass
                         break
                 conn.close()
                 return {
@@ -373,32 +566,81 @@ class BRDatabaseConnector:
         elif self.is_mdb:
             rows_data: List[Dict[str, Any]] = []
             used_odbc = False
+            # 1. Thử truy vấn qua pyodbc (Windows có cài Access Database Engine)
             try:
                 import pyodbc
                 conn_str = f"DRIVER={{Microsoft Access Driver (*.mdb, *.accdb)}};DBQ={self.raw_path};"
                 conn = pyodbc.connect(conn_str, autocommit=True)
                 cur = conn.cursor()
-                table_name = "notices"
-                for candidate in ["notices", "notice", "tbl_notices", "srs_notices"]:
-                    try:
-                        cur.execute(f"SELECT COUNT(*) FROM [{candidate}]")
-                        table_name = candidate
-                        break
-                    except Exception:
-                        continue
+                all_tables = [row.table_name for row in cur.tables(tableType="TABLE") if not row.table_name.startswith("MSys")]
 
-                cur.execute(f"SELECT * FROM [{table_name}]")
-                columns = [c[0].lower() for c in cur.description]
-                for row in cur.fetchall():
-                    rows_data.append(dict(zip(columns, row)))
+                if "notice" in all_tables and ("geo" in all_tables or "non_geo" in all_tables):
+                    # Schema CSDL ITU SpaceCap / BR IFIC chính thống
+                    cur.execute("SELECT * FROM [notice]")
+                    cols = [c[0].lower() for c in cur.description]
+                    notice_rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+
+                    geo_rows = []
+                    if "geo" in all_tables:
+                        cur.execute("SELECT * FROM [geo]")
+                        cols = [c[0].lower() for c in cur.description]
+                        geo_rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+
+                    non_geo_rows = []
+                    if "non_geo" in all_tables:
+                        cur.execute("SELECT * FROM [non_geo]")
+                        cols = [c[0].lower() for c in cur.description]
+                        non_geo_rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+
+                    orbit_rows = []
+                    if "orbit" in all_tables:
+                        cur.execute("SELECT * FROM [orbit]")
+                        cols = [c[0].lower() for c in cur.description]
+                        orbit_rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+
+                    ssn_rows = []
+                    if "pub_ssn" in all_tables:
+                        cur.execute("SELECT * FROM [pub_ssn]")
+                        cols = [c[0].lower() for c in cur.description]
+                        ssn_rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+
+                    grp_rows = []
+                    if "grp" in all_tables:
+                        cur.execute("SELECT ntc_id, freq_min, freq_max FROM [grp] WHERE freq_min IS NOT NULL")
+                        cols = [c[0].lower() for c in cur.description]
+                        grp_rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+
+                    conn.close()
+                    return parse_itu_srs_records(notice_rows, geo_rows, non_geo_rows, orbit_rows, ssn_rows, grp_rows)
+
+                # Schema bảng phẳng (notices, tbl_notices...)
+                target_tbl = "notices"
+                for cand in ["notices", "tbl_notices", "srs_notices", "notice"]:
+                    if cand in all_tables:
+                        target_tbl = cand
+                        break
+
+                cur.execute(f"SELECT * FROM [{target_tbl}]")
+                cols = [c[0].lower() for c in cur.description]
+                rows_data = [dict(zip(cols, r)) for r in cur.fetchall()]
                 conn.close()
                 used_odbc = True
             except Exception:
                 used_odbc = False
 
+            # 2. Fallback sang mdbtools (Linux / Docker)
             if not used_odbc and is_mdbtools_available():
                 try:
                     tables = list_mdb_tables_via_mdbtools(self.raw_path)
+                    if "notice" in tables and ("geo" in tables or "non_geo" in tables):
+                        notice_rows = export_mdb_table_via_mdbtools(self.raw_path, "notice")
+                        geo_rows = export_mdb_table_via_mdbtools(self.raw_path, "geo") if "geo" in tables else []
+                        non_geo_rows = export_mdb_table_via_mdbtools(self.raw_path, "non_geo") if "non_geo" in tables else []
+                        orbit_rows = export_mdb_table_via_mdbtools(self.raw_path, "orbit") if "orbit" in tables else []
+                        ssn_rows = export_mdb_table_via_mdbtools(self.raw_path, "pub_ssn") if "pub_ssn" in tables else []
+                        grp_rows = export_mdb_table_via_mdbtools(self.raw_path, "grp") if "grp" in tables else []
+                        return parse_itu_srs_records(notice_rows, geo_rows, non_geo_rows, orbit_rows, ssn_rows, grp_rows)
+
                     target_table = None
                     for candidate in ["notices", "notice", "tbl_notices", "srs_notices"]:
                         if candidate in tables:
@@ -409,46 +651,6 @@ class BRDatabaseConnector:
 
                     if target_table:
                         rows_data = export_mdb_table_via_mdbtools(self.raw_path, target_table)
-
-                        # Nếu là file ITU SRS gốc (gồm nhiều bảng notice, non_geo, grp), liên kết theo ntc_id
-                        non_geo_map: Dict[str, Dict[str, Any]] = {}
-                        if "non_geo" in tables:
-                            try:
-                                for ng in export_mdb_table_via_mdbtools(self.raw_path, "non_geo"):
-                                    ntc = str(ng.get("ntc_id", ""))
-                                    if ntc and ntc not in non_geo_map:
-                                        non_geo_map[ntc] = ng
-                            except Exception:
-                                pass
-
-                        grp_map: Dict[str, Dict[str, Any]] = {}
-                        if "grp" in tables:
-                            try:
-                                for g in export_mdb_table_via_mdbtools(self.raw_path, "grp"):
-                                    ntc = str(g.get("ntc_id", ""))
-                                    if ntc and ntc not in grp_map:
-                                        grp_map[ntc] = g
-                            except Exception:
-                                pass
-
-                        for r in rows_data:
-                            ntc = str(r.get("ntc_id", ""))
-                            if ntc in non_geo_map:
-                                ng = non_geo_map[ntc]
-                                if "alt_km" not in r and "alt" in ng:
-                                    r["alt_km"] = ng.get("alt")
-                                if "incl_deg" not in r and "incl" in ng:
-                                    r["incl_deg"] = ng.get("incl")
-                                if "total_satellites" not in r and "nb_sat" in ng:
-                                    r["total_satellites"] = ng.get("nb_sat")
-                                if "num_planes" not in r and "nb_plane" in ng:
-                                    r["num_planes"] = ng.get("nb_plane")
-                            if ntc in grp_map:
-                                g = grp_map[ntc]
-                                if "freq_min_ghz" not in r and "freq_min" in g:
-                                    r["freq_min_ghz"] = g.get("freq_min")
-                                if "freq_max_ghz" not in r and "freq_max" in g:
-                                    r["freq_max_ghz"] = g.get("freq_max")
                 except Exception:
                     pass
 
@@ -470,7 +672,7 @@ class BRDatabaseConnector:
                     sat_name=str(row_dict.get("sat_name") or row_dict.get("ntwk_org") or "NON-GSO-SAT").strip(),
                     adm=str(row_dict.get("adm") or "USA").strip(),
                     operator=str(row_dict.get("operator") or row_dict.get("org") or "Space Operator").strip(),
-                    br_ific_no=safe_int(row_dict.get("br_ific_no"), 3015),
+                    br_ific_no=safe_int(row_dict.get("br_ific_no") or row_dict.get("wic_no"), 3015),
                     special_sec=str(row_dict.get("special_sec") or row_dict.get("sec_no") or "CR/C/1000").strip(),
                     ntc_type=str(row_dict.get("ntc_type") or "CR/C").strip(),
                     act_code=str(row_dict.get("act_code") or "A").strip(),
