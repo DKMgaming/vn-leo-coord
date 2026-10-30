@@ -8,9 +8,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # Thư mục làm việc
 WORKDIR /app
 
-# Cài đặt curl để phục vụ kiểm tra sức khỏe hệ thống (HEALTHCHECK)
+# Cài đặt curl (cho HEALTHCHECK) và mdbtools (để đọc file Microsoft Access .mdb trên Linux)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    mdbtools \
     && rm -rf /var/lib/apt/lists/*
 
 # Sao chép các tệp cấu hình và mã nguồn
@@ -24,7 +25,7 @@ COPY run_web.py .
 
 # Cài đặt dependencies và thư viện phân tích tài liệu
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir . python-docx openpyxl
+    pip install --no-cache-dir . python-docx openpyxl pandas
 
 # Mở cổng dịch vụ
 EXPOSE 8098

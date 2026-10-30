@@ -13,9 +13,13 @@ Cung cấp:
 
 from __future__ import annotations
 
+import csv
 import datetime
+import io
 import os
+import shutil
 import sqlite3
+import subprocess
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -105,6 +109,53 @@ class BRNoticeRecord:
         )
 
 
+# ================= TIỆN ÍCH HỖ TRỢ MDBTOOLS & PANDAS (LINUX/DOCKER) =================
+
+def is_mdbtools_available() -> bool:
+    """Kiểm tra xem mdbtools (mdb-tables, mdb-export) có sẵn trong hệ thống (Linux/Docker) không."""
+    return shutil.which("mdb-tables") is not None and shutil.which("mdb-export") is not None
+
+
+def list_mdb_tables_via_mdbtools(file_path: Path | str) -> List[str]:
+    """Sử dụng mdb-tables để liệt kê các bảng trong file Access .mdb."""
+    res = subprocess.run(
+        ["mdb-tables", "-1", str(file_path)],
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=15,
+    )
+    return [t.strip() for t in res.stdout.splitlines() if t.strip() and not t.strip().startswith("MSys")]
+
+
+def export_mdb_table_via_mdbtools(file_path: Path | str, table_name: str) -> List[Dict[str, Any]]:
+    """Xuất một bảng trong tệp .mdb sang danh sách dict qua mdb-export (tương thích cả khi không có pandas)."""
+    res = subprocess.run(
+        ["mdb-export", str(file_path), table_name],
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=60,
+    )
+    reader = csv.DictReader(io.StringIO(res.stdout))
+    return [{str(k).strip().lower(): (v.strip() if isinstance(v, str) else v) for k, v in row.items()} for row in reader]
+
+
+def read_mdb_table_to_dataframe(file_path: Path | str, table_name: str) -> Any:
+    """Trích xuất bảng .mdb trực tiếp thành pandas DataFrame kết hợp mdbtools (nếu cài pandas)."""
+    try:
+        import pandas as pd
+    except ImportError:
+        raise ImportError("Cần cài đặt pandas ('pip install pandas') để xuất DataFrame.")
+    res = subprocess.run(
+        ["mdb-export", str(file_path), table_name],
+        capture_output=True,
+        check=True,
+        timeout=60,
+    )
+    return pd.read_csv(io.BytesIO(res.stdout))
+
+
 class BRDatabaseConnector:
     """Bộ kết nối CSDL ITU BR IFIC (hỗ trợ SQLite và Microsoft Access .mdb)."""
 
@@ -182,7 +233,8 @@ class BRDatabaseConnector:
                     "message": f"Không thể kết nối CSDL SQLite: {e}",
                 }
         elif self.is_mdb:
-            # Kết nối qua pyodbc trên Windows
+            # 1. Thử kết nối qua pyodbc (Windows có cài Microsoft Access Database Engine)
+            odbc_err_msg = ""
             try:
                 import pyodbc
                 conn_str = f"DRIVER={{Microsoft Access Driver (*.mdb, *.accdb)}};DBQ={self.raw_path};"
@@ -205,23 +257,63 @@ class BRDatabaseConnector:
                 conn.close()
                 return {
                     "connected": True,
-                    "db_type": "Microsoft Access (.mdb)",
+                    "db_type": "Microsoft Access (.mdb qua pyodbc)",
                     "path": self.raw_path,
                     "table_count": len(tables),
                     "tables": tables,
                     "record_count": record_count,
                     "latest_ific_edition": edition_guess or 3015,
-                    "message": f"Kết nối CSDL Microsoft Access (.mdb) thành công! Tìm thấy {len(tables)} bảng và {record_count} bản ghi.",
+                    "message": f"Kết nối CSDL Microsoft Access (.mdb) qua pyodbc thành công! Tìm thấy {len(tables)} bảng và {record_count} bản ghi.",
                 }
             except Exception as e:
-                # Fallback nếu máy không có Access Driver
-                return {
-                    "connected": False,
-                    "db_type": "Microsoft Access (.mdb)",
-                    "path": self.raw_path,
-                    "error": str(e),
-                    "message": f"Lỗi kết nối Microsoft Access (.mdb): {e}. Gợi ý: Hãy cài đặt Microsoft Access Database Engine hoặc chuyển đổi tệp sang định dạng SQLite (.sqlite).",
-                }
+                odbc_err_msg = str(e)
+
+            # 2. Fallback sang mdbtools (tiêu chuẩn cho môi trường Linux / Docker)
+            if is_mdbtools_available():
+                try:
+                    tables = list_mdb_tables_via_mdbtools(self.raw_path)
+                    for t in ["notices", "notice", "tbl_notices", "srs_notices"]:
+                        if t in tables:
+                            rows = export_mdb_table_via_mdbtools(self.raw_path, t)
+                            record_count = len(rows)
+                            for r in rows:
+                                if r.get("br_ific_no"):
+                                    try:
+                                        edition_guess = max(edition_guess or 0, int(r["br_ific_no"]))
+                                    except Exception:
+                                        pass
+                            break
+                    return {
+                        "connected": True,
+                        "db_type": "Microsoft Access (.mdb qua mdbtools)",
+                        "path": self.raw_path,
+                        "table_count": len(tables),
+                        "tables": tables,
+                        "record_count": record_count,
+                        "latest_ific_edition": edition_guess or 3015,
+                        "message": f"Kết nối CSDL Microsoft Access (.mdb) qua mdbtools thành công! Tìm thấy {len(tables)} bảng và {record_count} bản ghi.",
+                    }
+                except Exception as mdb_err:
+                    return {
+                        "connected": False,
+                        "db_type": "Microsoft Access (.mdb)",
+                        "path": self.raw_path,
+                        "error": str(mdb_err),
+                        "message": f"Lỗi đọc .mdb qua mdbtools: {mdb_err}",
+                    }
+
+            # 3. Không có cả pyodbc lẫn mdbtools
+            return {
+                "connected": False,
+                "db_type": "Microsoft Access (.mdb)",
+                "path": self.raw_path,
+                "error": odbc_err_msg or "No pyodbc or mdbtools available",
+                "message": (
+                    f"Lỗi kết nối Microsoft Access (.mdb): {odbc_err_msg or 'Thiếu thư viện/driver'}. "
+                    "Gợi ý: Trên máy chủ Linux/Docker, hãy cài đặt 'mdbtools' (chạy lệnh 'apt-get update && apt-get install -y mdbtools') "
+                    "hoặc chuyển đổi tệp sang định dạng SQLite (.sqlite)."
+                ),
+            }
         else:
             return {
                 "connected": False,
@@ -279,48 +371,124 @@ class BRDatabaseConnector:
             conn.close()
 
         elif self.is_mdb:
-            import pyodbc
-            conn_str = f"DRIVER={{Microsoft Access Driver (*.mdb, *.accdb)}};DBQ={self.raw_path};"
-            conn = pyodbc.connect(conn_str, autocommit=True)
-            cur = conn.cursor()
-            table_name = "notices"
-            for candidate in ["notices", "notice", "tbl_notices", "srs_notices"]:
-                try:
-                    cur.execute(f"SELECT COUNT(*) FROM [{candidate}]")
-                    table_name = candidate
-                    break
-                except Exception:
-                    continue
+            rows_data: List[Dict[str, Any]] = []
+            used_odbc = False
+            try:
+                import pyodbc
+                conn_str = f"DRIVER={{Microsoft Access Driver (*.mdb, *.accdb)}};DBQ={self.raw_path};"
+                conn = pyodbc.connect(conn_str, autocommit=True)
+                cur = conn.cursor()
+                table_name = "notices"
+                for candidate in ["notices", "notice", "tbl_notices", "srs_notices"]:
+                    try:
+                        cur.execute(f"SELECT COUNT(*) FROM [{candidate}]")
+                        table_name = candidate
+                        break
+                    except Exception:
+                        continue
 
-            cur.execute(f"SELECT * FROM [{table_name}]")
-            columns = [c[0].lower() for c in cur.description]
-            for row in cur.fetchall():
-                row_dict = dict(zip(columns, row))
+                cur.execute(f"SELECT * FROM [{table_name}]")
+                columns = [c[0].lower() for c in cur.description]
+                for row in cur.fetchall():
+                    rows_data.append(dict(zip(columns, row)))
+                conn.close()
+                used_odbc = True
+            except Exception:
+                used_odbc = False
+
+            if not used_odbc and is_mdbtools_available():
+                try:
+                    tables = list_mdb_tables_via_mdbtools(self.raw_path)
+                    target_table = None
+                    for candidate in ["notices", "notice", "tbl_notices", "srs_notices"]:
+                        if candidate in tables:
+                            target_table = candidate
+                            break
+                    if not target_table and tables:
+                        target_table = tables[0]
+
+                    if target_table:
+                        rows_data = export_mdb_table_via_mdbtools(self.raw_path, target_table)
+
+                        # Nếu là file ITU SRS gốc (gồm nhiều bảng notice, non_geo, grp), liên kết theo ntc_id
+                        non_geo_map: Dict[str, Dict[str, Any]] = {}
+                        if "non_geo" in tables:
+                            try:
+                                for ng in export_mdb_table_via_mdbtools(self.raw_path, "non_geo"):
+                                    ntc = str(ng.get("ntc_id", ""))
+                                    if ntc and ntc not in non_geo_map:
+                                        non_geo_map[ntc] = ng
+                            except Exception:
+                                pass
+
+                        grp_map: Dict[str, Dict[str, Any]] = {}
+                        if "grp" in tables:
+                            try:
+                                for g in export_mdb_table_via_mdbtools(self.raw_path, "grp"):
+                                    ntc = str(g.get("ntc_id", ""))
+                                    if ntc and ntc not in grp_map:
+                                        grp_map[ntc] = g
+                            except Exception:
+                                pass
+
+                        for r in rows_data:
+                            ntc = str(r.get("ntc_id", ""))
+                            if ntc in non_geo_map:
+                                ng = non_geo_map[ntc]
+                                if "alt_km" not in r and "alt" in ng:
+                                    r["alt_km"] = ng.get("alt")
+                                if "incl_deg" not in r and "incl" in ng:
+                                    r["incl_deg"] = ng.get("incl")
+                                if "total_satellites" not in r and "nb_sat" in ng:
+                                    r["total_satellites"] = ng.get("nb_sat")
+                                if "num_planes" not in r and "nb_plane" in ng:
+                                    r["num_planes"] = ng.get("nb_plane")
+                            if ntc in grp_map:
+                                g = grp_map[ntc]
+                                if "freq_min_ghz" not in r and "freq_min" in g:
+                                    r["freq_min_ghz"] = g.get("freq_min")
+                                if "freq_max_ghz" not in r and "freq_max" in g:
+                                    r["freq_max_ghz"] = g.get("freq_max")
+                except Exception:
+                    pass
+
+            def safe_float(val: Any, default: float) -> float:
+                try:
+                    return float(val) if val is not None and str(val).strip() != "" else default
+                except (ValueError, TypeError):
+                    return default
+
+            def safe_int(val: Any, default: int) -> int:
+                try:
+                    return int(float(val)) if val is not None and str(val).strip() != "" else default
+                except (ValueError, TypeError):
+                    return default
+
+            for row_dict in rows_data:
                 n = BRNoticeRecord(
-                    ntc_id=int(row_dict.get("ntc_id", 1) or 1),
-                    sat_name=str(row_dict.get("sat_name", "NON-GSO-SAT") or "NON-GSO-SAT"),
-                    adm=str(row_dict.get("adm", "USA") or "USA"),
-                    operator=str(row_dict.get("operator", "Space Operator") or "Space Operator"),
-                    br_ific_no=int(row_dict.get("br_ific_no", 3015) or 3015),
-                    special_sec=str(row_dict.get("special_sec", "CR/C/1000") or "CR/C/1000"),
-                    ntc_type=str(row_dict.get("ntc_type", "CR/C") or "CR/C"),
-                    act_code=str(row_dict.get("act_code", "A") or "A"),
-                    d_adm=str(row_dict.get("d_adm", "") or datetime.date.today().isoformat()),
-                    filing_type=str(row_dict.get("filing_type", "NON-GSO FSS") or "NON-GSO FSS"),
-                    alt_km=float(row_dict.get("alt_km", 550.0) or 550.0),
-                    incl_deg=float(row_dict.get("incl_deg", 53.0) or 53.0),
-                    total_satellites=int(row_dict.get("total_satellites", 120) or 120),
-                    num_planes=int(row_dict.get("num_planes", 6) or 6),
-                    sats_per_plane=int(row_dict.get("sats_per_plane", 20) or 20),
-                    freq_min_ghz=float(row_dict.get("freq_min_ghz", 10.7) or 10.7),
-                    freq_max_ghz=float(row_dict.get("freq_max_ghz", 12.75) or 12.75),
-                    band_name=str(row_dict.get("band_name", "Ku-band Downlink") or "Ku-band Downlink"),
-                    vietnam_covered=bool(int(row_dict.get("vietnam_covered", 1) or 0)),
-                    closest_approach_to_vinasat_deg=float(row_dict.get("closest_approach_to_vinasat_deg", 1.8) or 1.8),
-                    inside_coordination_arc_6deg=bool(int(row_dict.get("inside_coordination_arc_6deg", 1) or 0)),
+                    ntc_id=safe_int(row_dict.get("ntc_id"), 1),
+                    sat_name=str(row_dict.get("sat_name") or row_dict.get("ntwk_org") or "NON-GSO-SAT").strip(),
+                    adm=str(row_dict.get("adm") or "USA").strip(),
+                    operator=str(row_dict.get("operator") or row_dict.get("org") or "Space Operator").strip(),
+                    br_ific_no=safe_int(row_dict.get("br_ific_no"), 3015),
+                    special_sec=str(row_dict.get("special_sec") or row_dict.get("sec_no") or "CR/C/1000").strip(),
+                    ntc_type=str(row_dict.get("ntc_type") or "CR/C").strip(),
+                    act_code=str(row_dict.get("act_code") or "A").strip(),
+                    d_adm=str(row_dict.get("d_adm") or datetime.date.today().isoformat()).strip(),
+                    filing_type=str(row_dict.get("filing_type") or "NON-GSO FSS").strip(),
+                    alt_km=safe_float(row_dict.get("alt_km"), 550.0),
+                    incl_deg=safe_float(row_dict.get("incl_deg"), 53.0),
+                    total_satellites=safe_int(row_dict.get("total_satellites"), 120),
+                    num_planes=safe_int(row_dict.get("num_planes"), 6),
+                    sats_per_plane=safe_int(row_dict.get("sats_per_plane"), 20),
+                    freq_min_ghz=safe_float(row_dict.get("freq_min_ghz"), 10.7),
+                    freq_max_ghz=safe_float(row_dict.get("freq_max_ghz"), 12.75),
+                    band_name=str(row_dict.get("band_name") or "Ku-band Downlink").strip(),
+                    vietnam_covered=bool(safe_int(row_dict.get("vietnam_covered"), 1)),
+                    closest_approach_to_vinasat_deg=safe_float(row_dict.get("closest_approach_to_vinasat_deg"), 1.8),
+                    inside_coordination_arc_6deg=bool(safe_int(row_dict.get("inside_coordination_arc_6deg"), 1)),
                 )
                 notices.append(n)
-            conn.close()
 
         return notices
 
