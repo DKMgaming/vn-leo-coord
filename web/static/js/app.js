@@ -2569,6 +2569,14 @@ async function handleSpaceCapUpload(event) {
         if (typeof loadSrsStatusUI === "function") {
             await loadSrsStatusUI();
         }
+        if (typeof loadBrIficScanUI === "function") {
+            await loadBrIficScanUI();
+        }
+
+        if (data.is_database && data.database_path) {
+            const srsInput = document.getElementById("input-srs-db-path");
+            if (srsInput) srsInput.value = data.database_path;
+        }
 
         if (filingBadge && f) {
             if (data.is_database) {
@@ -3189,17 +3197,24 @@ async function loadSrsStatusUI() {
         const res = await fetch("/api/srs/status");
         if (!res.ok) return;
         const data = await res.json();
+        const info = data.connection_info || data;
+        const isConnected = data.is_connected !== undefined ? data.is_connected : !!info.is_connected;
+        const dbType = data.db_type || info.db_type || "MDB";
+        const noticesCount = data.notices_count !== undefined ? data.notices_count : (info.notices_count || 0);
+        const tableCount = data.table_count !== undefined ? data.table_count : (info.table_count || 0);
+        const activeDatabase = data.active_database || info.active_database || "";
+        const availableDbs = data.available_databases || info.available_databases || [];
 
         // 1. Cập nhật Status Pill
         const pill = document.getElementById("srs-live-status-pill");
         if (pill) {
-            if (data.is_connected) {
+            if (isConnected) {
                 pill.className = "badge-tag";
                 pill.style.background = "rgba(16, 185, 129, 0.2)";
                 pill.style.color = "#10b981";
                 pill.style.border = "1px solid rgba(16, 185, 129, 0.4)";
-                pill.textContent = `🟢 ĐÃ KẾT NỐI (${data.db_type})`;
-            } else if (data.status === "READY_TO_CONNECT") {
+                pill.textContent = `🟢 ĐÃ KẾT NỐI (${dbType} / ${noticesCount} hồ sơ)`;
+            } else if (data.status === "READY_TO_CONNECT" || info.status === "READY_TO_CONNECT") {
                 pill.className = "badge-tag";
                 pill.style.background = "rgba(16, 185, 129, 0.2)";
                 pill.style.color = "#10b981";
@@ -3217,9 +3232,9 @@ async function loadSrsStatusUI() {
         // 2. Cập nhật dòng mô tả kết nối
         const desc = document.getElementById("srs-active-conn-desc");
         if (desc) {
-            if (data.is_connected && data.active_database) {
-                const basename = data.active_database.replace(/^.*[\\\/]/, '');
-                desc.innerHTML = `Đang kết nối: <strong>${escapeHtml(basename)}</strong> (${data.db_type}) — <strong>${data.notices_count || 0}</strong> hồ sơ | <strong>${data.table_count || 0}</strong> bảng`;
+            if (isConnected && activeDatabase) {
+                const basename = activeDatabase.replace(/^.*[\\\/]/, '');
+                desc.innerHTML = `Đang kết nối: <strong>${escapeHtml(basename)}</strong> (${dbType}) — <strong>${noticesCount}</strong> hồ sơ | <strong>${tableCount}</strong> bảng`;
                 desc.style.color = "#34d399";
             } else {
                 desc.innerHTML = `Sẵn sàng nạp CSDL BR IFIC: Hỗ trợ đĩa DVD SRS.mdb của ITU hoặc tệp CSDL nội bộ (.sqlite, .mdb).`;
@@ -3227,15 +3242,44 @@ async function loadSrsStatusUI() {
             }
         }
 
-        // 3. Cập nhật danh sách database vào dropdown Diff Engine
-        if (data.available_databases && data.available_databases.length > 0) {
+        // 3. Tự động điền đường dẫn CSDL đang kết nối nếu ô nhập còn trống
+        const pathInput = document.getElementById("input-srs-db-path");
+        if (pathInput && isConnected && activeDatabase && !pathInput.value) {
+            pathInput.value = activeDatabase;
+        }
+
+        // 4. Render danh sách chip CSDL nhanh (Bao gồm cả file tải lên)
+        const chipsContainer = document.getElementById("srs-quick-chips");
+        if (chipsContainer && availableDbs.length > 0) {
+            chipsContainer.innerHTML = "";
+            availableDbs.forEach(db => {
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "btn-chip";
+                const isCurrent = activeDatabase && (activeDatabase === db.path || activeDatabase.endsWith(db.filename));
+                if (db.is_uploaded) {
+                    btn.style.cssText = `font-size:0.72rem; padding:3px 8px; border-radius:4px; background:${isCurrent ? 'rgba(234, 179, 8, 0.3)' : 'rgba(234, 179, 8, 0.15)'}; color:#facc15; border:1px solid rgba(234, 179, 8, 0.4); font-weight:${isCurrent ? 'bold' : 'normal'};`;
+                } else if (db.type.includes("MDB")) {
+                    btn.style.cssText = `font-size:0.72rem; padding:3px 8px; border-radius:4px; background:${isCurrent ? 'rgba(168, 85, 247, 0.3)' : 'rgba(168, 85, 247, 0.15)'}; color:#c084fc; border:1px solid rgba(168, 85, 247, 0.3); font-weight:${isCurrent ? 'bold' : 'normal'};`;
+                } else {
+                    btn.style.cssText = `font-size:0.72rem; padding:3px 8px; border-radius:4px; background:${isCurrent ? 'rgba(56, 189, 248, 0.3)' : 'rgba(56, 189, 248, 0.15)'}; color:#38bdf8; border:1px solid rgba(56, 189, 248, 0.3); font-weight:${isCurrent ? 'bold' : 'normal'};`;
+                }
+                btn.textContent = `${isCurrent ? '✓ ' : ''}${db.name}`;
+                btn.title = `Chọn và kết nối: ${db.path} (${db.size_kb} KB)`;
+                btn.onclick = () => quickSelectSrsDbPath(db.path);
+                chipsContainer.appendChild(btn);
+            });
+        }
+
+        // 5. Cập nhật danh sách database vào dropdown Diff Engine
+        if (availableDbs && availableDbs.length > 0) {
             const selBase = document.getElementById("select-diff-base");
             const selTarget = document.getElementById("select-diff-target");
             [selBase, selTarget].forEach((sel, idx) => {
                 if (!sel) return;
                 const prev = sel.value;
                 sel.innerHTML = "";
-                data.available_databases.forEach(db => {
+                availableDbs.forEach(db => {
                     const opt = document.createElement("option");
                     opt.value = db.path;
                     opt.textContent = `${db.name} (${db.type.toUpperCase()}, ${db.size_kb.toFixed(1)} KB)`;
@@ -3246,12 +3290,12 @@ async function loadSrsStatusUI() {
                 } else if (sel.options.length > 1 && idx === 0) {
                     sel.selectedIndex = 0; // kỳ trước
                 } else if (sel.options.length > 1 && idx === 1) {
-                    sel.selectedIndex = 1; // kỳ sau
+                    sel.selectedIndex = Math.min(1, sel.options.length - 1); // kỳ sau
                 }
             });
         }
 
-        // 4. Tải đồng hồ 3 chặng RR 9.51
+        // 6. Tải đồng hồ 3 chặng RR 9.51
         if (typeof loadRR951PhasesUI === "function") {
             loadRR951PhasesUI("2026-03-01");
         }
@@ -3285,6 +3329,9 @@ async function connectSrsDatabaseUI() {
         if (typeof loadMultiAgentFilingsUI === "function") {
             await loadMultiAgentFilingsUI();
         }
+        if (typeof loadBrIficScanUI === "function") {
+            await loadBrIficScanUI();
+        }
     } catch (e) {
         alert(`❌ Không thể kết nối CSDL BR IFIC:\n${e.message}`);
     }
@@ -3299,6 +3346,15 @@ function quickSelectSrsDb(filename) {
     connectSrsDatabaseUI();
 }
 window.quickSelectSrsDb = quickSelectSrsDb;
+
+function quickSelectSrsDbPath(fullPath) {
+    const input = document.getElementById("input-srs-db-path");
+    if (input) {
+        input.value = fullPath;
+    }
+    connectSrsDatabaseUI();
+}
+window.quickSelectSrsDbPath = quickSelectSrsDbPath;
 
 function downloadSampleMdb() {
     window.location.href = "/api/srs/download-sample-mdb";

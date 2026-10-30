@@ -641,8 +641,9 @@
                                             <div style="display: flex; gap: 6px; margin-bottom: 8px;">
                                                 <input type="text" id="input-srs-db-path" placeholder="Ví dụ: data/reference/srs_br_ific_3015.sqlite hoặc E:\ITU\SRS.mdb" style="flex: 1; padding: 5px 8px; font-size: 0.78rem; background: rgba(0,0,0,0.4); border: 1px solid #475569; color: #f1f5f9; border-radius: 4px;">
                                                 <button type="button" class="btn-text-action" onclick="connectSrsDatabaseUI()" style="padding: 5px 10px; font-size: 0.78rem; background: rgba(56, 189, 248, 0.25); color: #38bdf8;">Kết Nối</button>
+                                                <button type="button" class="btn-text-action" onclick="document.getElementById('file-upload-spacecap').click()" style="padding: 5px 10px; font-size: 0.78rem; background: rgba(168, 85, 247, 0.25); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4);" title="Tải tệp .MDB hoặc .sqlite lên hệ thống và tự động kết nối">📤 Tải Lên &amp; Kết Nối</button>
                                             </div>
-                                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                            <div id="srs-quick-chips" style="display: flex; gap: 6px; flex-wrap: wrap;">
                                                 <button type="button" class="btn-chip" onclick="quickSelectSrsDb('srs_br_ific_3015.sqlite')" style="font-size: 0.72rem; padding: 3px 8px; border-radius: 4px; background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3);">📁 Chọn CSDL Số 3015 (SQLite)</button>
                                                 <button type="button" class="btn-chip" onclick="quickSelectSrsDb('sample_srs_ific3015.mdb')" style="font-size: 0.72rem; padding: 3px 8px; border-radius: 4px; background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3);">💾 Chọn CSDL Số 3015 (.MDB)</button>
                                             </div>
@@ -2655,8 +2656,8 @@
     <!-- Scripts -->
     <script src="/static/js/three.min.js"></script>
     <script src="/static/js/OrbitControls.js"></script>
-    <script src="/static/js/globe3d.js?v=5.2"></script>
-    <script src="/static/js/app.js?v=5.2"></script>
+    <script src="/static/js/globe3d.js?v=5.3"></script>
+    <script src="/static/js/app.js?v=5.3"></script>
     
     <!-- Robust Global Dropdown Controller (Direct inline fallback) -->
     <script>

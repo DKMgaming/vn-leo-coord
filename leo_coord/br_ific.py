@@ -14,6 +14,7 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
+import re
 import yaml
 
 REF_DIR = Path(__file__).resolve().parent.parent / "data" / "reference"
@@ -104,78 +105,142 @@ def calculate_4month_deadline(publication_date_str: str, ref_date: Optional[date
     }
 
 
-def scan_br_ific_notices(ref_date: Optional[date] = None) -> dict:
+def scan_br_ific_notices(ref_date: Optional[date] = None, use_live_db: Optional[bool] = None) -> dict:
     """Thực hiện quét toàn bộ công báo BR IFIC và áp dụng Bộ lọc 3 lớp bảo vệ Vinasat."""
-    data = load_br_ific_data()
-    raw_notices = data.get("notices", [])
-
     scanned_results = []
     total_urgent = 0
     total_objections_needed = 0
 
-    for item in raw_notices:
-        notice_id = item["id"]
-        bands = item.get("frequency_bands", [])
-        has_overlap, overlaps = check_frequency_overlap(bands)
+    from leo_coord.srs_reader import BRConnectionManager
+    mgr = BRConnectionManager.get_instance()
 
-        covers_vn = bool(item.get("service_area_covers_vietnam", False))
-        arc_check = item.get("coordination_arc_check", {})
-        inside_arc = bool(arc_check.get("inside_coordination_arc_6deg", False))
-        closest_appr = arc_check.get("closest_approach_to_vinasat_deg", 99.0)
+    # Quyết định xem có quét từ CSDL trực tiếp (SRS.mdb / SQLite) hay từ bộ hồ sơ chuẩn YAML
+    should_use_live = (use_live_db is True) or (use_live_db is None and getattr(mgr, "is_user_connected", False) and bool(mgr.cached_notices))
 
-        # Đánh giá 3 điều kiện rủi ro
-        matched_criteria = []
-        if has_overlap:
-            matched_criteria.append("1. Trùng/chồng lấn băng tần với Vinasat-1/2")
-        if covers_vn:
-            matched_criteria.append("2. Vùng phủ sóng chiếu xuống lãnh thổ/lãnh hải Việt Nam")
-        if inside_arc:
-            matched_criteria.append(f"3. Lọt vào cung phối hợp Vinasat (tiếp cận {closest_appr}° < 6°)")
+    # Nếu có CSDL BR IFIC đang kết nối do người dùng tải lên, ưu tiên bóc tách toàn bộ hồ sơ thực tế này
+    if should_use_live and mgr.cached_notices:
+        for n in mgr.cached_notices:
+            safe_name = re.sub(r'[/\\:*?"<>|]', '_', str(n.sat_name or "UNKNOWN"))
+            notice_id = f"SRS-{n.br_ific_no}-{n.ntc_id}-{safe_name}"
+            has_overlap = (n.freq_min_ghz <= 14.5 and n.freq_max_ghz >= 3.4)
+            covers_vn = n.vietnam_covered
+            inside_arc = n.inside_coordination_arc_6deg
+            closest_appr = n.closest_approach_to_vinasat_deg
 
-        # Thời hạn 4 tháng
-        countdown = calculate_4month_deadline(item["publication_date"], ref_date=ref_date)
-        if countdown["status"] == "URGENT_ACTION":
-            total_urgent += 1
+            matched_criteria = []
+            if has_overlap:
+                matched_criteria.append("1. Trùng/chồng lấn băng tần với Vinasat-1/2")
+            if covers_vn:
+                matched_criteria.append("2. Vùng phủ sóng chiếu xuống lãnh thổ/lãnh hải Việt Nam")
+            if inside_arc:
+                matched_criteria.append(f"3. Lọt vào cung phối hợp Vinasat (tiếp cận {closest_appr}° < 6°)")
 
-        # Quyết định hành động theo Thể lệ Vô tuyến
-        if has_overlap and covers_vn and inside_arc:
-            risk_level = "HIGH_RISK"
-            action_required = "BẮT BUỘC NỘP Ý KIẾN PHẢN ĐỐI (SPACECOM OBJECTION)"
-            total_objections_needed += 1
-            applicable_provisions = ["RR No. 9.7B", "RR No. 9.11A", "RR No. 22.2"]
-        elif has_overlap or inside_arc:
-            risk_level = "MEDIUM_RISK"
-            action_required = "THEO DÕI & YÊU CẦU LÀM RÕ THÔNG SỐ (TECHNICAL INQUIRY)"
-            applicable_provisions = ["RR No. 9.7B"]
-        else:
-            risk_level = "LOW_RISK"
-            action_required = "LƯU TRỮ HỒ SƠ (KHÔNG ẢNH HƯỞNG)"
-            applicable_provisions = []
+            pub_date_str = str(n.d_adm)[:10] if n.d_adm else "2026-03-01"
+            countdown = calculate_4month_deadline(pub_date_str, ref_date=ref_date)
+            if countdown["status"] == "URGENT_ACTION":
+                total_urgent += 1
 
-        scanned_results.append({
-            "id": notice_id,
-            "satellite_name": item.get("satellite_name", notice_id),
-            "notifying_adm": item.get("notifying_adm", "UNK"),
-            "org": item.get("org", ""),
-            "orbit_type": item.get("orbit_type", "NGSO"),
-            "br_ific_no": item.get("br_ific_no", 0),
-            "special_section": item.get("special_section", ""),
-            "publication_date": item.get("publication_date", ""),
-            "n_satellites": item.get("n_satellites", 0),
-            "alt_km": item.get("alt_km", 0.0),
-            "service_area": item.get("service_area", ""),
-            "has_frequency_overlap": has_overlap,
-            "overlapping_bands": overlaps,
-            "service_area_covers_vietnam": covers_vn,
-            "inside_coordination_arc_6deg": inside_arc,
-            "closest_approach_deg": closest_appr,
-            "matched_criteria_count": len(matched_criteria),
-            "matched_criteria": matched_criteria,
-            "risk_level": risk_level,
-            "action_required": action_required,
-            "applicable_provisions": applicable_provisions,
-            "countdown": countdown,
-        })
+            if has_overlap and covers_vn and inside_arc:
+                risk_level = "HIGH_RISK"
+                action_required = "BẮT BUỘC NỘP Ý KIẾN PHẢN ĐỐI (SPACECOM OBJECTION)"
+                total_objections_needed += 1
+                applicable_provisions = ["RR No. 9.7B", "RR No. 9.11A", "RR No. 22.2"]
+            elif has_overlap or inside_arc:
+                risk_level = "MEDIUM_RISK"
+                action_required = "THEO DÕI & YÊU CẦU LÀM RÕ THÔNG SỐ (TECHNICAL INQUIRY)"
+                applicable_provisions = ["RR No. 9.7B"]
+            else:
+                risk_level = "LOW_RISK"
+                action_required = "LƯU TRỮ HỒ SƠ (KHÔNG ẢNH HƯỞNG)"
+                applicable_provisions = []
+
+            scanned_results.append({
+                "id": notice_id,
+                "satellite_name": n.sat_name,
+                "notifying_adm": n.adm,
+                "org": n.operator,
+                "orbit_type": "GSO" if "GSO" in n.filing_type and "NON-GSO" not in n.filing_type else "NGSO",
+                "br_ific_no": n.br_ific_no,
+                "special_section": n.special_sec,
+                "publication_date": pub_date_str,
+                "n_satellites": n.total_satellites,
+                "alt_km": n.alt_km,
+                "service_area": "Toàn cầu / Việt Nam" if covers_vn else "Ngoài VN",
+                "has_frequency_overlap": has_overlap,
+                "overlapping_bands": [{"band_name": n.band_name, "filing_range_ghz": [n.freq_min_ghz, n.freq_max_ghz]}],
+                "service_area_covers_vietnam": covers_vn,
+                "inside_coordination_arc_6deg": inside_arc,
+                "closest_approach_deg": closest_appr,
+                "matched_criteria_count": len(matched_criteria),
+                "matched_criteria": matched_criteria,
+                "risk_level": risk_level,
+                "action_required": action_required,
+                "applicable_provisions": applicable_provisions,
+                "countdown": countdown,
+            })
+    else:
+        data = load_br_ific_data()
+        raw_notices = data.get("notices", [])
+        for item in raw_notices:
+            notice_id = item["id"]
+            bands = item.get("frequency_bands", [])
+            has_overlap, overlaps = check_frequency_overlap(bands)
+
+            covers_vn = bool(item.get("service_area_covers_vietnam", False))
+            arc_check = item.get("coordination_arc_check", {})
+            inside_arc = bool(arc_check.get("inside_coordination_arc_6deg", False))
+            closest_appr = arc_check.get("closest_approach_to_vinasat_deg", 99.0)
+
+            matched_criteria = []
+            if has_overlap:
+                matched_criteria.append("1. Trùng/chồng lấn băng tần với Vinasat-1/2")
+            if covers_vn:
+                matched_criteria.append("2. Vùng phủ sóng chiếu xuống lãnh thổ/lãnh hải Việt Nam")
+            if inside_arc:
+                matched_criteria.append(f"3. Lọt vào cung phối hợp Vinasat (tiếp cận {closest_appr}° < 6°)")
+
+            countdown = calculate_4month_deadline(item["publication_date"], ref_date=ref_date)
+            if countdown["status"] == "URGENT_ACTION":
+                total_urgent += 1
+
+            if has_overlap and covers_vn and inside_arc:
+                risk_level = "HIGH_RISK"
+                action_required = "BẮT BUỘC NỘP Ý KIẾN PHẢN ĐỐI (SPACECOM OBJECTION)"
+                total_objections_needed += 1
+                applicable_provisions = ["RR No. 9.7B", "RR No. 9.11A", "RR No. 22.2"]
+            elif has_overlap or inside_arc:
+                risk_level = "MEDIUM_RISK"
+                action_required = "THEO DÕI & YÊU CẦU LÀM RÕ THÔNG SỐ (TECHNICAL INQUIRY)"
+                applicable_provisions = ["RR No. 9.7B"]
+            else:
+                risk_level = "LOW_RISK"
+                action_required = "LƯU TRỮ HỒ SƠ (KHÔNG ẢNH HƯỞNG)"
+                applicable_provisions = []
+
+            scanned_results.append({
+                "id": notice_id,
+                "satellite_name": item.get("satellite_name", notice_id),
+                "notifying_adm": item.get("notifying_adm", "UNK"),
+                "org": item.get("org", ""),
+                "orbit_type": item.get("orbit_type", "NGSO"),
+                "br_ific_no": item.get("br_ific_no", 0),
+                "special_section": item.get("special_section", ""),
+                "publication_date": item.get("publication_date", ""),
+                "n_satellites": item.get("n_satellites", 0),
+                "alt_km": item.get("alt_km", 0.0),
+                "service_area": item.get("service_area", ""),
+                "has_frequency_overlap": has_overlap,
+                "overlapping_bands": overlaps,
+                "service_area_covers_vietnam": covers_vn,
+                "inside_coordination_arc_6deg": inside_arc,
+                "closest_approach_deg": closest_appr,
+                "matched_criteria_count": len(matched_criteria),
+                "matched_criteria": matched_criteria,
+                "risk_level": risk_level,
+                "action_required": action_required,
+                "applicable_provisions": applicable_provisions,
+                "countdown": countdown,
+            })
 
     # Sắp xếp hồ sơ có rủi ro cao nhất và thời hạn gấp nhất lên trước
     scanned_results.sort(

@@ -824,6 +824,7 @@ class BRConnectionManager:
 
     def __init__(self):
         self.status = "DISCONNECTED"  # DISCONNECTED, READY_TO_CONNECT, CONNECTED, ERROR
+        self.is_user_connected: bool = False
         self.active_path: Optional[str] = None
         self.db_type: Optional[str] = None
         self.latest_edition: int = 3015
@@ -845,17 +846,18 @@ class BRConnectionManager:
         """Khởi tạo với CSDL mẫu mặc định."""
         default_sqlite = REFERENCE_DIR / "srs_br_ific_3015.sqlite"
         if default_sqlite.exists():
-            self.connect(default_sqlite)
+            self.connect(default_sqlite, is_user=False)
         else:
             # Tạo CSDL mẫu mặc định nếu chưa tồn tại
             self.status = "READY_TO_CONNECT"
 
-    def connect(self, db_path_or_str: str | Path) -> Dict[str, Any]:
+    def connect(self, db_path_or_str: str | Path, is_user: bool = True) -> Dict[str, Any]:
         """Thực hiện kết nối tới file CSDL hoặc chuỗi kết nối."""
         conn = BRDatabaseConnector(db_path_or_str)
         t_res = conn.test_connection()
         if t_res.get("connected"):
             self.status = "CONNECTED"
+            self.is_user_connected = is_user
             self.active_path = str(db_path_or_str)
             self.db_type = t_res.get("db_type")
             self.latest_edition = t_res.get("latest_ific_edition", 3015)
@@ -886,12 +888,17 @@ class BRConnectionManager:
         """Lấy trạng thái kết nối trực tiếp hiện thời."""
         return {
             "status": self.status,
+            "is_connected": self.status == "CONNECTED",
+            "is_user_connected": self.is_user_connected,
             "ready_state": "SẴN SÀNG KẾT NỐI (READY)" if self.status in ["READY_TO_CONNECT", "CONNECTED"] else "CHƯA KẾT NỐI",
+            "active_database": self.active_path,
             "active_path": self.active_path or "Chưa cấu hình (Đang ở chế độ sẵn sàng)",
             "db_type": self.db_type or "SQLite / Access MDB",
             "latest_edition": self.latest_edition,
             "total_notices": len(self.cached_notices),
+            "notices_count": len(self.cached_notices),
             "tables": self.tables,
+            "table_count": len(self.tables),
             "last_connected_at": self.last_connected_at,
             "supports_mdb": True,
             "supports_sqlite": True,

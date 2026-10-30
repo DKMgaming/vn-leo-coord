@@ -636,7 +636,9 @@ async def upload_spacecap_filing(file: UploadFile = File(...)):
                 "status": "success",
                 "message": f"Đã bóc tách thành công CSDL '{filename}' ({len(filings)} hồ sơ mạng vệ tinh được nạp vào hệ thống)!",
                 "is_database": True,
+                "total_imported": len(filings),
                 "total_filings_imported": len(filings),
+                "database_path": str(saved_temp_path.resolve()),
                 "filing": {
                     "id": primary.id,
                     "name": primary.name,
@@ -705,9 +707,19 @@ def get_srs_status_endpoint():
     from leo_coord.srs_reader import BRConnectionManager, ensure_sample_reference_databases
     ensure_sample_reference_databases()
     mgr = BRConnectionManager.get_instance()
+    info = mgr.get_status()
+    db_res = get_sample_databases_endpoint()
+    info["available_databases"] = db_res.get("databases", [])
     return {
         "status": "success",
-        "connection_info": mgr.get_status()
+        "connection_info": info,
+        "is_connected": info.get("is_connected", False),
+        "db_type": info.get("db_type", "CSDL"),
+        "active_database": info.get("active_database"),
+        "edition": info.get("latest_edition", 3015),
+        "table_count": info.get("table_count", 0),
+        "notices_count": info.get("notices_count", 0),
+        "available_databases": info["available_databases"],
     }
 
 
@@ -726,6 +738,7 @@ def connect_srs_database_endpoint(payload: Dict[str, Any] = Body(...)):
     res = mgr.connect(path)
     if not res.get("connected"):
         raise HTTPException(status_code=400, detail=res.get("message", "Kết nối thất bại."))
+    res["notices_count"] = res.get("total_records", 0)
     return res
 
 
@@ -832,19 +845,41 @@ def diff_srs_editions_endpoint(payload: Optional[Dict[str, Any]] = Body(default_
 
 @app.get("/api/srs/sample-databases")
 def get_sample_databases_endpoint():
-    """Liệt kê các CSDL BR IFIC mẫu sẵn có (SQLite và Microsoft Access MDB) để kiểm thử nhanh."""
-    from leo_coord.srs_reader import REFERENCE_DIR, ensure_sample_reference_databases
+    """Liệt kê các CSDL BR IFIC sẵn có (cả tệp tải lên lẫn tệp mẫu tham chiếu)."""
+    from leo_coord.srs_reader import REFERENCE_DIR, UPLOADS_DIR, ensure_sample_reference_databases
     ensure_sample_reference_databases()
 
     items = []
+    # 1. Các tệp do người dùng tải lên (ưu tiên hàng đầu)
+    if UPLOADS_DIR.exists():
+        for ext in ["*.mdb", "*.accdb", "*.sqlite", "*.db"]:
+            for p in sorted(UPLOADS_DIR.glob(ext), key=lambda x: x.stat().st_mtime, reverse=True):
+                clean_name = p.name
+                if clean_name.startswith("upload_"):
+                    parts = clean_name.split("_", 2)
+                    if len(parts) >= 3:
+                        clean_name = parts[2]
+                items.append({
+                    "filename": p.name,
+                    "name": f"⭐ {clean_name} (Tải lên)",
+                    "path": str(p.resolve()),
+                    "size_kb": round(p.stat().st_size / 1024, 1),
+                    "type": "MDB" if p.suffix.lower() in [".mdb", ".accdb"] else "SQLite",
+                    "description": "CSDL người dùng tải lên",
+                    "is_uploaded": True,
+                })
+
+    # 2. CSDL mẫu chuẩn tham chiếu
     for ext in ["*.sqlite", "*.db", "*.mdb"]:
         for p in REFERENCE_DIR.glob(ext):
             items.append({
                 "filename": p.name,
+                "name": p.name,
                 "path": str(p.resolve()),
                 "size_kb": round(p.stat().st_size / 1024, 1),
-                "type": "Microsoft Access (.mdb)" if p.suffix.lower() == ".mdb" else "SQLite (.sqlite)",
-                "description": "CSDL mẫu chuẩn ITU BR IFIC tích hợp sẵn phục vụ đối soát",
+                "type": "MDB" if p.suffix.lower() == ".mdb" else "SQLite",
+                "description": "CSDL mẫu chuẩn ITU BR IFIC tích hợp sẵn",
+                "is_uploaded": False,
             })
     return {
         "status": "success",
