@@ -7,6 +7,7 @@ theo chuẩn Phụ lục 4 Thể lệ Vô tuyến ITU (RR AP4 Annex 2B) và ph�
 from __future__ import annotations
 
 import json
+import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
@@ -447,7 +448,10 @@ def parse_appendix4_any(content: str, filename: str = "") -> Appendix4Filing:
 def save_uploaded_filing(filing: Appendix4Filing) -> Path:
     """Lưu hồ sơ đã tải lên vào thư mục data/uploads/filings dạng JSON."""
     UPLOADED_FILINGS_DIR.mkdir(parents=True, exist_ok=True)
-    file_path = UPLOADED_FILINGS_DIR / f"{filing.id}.json"
+    # Loại bỏ các ký tự nguy hiểm cho đường dẫn file như /, \, :, *, ?, ", <, >, |
+    safe_id = re.sub(r'[/\\:*?"<>|]', '_', str(filing.id)).strip()
+    filing.id = safe_id
+    file_path = UPLOADED_FILINGS_DIR / f"{safe_id}.json"
     data = asdict(filing)
     file_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
     return file_path

@@ -17,6 +17,7 @@ import csv
 import datetime
 import io
 import os
+import re
 import shutil
 import sqlite3
 import subprocess
@@ -62,7 +63,9 @@ class BRNoticeRecord:
 
     def to_filing(self) -> Appendix4Filing:
         """Chuyển đổi bản ghi công báo sang đối tượng Appendix4Filing chuẩn."""
-        filing_id = f"SRS-{self.br_ific_no}-{self.sat_name.replace(' ', '_').upper()}"
+        # Chuẩn hóa tên vệ tinh để tránh ký tự gạch chéo / hoặc đặc biệt làm hỏng đường dẫn file
+        safe_sat_name = re.sub(r'[/\\:*?"<>|]', '_', self.sat_name.strip()).replace(" ", "_").upper()
+        filing_id = f"SRS-{self.br_ific_no}-{self.ntc_id}-{safe_sat_name}"
         plane = OrbitalPlane(
             plane_id=1,
             altitude_km=self.alt_km,
